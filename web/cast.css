@@ -322,8 +322,8 @@ body.single .hdr h1{color:#fff;text-shadow:0 2px 8px #000a}
 body.single .hdr .d,body.single .hdr .dd{color:#fffc}
 body.single .bar{background:transparent;box-shadow:none}
 body.single .bar .mt,body.single .bar .loc-bar{display:none!important}
-body.single .bar .q,body.single .bar .xall{background:color-mix(in srgb,var(--paper) 55%,transparent);-webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2)}
-body.single.qfocus .bar .q{background:var(--paper);-webkit-backdrop-filter:none;backdrop-filter:none}
+body.single .bar .q,body.single .bar .xall{background-color:color-mix(in srgb,var(--paper) 55%,transparent);-webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2)}
+body.single.qfocus .bar .q{background-color:var(--paper);-webkit-backdrop-filter:none;backdrop-filter:none}
 #solo{grid-column:1/-1}
 .solo-hero{display:flex;align-items:flex-end;min-height:clamp(150px,24vw,260px);padding:8px 2px 18px;color:#fff}
 .solo-tx{width:100%}
@@ -346,9 +346,12 @@ body.single.qfocus .bar .q{background:var(--paper);-webkit-backdrop-filter:none;
 /* 手机端的瀑布流（.covers.mas）是 4px 的行 + JS 给每张 .cv 算跨几行；#solo 不是 .cv，让它按自己的内容撑开 */
 body.single .covers.mas{grid-auto-rows:auto!important}
 /* 搜索时整屏压暗（index.html 里给 body 加 .qfocus）：暗层在搜索栏（z 20）下面，结果面板浮在暗层上 */
-#qdim{position:fixed;inset:0;z-index:18;background:rgba(12,10,8,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .2s}
+#qdim{position:fixed;inset:0;z-index:18;background:rgba(12,10,8,.55);opacity:0;pointer-events:none;transition:opacity .2s}
 body.qfocus #qdim{opacity:1;pointer-events:auto}
-body.qfocus .bar{background:var(--page)!important;box-shadow:0 2px 0 var(--line)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+/* 搜索时横栏本身透明，暗层直接透上来；只有搜索框（和旁边的按钮）是实底亮着的 */
+body.qfocus .bar{background:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+body.qfocus .bar .q{background-color:var(--paper)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+body.qfocus .bar .mt,body.qfocus .bar .loc-bar{opacity:0!important}
 body.qfocus #res{position:relative;z-index:19;background:var(--page);border-radius:16px;padding:14px;box-shadow:0 10px 40px #0006}
 @media(prefers-reduced-motion:reduce){#qdim{transition:none}}
 /* 搜索栏里的小标题：收起时宽度是 0，但文字会溢出到输入框上并接住点击（活动名一长，手机上就点不到搜索框）。裁掉、不接点击 */
