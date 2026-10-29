@@ -422,7 +422,12 @@ def make_server(host=None,port=None):
   return ThreadingHTTPServer((host or config.C.host(),config.C.port() if port is None else port),H)
 def main():
   if not preflight():return 1
-  srv=make_server();host,port=srv.server_address[:2]
+  try:srv=make_server()
+  except OSError as e:
+    if e.errno in (48,98,10048):   # EADDRINUSE on macOS / Linux / Windows
+      print(f'端口 {config.C.port()} 已被占用：可能另一个 castcall 还开着。先停掉它，或者换个端口：CASTCALL_PORT=5512 python3 server/server.py',file=sys.stderr);return 1
+    raise
+  host,port=srv.server_address[:2]
   threading.Thread(target=lambda:notion().loop(LOCK),daemon=True).start()
   log('start',host,port,'notion' if config.C.notion_on() else 'local-only')
   print(f'castcall: http://{host}:{port}/  （实例目录 {config.C.INSTANCE}，Notion {"已启用" if config.C.notion_on() else "未启用"}）',flush=True)
