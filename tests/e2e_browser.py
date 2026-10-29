@@ -13,8 +13,10 @@ def free_port():
   s=socket.socket();s.bind(('127.0.0.1',0));p=s.getsockname()[1];s.close();return p
 def instance(mode):
   d=tempfile.mkdtemp(prefix=f'castcall-e2e-{mode}-')
+  # multi gets every optional field, single gets none (no date / place / countdown / contact): both page variants must work
+  full=['--date','2026-12-12','--start','2030-12-12T11:00:00+08:00','--location','某某公园','--contact','微信 example_id'] if mode=='multi' else []
   subprocess.run([sys.executable,os.path.join(ROOT,'init.py'),'--instance',d,'--mode',mode,'--title','示例 cos 团建' if mode=='multi' else '示例团片',
-    '--date','2026-12-12','--start','2030-12-12T11:00:00+08:00','--location','某某公园','--contact','微信 example_id','--password',PW,'--yes'],check=True,capture_output=True)
+    *full,'--password',PW,'--yes'],check=True,capture_output=True)
   return d
 def serve(d,port):
   env=dict(os.environ,CASTCALL_INSTANCE=d,CASTCALL_PORT=str(port))
@@ -90,6 +92,7 @@ def main(a):
       step('phone: card opens',m.locator('.cv.open').count()==1)
       # ── single ──
       S=f'http://127.0.0.1:{ports["single"]}/';s=page();s.goto(S);s.wait_for_timeout(800)
+      step('single: minimal config renders, no countdown',s.locator('#bn').count()==0 and s.locator('.cv').count()==1)
       step('single: one open card',s.locator('.cv').count()==1 and s.locator('.cv.open').count()==1)
       step('single: no expand-all',not s.locator('#xall').is_visible())
       s.locator('.cv header').first.click();s.wait_for_timeout(500)

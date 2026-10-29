@@ -3,7 +3,8 @@
 
   python3 init.py                    # 一问一答
   python3 init.py --mode single --title "XX 团片" --yes      # 不问，其余用默认值，密码随机生成并打印一次
-  python3 init.py --example key-demo --yes                   # 用 examples/roster.key-demo.json 当初始名册（13 个团的大样例）
+  python3 init.py --example key-demo --yes                   # 用 examples/roster.key-demo.json 当初始名册（13 个团的大样例），
+                                                             # 顺带生成占位封面、几条留言和几条待审报名（--no-seed 不要）
 
 会写出 site.json（活动信息）、roster.json（示例名册）、auth.json（管理密码）。已经初始化过的目录不会被覆盖，
 除非加 --force（只重写 site.json 和 auth.json，名册永远不覆盖）。"""
@@ -21,6 +22,7 @@ def main(argv):
   ap.add_argument('--location');ap.add_argument('--contact',help='缺人看板上的联系方式，如 "微信 abc123"')
   ap.add_argument('--password',help='管理密码（不给就问；--yes 时随机生成）')
   ap.add_argument('--example',help='初始名册用 examples/roster.<名字>.json（multi / single / key-demo / key-single）；默认按 --mode')
+  ap.add_argument('--no-seed',action='store_true',help='用 --example 时不生成占位封面、留言和待审报名')
   ap.add_argument('--yes',action='store_true',help='不提问，没给的都用默认值');ap.add_argument('--force',action='store_true')
   a=ap.parse_args(argv);C=config.use(a.instance);y=a.yes
   if a.example:
@@ -61,7 +63,11 @@ def main(argv):
     import roster
     d=roster.load();roster.ensure_ids(d)
     for g in d['groups']:g['count']=len(g['members'])
+    seeded=None
+    if a.example and not a.no_seed:
+      import demo;seeded=demo.seed(d)
     with open(C.ROSTER,'w',encoding='utf-8') as f:json.dump(d,f,ensure_ascii=False,indent=1)
+    if seeded:print(f'样例：{seeded["covers"]} 张占位封面、{seeded["notes"]} 条留言、{seeded["signups"]} 条待审报名（后台「审核」里能看到）')
   import server
   server.set_password(pw,C.AUTH)
   print(f'\n完成。名册是示例数据，登录后台（右下角的锁）就能改。')

@@ -163,6 +163,19 @@ class Poster(Base):
     s.assertIn('posterlink-hdr',s.c.get('/').text)
 
 class Examples(unittest.TestCase):
+  def test_init_example_seeds_demo_content(s):
+    import contextlib,io,shutil,tempfile,store,roster
+    from helpers import ROOT
+    sys.path.insert(0,ROOT);import init
+    d=tempfile.mkdtemp(prefix='castcall-seed-')
+    try:
+      with contextlib.redirect_stdout(io.StringIO()):s.assertEqual(init.main(['--instance',d,'--example','key-single','--password','x'*10,'--yes']),0)
+      r=roster.load();s.assertTrue(all(g.get('cover') for g in r['groups']))
+      s.assertTrue(os.path.isfile(os.path.join(config.C.UPLOADS,'covers',r['groups'][0]['cover'])))
+      s.assertEqual(len(store.notes('approved')),6);pend=store.signups('pending');s.assertGreaterEqual(len(pend),3)
+      seats={m['id']:m for g in r['groups'] for m in g['members']}
+      s.assertTrue(all(not seats[x['seat']].get('member') for x in pend),'signups only target vacant seats')
+    finally:shutil.rmtree(d,ignore_errors=True)
   def test_every_example_roster_is_valid(s):
     import glob,roster
     from helpers import ROOT,rj
