@@ -1,0 +1,37 @@
+{
+ "groups": [
+  {
+   "name": "示例作品",
+   "color": "#e07a5f",
+   "lead": "阿杏",
+   "contact": "微信 example_a",
+   "note": "一次单团团片：外景 + 棚拍，妆造自理，场地费 AA。",
+   "members": [
+    {
+     "character": "主角",
+     "member": "小鹿"
+    },
+    {
+     "character": "青梅竹马",
+     "member": ""
+    },
+    {
+     "character": "学生会长",
+     "member": "橘子"
+    },
+    {
+     "character": "转学生",
+     "member": ""
+    },
+    {
+     "character": "班主任",
+     "member": "阿杏"
+    },
+    {
+     "character": "神秘人",
+     "member": ""
+    }
+   ]
+  }
+ ]
+}

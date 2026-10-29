@@ -1,0 +1,50 @@
+{
+ "mode": "auto",
+ "event": {
+  "title": "示例 cos 团建",
+  "subtitle": "成员一览",
+  "date": "2026-12-12",
+  "startAt": "2026-12-12T11:00:00+08:00",
+  "endAt": "2026-12-12T22:00:00+08:00",
+  "location": "某某公园",
+  "organizer": "示例社团",
+  "contact": {
+   "label": "微信",
+   "value": "example_id"
+  }
+ },
+ "signup": {
+  "enabled": true,
+  "opensAt": "",
+  "closesAt": "",
+  "contactLabel": "微信",
+  "contactPattern": "",
+  "note": "提交后等审核，不会直接占上这个席位。"
+ },
+ "guestbook": {
+  "enabled": true,
+  "moderation": "post"
+ },
+ "poster": {
+  "enabled": true,
+  "slug": "castcall",
+  "hero": ""
+ },
+ "brand": {
+  "logo": "",
+  "accent": "",
+  "favicon": ""
+ },
+ "server": {
+  "host": "127.0.0.1",
+  "port": 5510,
+  "trustProxyHeader": "",
+  "sessionDays": 7
+ },
+ "limits": {
+  "windowSec": 600,
+  "login": 5,
+  "signup": 8,
+  "guestbook": 8
+ }
+}

@@ -1,0 +1,8 @@
+instance/
+.env
+__pycache__/
+*.pyc
+.DS_Store
+poster/out/
+poster/cache/
+.claude/

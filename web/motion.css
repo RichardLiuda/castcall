@@ -1,0 +1,352 @@
+:root{--e:cubic-bezier(.2,.8,.2,1)}
+html{scroll-behavior:auto}
+.hdr h1,.hdr .d{transition:transform .35s var(--e),opacity .35s var(--e);transform-origin:0 50%}
+.hdr.sm h1{transform:scale(.92) translateY(6px);opacity:.4}.hdr.sm .d{opacity:0}
+.bar{display:flex;align-items:center;gap:10px}.bar .q{flex:1}
+.bar{gap:0}.sm2 .bar{gap:10px}.bar .mt{font-weight:900;font-size:15px;white-space:nowrap;max-width:0;opacity:0;transform:translateX(-8px);transition:opacity .3s var(--e),transform .3s var(--e),max-width .3s var(--e)}
+.sm2 .bar{gap:10px} .sm2 .bar .mt{max-width:150px;opacity:1;transform:none}
+.cv{opacity:0;transform:translateY(22px) scale(.97);will-change:transform}
+/* Desktop: the wrapper is not a box, so masonry, the magazine header, and morphD
+   see the same children they did before. Phone replaces this inside max-width:639px. */
+.cv-clip{display:contents}
+.cv.in{opacity:1;transform:none;transition:opacity .45s var(--e),transform .45s var(--e),box-shadow .2s var(--e);transition-delay:var(--dl,0ms)}
+.cv header{position:relative;overflow:hidden;background:none!important;isolation:isolate}
+.cv .bg{position:absolute;inset:-6%;z-index:-2;background:var(--img,none) center 22%/cover,linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,#fff));transition:transform .45s var(--e);will-change:transform}
+.cv .ov{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 35%,transparent),rgba(20,14,10,.12) 38%,color-mix(in srgb,var(--c) 58%,#000))}
+.cv .sh{position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(110deg,transparent 35%,#fff6 50%,transparent 65%);transform:translateX(-120%)}
+@media(hover:hover){.cv.in:not(.open):hover{transform:translateY(-3px) scale(1.015);box-shadow:6px 7px 0 var(--ink)}.cv:not(.open):hover .bg{transform:scale(1.08) translate(var(--px,0),var(--py,0))}.cv:not(.open):hover .sh{transform:translateX(120%);transition:transform .7s var(--e)}}
+.cv.in.press{transform:scale(.97);transition-duration:.15s}
+.cv .bw{display:grid;grid-template-rows:0fr;transition:grid-template-rows .44s cubic-bezier(.2,.8,.2,1)}
+.cv.open .bw{grid-template-rows:1fr}
+.cv .body{display:block!important;animation:none!important;min-height:0;overflow:hidden;padding:0 12px!important;opacity:0;transition:opacity .25s ease .0s}
+.cv.open .body{opacity:1;transition:opacity .26s ease}
+.cv .body:before,.cv .body:after{content:"";display:block;height:12px}
+/* open: tall white gutter above first pills so art_bottom (±14 sample) lands off #333 pill borders */
+.cv.open .body:before{height:44px}
+.cv:not(.open) .body{visibility:hidden;transition:opacity .2s,visibility 0s .44s}
+.cv{align-self:start}
+.cv.open .pill{animation:pin .4s var(--e) both;animation-delay:calc(var(--k)*16ms + 30ms)}
+@keyframes pin{from{opacity:0;transform:translateY(10px) scale(.96)}}
+.pill{position:relative;overflow:hidden;transition:transform .2s var(--e),box-shadow .2s var(--e)!important}
+.pill:hover{transform:translateY(-2px)!important;box-shadow:3px 4px 0 var(--ink)}.pill:active{transform:scale(.96)!important}
+.pill .rp{position:absolute;border-radius:50%;background:#fff8;pointer-events:none;transform:scale(0);animation:rp .45s var(--e) forwards;mix-blend-mode:overlay}
+@keyframes rp{to{transform:scale(1);opacity:0}}
+.pill .a,.pill .b{position:relative;z-index:1}
+.pill .ci{position:absolute;right:0;top:0;bottom:0;width:44px;background:var(--ci) center 25%/cover no-repeat,var(--paper);-webkit-mask:linear-gradient(90deg,transparent 0,#000 55%);mask:linear-gradient(90deg,transparent 0,#000 55%);z-index:0}.pill .b{padding-right:30px!important}
+.pill .b{text-shadow:0 0 3px var(--paper),0 0 6px var(--paper)}
+.res .pill{transition:transform .35s var(--e),opacity .3s var(--e)!important}
+#sheet{transition:none!important;background:none!important}
+#sheet:before{content:"";position:absolute;inset:0;background:var(--scrim);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transition:opacity .3s var(--e)}
+#sheet.open:before{opacity:1}
+#sheet .card{visibility:visible!important;opacity:0;transform:translate(var(--fx,0),var(--fy,0)) scale(.3)!important;transform-origin:center;transition:transform .4s var(--e),opacity .25s var(--e)!important;padding:0!important;overflow:hidden}
+#sheet.open .card{opacity:1;transform:none!important}
+#sheet .hero{height:280px;background:var(--c);position:relative;transition:filter .2s var(--e)}
+#sheet .hero:before{content:"";position:absolute;inset:0;background:var(--ci) var(--cp,50% 20%)/cover no-repeat;opacity:0;transition:none;pointer-events:none}
+#sheet .card.art-in .hero:before{opacity:1}
+#sheet .card.art-fade .hero:before{transition:opacity .2s var(--e)}
+#sheet .card.noimg .hero:before{content:none;opacity:0}
+#sheet .hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,var(--paper))}
+#sheet .in{padding:0 22px 22px;margin-top:-34px;position:relative}
+#sheet .in.sl{animation:sl .32s var(--e)}#sheet .hero.sl{animation:sl .32s var(--e)}
+@keyframes sl{from{opacity:0;transform:translateX(calc(var(--dir)*40px))}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important;transition-delay:0ms!important}.cv{opacity:1;transform:none}}
+.pill .ni{position:absolute;right:5px;top:50%;width:22px;height:22px;margin-top:-11px;border-radius:50%;background:color-mix(in srgb,var(--c) 18%,var(--paper));color:var(--c);border:1.5px solid color-mix(in srgb,var(--c) 45%,var(--paper));display:grid;place-items:center;font-style:normal;font-weight:900;font-size:11px;z-index:1}
+#sheet .card.noimg .hero{background:radial-gradient(circle at 75% 30%,#fff5,transparent 45%),linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 55%,#fff))}#sheet .card.noimg .hero:before{content:none}
+.pill .ni.cam{right:3px;top:3px;bottom:auto;margin:0;width:16px;height:16px;font-size:8px;border-width:1px;background:#fffe;z-index:2}
+/* wrap fix */
+.pill{align-items:stretch}
+.pill .a,.pill .b{white-space:nowrap;overflow-wrap:normal;word-break:keep-all;display:flex;align-items:center;min-width:0;overflow:hidden}
+.pill .a{flex:0 1 auto;max-width:62%;padding:7px 7px}
+.pill .b{flex:1 1 0;min-width:2.6em;padding:7px 6px}
+.pill .a.wrap,.pill .b.wrap{white-space:normal;word-break:normal;overflow-wrap:normal;text-wrap:balance;line-height:1.15}
+.pill.tight .ci{width:26px}.pill.tight .b{padding-right:16px!important}
+@media(max-width:420px){.pill .ci{width:36px}.pill .b{padding-right:22px!important}}
+.pill.tight .a{max-width:50%}
+.pill .a,.pill .b,.pill .ci{transition:none!important}
+/* frosted chevron */
+.cv .chev{width:30px;height:30px;right:10px;top:10px;border-radius:50%;border:1px solid #ffffff8c;background:#ffffff33;-webkit-backdrop-filter:blur(8px) saturate(1.4);backdrop-filter:blur(8px) saturate(1.4);box-shadow:0 2px 8px #0003,inset 0 1px 0 #ffffff59;color:#fff;font-size:0;cursor:pointer;z-index:2;transition:transform .35s var(--e),background .2s}
+.cv .chev svg{width:16px;height:16px;filter:drop-shadow(0 1px 1px #0005)}
+@media(hover:hover){.cv:hover .chev{transform:scale(1.08);background:#ffffff4d}.cv.open:hover .chev{transform:rotate(180deg) scale(1.08)}}
+.cv.open .chev{transform:rotate(180deg)}
+/* desktop layout */
+:root{--wrap:1360px;--gut:max(16px,calc((100vw - var(--wrap))/2))}
+.hdr,.bar{padding-left:var(--gut)!important;padding-right:var(--gut)!important}
+main{max-width:calc(var(--wrap) + 32px)!important}
+@media(min-width:640px){
+ .covers{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))!important;gap:16px!important}
+ .cv header{aspect-ratio:16/10;min-height:0!important}
+ .cv.open header{aspect-ratio:auto;min-height:150px!important}
+ .cv h2{font-size:22px}.cv .n{font-size:34px}.cv .peek{font-size:12px}
+ .pills{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))!important}
+ .hdr{padding-top:40px!important;padding-bottom:18px!important}.hdr h1{font-size:34px}.hdr .d{font-size:14px;margin-top:10px}
+ .bar{padding-top:12px!important;padding-bottom:12px!important}.bar .q{max-width:none}
+ .fab{right:var(--gut)!important}
+}
+/* expand-all + masonry */
+.bar{display:flex;align-items:center}.bar .q{flex:1;min-width:0}
+.xall{flex:none;margin-left:10px;border:2px solid var(--ink);background:var(--paper);border-radius:12px;padding:9px 14px;font:inherit;font-weight:800;font-size:13px;box-shadow:3px 3px 0 var(--ink);cursor:pointer;transition:transform .2s var(--e),box-shadow .2s}
+.xall:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+/* wide screens (desktop morph, >=640): masonry with the open card staying in its column, as on main >=1024 */
+@media(min-width:640px){
+ .covers{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important;gap:18px!important;align-items:start}
+ .covers.mas{grid-auto-rows:4px;row-gap:0!important;grid-auto-flow:row dense}
+ .covers.mas .cv{margin-bottom:18px}
+ .cv{align-self:start}
+ .cv.open{grid-column:auto!important}
+ .cv.open header{aspect-ratio:4/3!important;min-height:0!important;background-position:center!important}
+ .cv .pills{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(min-width:1800px){:root{--wrap:1680px}}
+@media(max-width:600px){.xall{padding:7px 9px;font-size:12px;margin-left:8px}.sm2 .bar .mt{display:none}.sm2 .bar .loc-bar{display:inline-flex;padding:3px 7px;font-size:10px;margin-right:6px}}
+@media(max-width:360px){.sm2 .bar .loc-bar{display:none}}
+
+/* cover focal points */
+#c0{--fp:47% 30%}#c1{--fp:48% 35%}#c2{--fp:50% 25%}#c3{--fp:47% 36%}#c4{--fp:59% 19%}#c5{--fp:69% 21%}#c6{--fp:65% 28%}#c7{--fp:37% 40%}#c8{--fp:50% 25%}#c9{--fp:49% 54%}#c10{--fp:71% 20%}#c11{--fp:53% 26%}#c12{--fp:48% 44%}
+.cv .bg{background:var(--img,none) var(--fp,center 22%)/cover,linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,#fff))}
+@media(min-width:640px){.cv.open header{aspect-ratio:2/1!important;max-height:220px}}
+@media(max-width:639px){.cv.open header{min-height:130px!important;max-height:180px}}
+@media(min-width:1280px){.covers{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))!important}}
+/* continuous poster: fixed-size image layer, only translate/scale animate */
+.cv header{overflow:hidden}
+.cv .bg{inset:auto!important;left:-5%!important;top:0!important;width:110%!important;height:var(--bh,112%);transform:translateY(var(--dy,0px));transition:transform .42s cubic-bezier(.2,.8,.2,1)!important;background:var(--img,none) var(--fp,center 22%)/cover,linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,#fff))!important}
+.cv:not(.open):hover .bg{transform:translateY(var(--dy,0px)) scale(1.06) translate(var(--px,0),var(--py,0))}
+@media(prefers-reduced-motion:reduce){.cv .bg{transition:none!important}}
+/* perf: measure pass + animation-time cheapening */
+.cv{contain:layout style}
+.cv .body{contain:layout paint}
+html,body,#cv{overflow-anchor:none}
+.cv.ghost{transition:none!important;opacity:1;transform:none}
+.cv.ghost .pill{animation:none!important}
+/* desktop grand typography */
+@media(min-width:1024px){
+ main{max-width:clamp(1100px,82vw,1640px)}
+ .covers{gap:clamp(16px,1.3vw,26px)!important;grid-template-columns:repeat(auto-fill,minmax(clamp(320px,26vw,500px),1fr))!important}
+ html .hdr h1{font-size:clamp(38px,2.9vw,56px);letter-spacing:.01em}
+ html .cv header{padding:clamp(16px,1.2vw,24px) clamp(16px,1.25vw,26px) clamp(14px,1.1vw,22px)}
+ html .cv.open header{max-height:none}
+ html .cv h2{font-size:clamp(28px,2.15vw,42px);font-weight:900;letter-spacing:.01em;line-height:1.08;overflow-wrap:normal;word-break:keep-all;padding-right:44px}
+ html .cv .n{font-size:clamp(44px,3.4vw,66px);letter-spacing:-.02em}
+ html .cv .n small{font-size:clamp(15px,1.05vw,20px);font-weight:800;margin-left:4px;opacity:.9}
+ html .cv .peek{font-size:clamp(13.5px,.95vw,17px);font-weight:600}
+ html .cv .chev{width:clamp(32px,2.3vw,42px);height:clamp(32px,2.3vw,42px);right:clamp(10px,.9vw,16px);top:clamp(10px,.9vw,16px)}
+ .cv .body{padding:0 clamp(12px,1.1vw,20px)!important}
+ .cv .body:before,.cv .body:after{height:clamp(12px,1.1vw,20px)}
+ .cv .pills{gap:clamp(8px,.7vw,12px)!important}
+ .pill{font-size:clamp(14.5px,1.02vw,18px);border-radius:14px}
+ .pill .a,.pill .b{padding:clamp(8px,.62vw,11px) clamp(8px,.62vw,12px)}
+ .pill .b{padding-right:clamp(34px,2.6vw,48px)!important}
+ .pill .ci{width:clamp(48px,3.4vw,64px)}
+}
+html,body{overflow-x:clip}main{overflow-x:clip;overflow-y:visible}
+.cv.morphing .pill{animation:none!important}.cv.morphing .body{transition:none!important}
+/* phone: 2-col masonry; open card spans full width; header height per card is the same open/closed */
+@media(max-width:639px){
+ html .covers{grid-template-columns:var(--tw,1fr) var(--tw,1fr)!important;justify-content:space-between;gap:0 12px!important;grid-auto-rows:4px;grid-auto-flow:row dense;align-items:start}
+ html .covers .cv{margin-bottom:12px}
+ html .cv header,html .cv.open header{aspect-ratio:auto!important;height:round(down,calc(var(--tw,170px)*var(--hr,1)),1px)!important;min-height:0!important;max-height:none!important;flex-direction:column!important;align-items:stretch!important;justify-content:space-between!important}
+ html .cv h2,html .cv .peek{max-width:calc(var(--tw,170px) - 34px)}
+ html .cv.open .peek{display:block!important}
+ html .cv .body,html .cv.open .body{opacity:1!important;transition:none!important}
+ html .cv:not(.open) .body{visibility:hidden;transition:none!important}
+ html .cv .bw{transition:none!important}
+ html .cv .pill,html .cv.open .pill{animation:none!important}
+ html .cv .bg{transition:none!important}
+ html .cv .chev{transition:none!important}
+}
+/* phone morph: member paper (.mxp) sits below the cover, never behind it. Header keeps an opaque
+   non-white backing so a one-frame-empty .bg layer on Android Edge cannot show #fff. Body stays
+   transparent (6b89326's white body wash is rejected). Do not animate this backing.
+   --bx* are lengths so expand-all can slide the poster box on the main thread (unregistered
+   custom properties would snap at 50%). @property has to live at the top level. */
+@property --bxl{syntax:"<length>";inherits:false;initial-value:0px}
+@property --byt{syntax:"<length>";inherits:false;initial-value:0px}
+@property --bxw{syntax:"<length>";inherits:false;initial-value:0px}
+@property --bxh{syntax:"<length>";inherits:false;initial-value:0px}
+/* SYNC stamps --mx on every morph keyframe so width/height stays on the same
+   clock as transform. Unregistered custom properties inherit, so a stamp on
+   .cv / .mxw restyled every pill on every frame. inherits:false keeps the
+   clock and limits the recalc to the element that is actually animating. */
+@property --mx{syntax:"<number>";inherits:false;initial-value:0}
+@media(max-width:639px){
+ /* Resting card on Android Edge. PR#10 cleared .cv's background and desktop
+    stayed green, but the card was still a compositor layer: will-change:transform
+    survives .in, and overflow:hidden + border-radius + the 4px shadow promote the
+    same border box. Edge clears that layer opaque white and does not mask the
+    corner outside the 16px radius. The cover is a descendant layer, so the poster
+    stays rounded and the wedge sits outside it. A transparent background does not
+    change the clear color. .cv keeps the border and the shadow, and is not a clip
+    and not a transform layer. .cv-clip clips the cover and the open member sheet.
+    Nothing on the clip is white, shadowed, or will-change. >=640 leaves .cv-clip
+    as display:contents. */
+ /* Resting sticker: box-shadow + border-radius still promotes a layer some Chromium
+    paths (DevTools device mode, Android Edge) clear opaque #fff outside the curve.
+    Drop box-shadow; paint page-colored fill so a leftover clear matches the page less;
+    offset ::after ink slab is the 4px L (same idea as morph .mxs, no evenodd needed at rest). */
+ /* Ink fill (not page/paper): the 16px card vs 14px clip leaves a hairline crescent
+    inside the stroke; page/paper reads as 白角. Ink matches the border so the crescent vanishes. */
+ html .cv{background:var(--ink)!important;overflow:visible!important;will-change:auto!important;box-shadow:none!important}
+ /* 100% is the padding box. left:4px + width:100% therefore sticks out only
+    4px−border, and radius 16 sits on that smaller box — the corner arc splits
+    from the stroke (border, bright seam, second ink). --cvb is the used border
+    (syncCvB); the sticker is the border box shifted 4px, i.e. box-shadow:4px 4px 0. */
+ html{--cvb:2.5px}
+ html .cv:after{content:"";position:absolute;left:calc(4px - var(--cvb));top:calc(4px - var(--cvb));width:calc(100% + 2*var(--cvb));height:calc(100% + 2*var(--cvb));box-sizing:border-box;background:var(--ink);border-radius:16px;z-index:-1;pointer-events:none}
+ html .cv-clip{display:flow-root;overflow:clip;border-radius:13.5px;background:transparent!important;box-shadow:none!important;filter:none!important;will-change:auto!important}
+ html .cv.open .bw{background:var(--paper);border-radius:0 0 13.5px 13.5px}
+ /* hover lift used box-shadow; phone is touch-first — keep transform only */
+ html .cv.in:not(.open):hover{box-shadow:none!important}
+ html .cv.mx .body{visibility:visible!important;background:transparent!important}
+ html .cv.mx .bw{grid-template-rows:1fr!important;background:transparent!important}
+ html .cv.mx:after{display:none!important} /* morph .mxs owns the sticker */
+ /* Resting .cv is ink-filled (白角 crescent fix). Morph sets height to the FINAL
+    open size on frame 0 — ink would paint the whole slot as a solid 「占位阴影」
+    while .mxw is still small. Formal kept .cv transparent; match that in flight. */
+ html .cv.mx{background:transparent!important;will-change:auto!important}
+ /* Sticker is a 4px #333 slab shifted off the border box. The evenodd hole knocks out the
+    card interior so a transparent crowd body cannot show #333 through pill gaps. Not a
+    box-shadow: Android Edge drops box-shadow on the resizing rounded window for a frame.
+    Not a second width animation and not a union-rect clip (those snapped the poster / swept #333).
+    The hole used to end on the ring's outer edge, so the stroke and the L both antialias
+    that line and a gray seam splits them into two bands. Stop the hole --cvb inside the
+    ring (the stroke covers the tuck). The slab's outer edge stays at +4px.
+    The hole's corners follow the window's 16px curve (15° steps, centred on the
+    window arc; right/bottom radius 16−cvb). A square hole corner sat outside the
+    curve: at bottom-right neither the window nor the L painted there, so the page
+    showed as a small 小角 for the whole flight. */
+ html .cv.mx .mxw{background:transparent!important;overflow:visible!important;box-shadow:none!important;filter:none!important}
+ /* Outer ink curve. .mxw cannot be overflow:hidden — that shaves the 4px sticker.
+    .mxc is inset by the stroke, so its radius clips #fff on the inner edge and the
+    fringe clears the ring. .mxf is the window box: ink under the hairline, clipped
+    to the outer radius. Crowd clears the ink so a transparent body stays clear. */
+ /* !important: a width/height WAAPI on .mxw resolves this child's clip-path as none
+    for the whole flight on some engines. Author !important beats that
+    non-important animation. .mxw stays overflow:visible — the 4px sticker is a
+    sibling of .mxf, not clipped by it. */
+ html .cv.mx .mxf{overflow:hidden!important;background:var(--ink);border-radius:16px;clip-path:inset(0 round 16px)!important}
+ /* Nothing in the window paints its square box. The corner wedge outside the 16px
+    curve is page. A square ink .mxw / .mxk plate (an earlier version) showed as four
+    凸角 on every card for the whole flight; .mxf already inks the hairline. */
+ html .cv.mx .mxs{background:var(--ink)!important;box-shadow:none!important;filter:none!important;opacity:1!important;pointer-events:none;border-radius:16px;
+  clip-path:polygon(evenodd,0 0,100% 0,100% 100%,0 100%,-4px 12px,-3.455px 7.859px,-1.856px 4px,0.686px 0.686px,4px -1.856px,7.859px -3.455px,12px -4px,calc(100% - 20px + (16px - var(--cvb,2px)) * 0) -4px,calc(100% - 20px + (16px - var(--cvb,2px)) * 0.259) -3.455px,calc(100% - 20px + (16px - var(--cvb,2px)) * 0.5) -1.856px,calc(100% - 20px + (16px - var(--cvb,2px)) * 0.707) 0.686px,calc(100% - 20px + (16px - var(--cvb,2px)) * 0.866) 4px,calc(100% - 20px + (16px - var(--cvb,2px)) * 0.966) 7.859px,calc(100% - 20px + (16px - var(--cvb,2px)) * 1) 12px,calc(100% - 20px + (16px - var(--cvb,2px)) * 1) calc(100% - 20px + (16px - var(--cvb,2px)) * 0),calc(100% - 20px + (16px - var(--cvb,2px)) * 0.966) calc(100% - 20px + (16px - var(--cvb,2px)) * 0.259),calc(100% - 20px + (16px - var(--cvb,2px)) * 0.866) calc(100% - 20px + (16px - var(--cvb,2px)) * 0.5),calc(100% - 20px + (16px - var(--cvb,2px)) * 0.707) calc(100% - 20px + (16px - var(--cvb,2px)) * 0.707),calc(100% - 20px + (16px - var(--cvb,2px)) * 0.5) calc(100% - 20px + (16px - var(--cvb,2px)) * 0.866),calc(100% - 20px + (16px - var(--cvb,2px)) * 0.259) calc(100% - 20px + (16px - var(--cvb,2px)) * 0.966),calc(100% - 20px + (16px - var(--cvb,2px)) * 0) calc(100% - 20px + (16px - var(--cvb,2px)) * 1),12px calc(100% - 20px + (16px - var(--cvb,2px)) * 1),7.859px calc(100% - 20px + (16px - var(--cvb,2px)) * 0.966),4px calc(100% - 20px + (16px - var(--cvb,2px)) * 0.866),0.686px calc(100% - 20px + (16px - var(--cvb,2px)) * 0.707),-1.856px calc(100% - 20px + (16px - var(--cvb,2px)) * 0.5),-3.455px calc(100% - 20px + (16px - var(--cvb,2px)) * 0.259),-4px calc(100% - 20px + (16px - var(--cvb,2px)) * 0))}
+ html .cv.mx .mxb{background:transparent!important;box-shadow:none!important;filter:none!important;pointer-events:none}
+ /* Square corner of a 2.5px-inset clip sits outside the 16px curve. overflow:hidden
+    clips it on desktop; Android Edge drops that on a child of the WAAPI window, and
+    the white member sheet shows as both bottom corners. Static clip-path (radius via
+    --mxr) follows the card. Not an animated clip and not a filled #333 plate. */
+ html .cv.mx .mxc{overflow:hidden;background:transparent!important;clip-path:inset(0 round var(--mxr,13.5px))!important}
+ html .cv.mx header{background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 62%,#140e0a))!important}
+ html .cv.in.press{transform:none}
+ html .cv.press header{filter:brightness(.93)}
+ /* Many cards at once (expand-all). Single-card stays on the scale() path above.
+    N posters each with will-change + scale() exhaust Android Edge's layers and the
+    dropped texture comes back white; the white .mxp and the .art veil then paint
+    across neighbouring covers while the windows cross. Crowd flight keeps the same
+    DOM, but the poster box is a main-thread length (no scale layer), the member
+    sheet does not paint, and the veil's solid #fff stop stays off. */
+ html .covers.crowd .cv{will-change:auto!important}
+ html .covers.crowd .cv.mx .bg{will-change:auto!important;transform:none!important;inset:auto!important;left:var(--bxl)!important;top:var(--byt)!important;width:var(--bxw)!important;height:var(--bxh)!important;
+  background:var(--img,none) 0 0/100% 100% no-repeat content-box border-box,linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 62%,#140e0a)) 0 0/100% 100% no-repeat content-box border-box!important}
+ html .covers.crowd .mxp{display:none!important;visibility:hidden!important;opacity:0!important;background:transparent!important;background-color:transparent!important}
+ html .covers.crowd .mxf{background:transparent!important;background-color:transparent!important}
+ html .covers.crowd .art:after{opacity:0!important}
+}
+/* Phone flight + scroll. Kept out of the block above so a theme pass can
+   rebase without touching the morph geometry rules.
+   .sh is a full-header layer parked offscreen (the shine only runs on hover).
+   Chevron backdrop-filter resamples the cover on every scroll and morph frame.
+   Resting .bg keeps will-change:transform: the single-card scale starts from
+   that same layer, and dropping it made the closed poster seam (~1.9px).
+   Crowd still clears will-change on .bg in the block above. */
+@media(max-width:639px){
+ html .cv .sh{display:none!important}
+ html .cv .chev{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:#ffffff73}
+ html .cv .chev svg{filter:none!important}
+ /* Thumb fade was mask-image. A mask promotes a layer per pill (~100 once
+    every card is open) and expand-all then re-clips every one of those layers
+    each frame. A paper-colored gradient over the same 55% matches the pill
+    paper and stays in the pill's paint. --pill is the seam color
+    so a theme pass can retint it without bringing the mask back. */
+ html .pill{--pill:var(--paper)}
+ html .pill .ci{-webkit-mask:none!important;mask:none!important}
+ html .pill .ci:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--pill) 0%,transparent 55%);pointer-events:none}
+}
+/* brief interrupt gap only: soft endMorph sets inline body hide; .covers.morphing marks an in-flight mobAnim */
+.covers.morphing.int-gap .body{visibility:hidden!important;opacity:0!important;transition:none!important}
+.covers.morphing.int-gap .art:after{opacity:0!important}
+/* No hover lift in flight. The collapsed card is :not(.open) under the pointer, so the lift
+   scaled it while mobAnim measured F; the window then applied that 1.015 again in the card's
+   own px and snapped ~3px at settle. .hush holds it after settle until the pointer moves, so
+   the card does not land and then rise. Not !important: the FLIP translate of moving cards is
+   a WAAPI transform and must still win. */
+.covers.morphing .cv.in:hover,.covers.hush .cv.in:hover{transform:none}
+/* morph owns hdr/bar motion; .sm / .sm2 must not run their own transform/max-width transitions in parallel */
+html.chrome-lock .hdr,html.chrome-lock .hdr *,html.chrome-lock .bar,html.chrome-lock .bar *{transition:none!important}
+/* short poster bleed: cover continues --fe px below the header under the top of the member sheet
+   (not full pave, not zero). Veil over the bleed; soft-dissolve art bottom into paper (no hard crop).
+   Header overflow visible for morph. .bg content-box = crop box; JS bottom padding = bleed extent.
+   IMPORTANT: mask / gradient color-stops use pure % only — no var()*N in calc (browser drops whole paint). */
+.cv header{overflow:visible!important}
+.cv .art{position:absolute;left:0;right:0;top:0;bottom:calc(-1*var(--fe,0px));z-index:-1;pointer-events:none;overflow:hidden}
+.cv .art:after{content:"";position:absolute;left:0;right:0;bottom:0;height:var(--fe,0px);pointer-events:none;z-index:2;
+  background:linear-gradient(180deg,transparent 0%,color-mix(in srgb,var(--veil) 35%,transparent) 12%,color-mix(in srgb,var(--veil) 60%,transparent) 28%,color-mix(in srgb,var(--veil) 82%,transparent) 48%,color-mix(in srgb,var(--veil) 94%,transparent) 70%,color-mix(in srgb,var(--veil) 99%,transparent) 88%,var(--veil) 100%)}
+.cv .bg{box-sizing:content-box!important;padding-bottom:0;background:var(--img,none) var(--fp,center 22%)/cover no-repeat content-box border-box,linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,#fff)) no-repeat content-box border-box!important}
+/* closed .ov: restore pre-softfade (fe-relative); do not restyle main closed covers */
+.cv .ov{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 35%,transparent),rgba(20,14,10,.12) calc((100% - var(--fe,0px))*.38),color-mix(in srgb,var(--c) 58%,#000) calc(100% - var(--fe,0px)),color-mix(in srgb,color-mix(in srgb,var(--c) 58%,#000) 80%,transparent) calc(100% - var(--fe,0px)*.9),color-mix(in srgb,color-mix(in srgb,var(--c) 50%,#000) 45%,transparent) calc(100% - var(--fe,0px)*.7),color-mix(in srgb,var(--c) 20%,transparent) calc(100% - var(--fe,0px)*.4),color-mix(in srgb,var(--c) 10%,transparent))}
+/* open: the old ramp peaked mid-header (52%) and read as a stray shadow band across the art.
+   Now it is one monotonic run — clear at the top, firming up only behind the masthead/cast row
+   (so white type keeps its backing) and dissolving straight into the paper veil over the bleed,
+   which is why .ov has to reach the header bottom instead of stopping at --fe: the dark end and
+   the white end meet inside the bleed, so no hard seam lands on the art.
+   .art:after: aggressive white dissolve over bleed — art bottom max1 must stay soft. */
+.cv.open .ov{inset:0;background:linear-gradient(180deg,transparent 0%,rgba(20,14,10,.04) 44%,color-mix(in srgb,var(--c) 10%,#0003) 68%,color-mix(in srgb,var(--c) 22%,#000b) 84%,color-mix(in srgb,color-mix(in srgb,var(--c) 22%,#000b) 45%,var(--veil)) 92%,var(--veil) 98%)}
+.cv.open .art:after{content:"";display:block;position:absolute;left:0;right:0;bottom:-8px;height:calc(var(--fe,0px) + 14px);pointer-events:none;z-index:2;
+  background:linear-gradient(180deg,transparent 0%,color-mix(in srgb,var(--veil) 22%,transparent) 8%,color-mix(in srgb,var(--veil) 48%,transparent) 20%,color-mix(in srgb,var(--veil) 72%,transparent) 36%,color-mix(in srgb,var(--veil) 88%,transparent) 52%,color-mix(in srgb,var(--veil) 96%,transparent) 68%,color-mix(in srgb,var(--veil) 99%,transparent) 84%,var(--veil) 100%)}
+/* wide screens: magazine-cover header. Issue chip top-left (CSS counter = roster order), coverline + hairline + serif masthead
+   title bottom-left, big Didone count bottom-right. Everything is anchored to the header's bottom, so the text rides along with
+   the height morph instead of reflowing between the closed (column) and open (row) layouts. */
+@media(min-width:640px){
+ .covers{counter-reset:iss}.cv{counter-increment:iss}
+ html .cv header,html .cv.open header{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr auto auto auto;align-items:end!important;column-gap:14px}
+ .cv header:before{content:"No." counter(iss,decimal-leading-zero);grid-area:1/1;justify-self:start;align-self:start;position:relative;z-index:1;
+  font:italic 700 13px/1 "Didot","Bodoni 72","Bodoni Moda","Playfair Display",Georgia,serif;letter-spacing:.04em;color:#fff;
+  background:color-mix(in srgb,var(--c) 82%,#000);padding:5px 8px 4px;border:1.5px solid #fff;border-radius:3px;box-shadow:2px 2px 0 #0005}
+ .cv header:after{content:"";grid-area:4/1/5/-1;height:1px;margin:7px 0 9px;background:linear-gradient(90deg,#fffe,#fff8 60%,#fff0);position:relative;z-index:1}
+ .cv .peek{grid-area:3/1/4/-1;position:relative;z-index:1;font-size:12px;font-weight:600;letter-spacing:.06em;transition:opacity .3s}
+ .cv .peek:before{content:"CAST";font:700 10px/1 system-ui,sans-serif;letter-spacing:.24em;margin-right:8px;padding:2px 0 2px 6px;border-left:2px solid #fff;opacity:.9}
+ .cv.open .peek{display:block!important;opacity:0}
+ html .cv h2{grid-area:5/1;position:relative;z-index:1;padding-right:0;margin:0;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;
+  font-size:30px;font-weight:700;line-height:.98;letter-spacing:-.005em;word-break:keep-all;overflow-wrap:normal;text-shadow:0 2px 14px #0007,0 1px 2px #0009}
+ html .cv .n{grid-area:5/2;position:relative;z-index:1;text-align:right;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display",Georgia,serif;
+  font-size:52px;font-weight:700;line-height:.8;letter-spacing:-.03em;font-variant-numeric:lining-nums;text-shadow:0 2px 14px #0007,0 1px 2px #0009}
+ html .cv .n:before{content:"MEMBERS";display:block;margin:0 0 6px;font:700 9.5px/1 system-ui,sans-serif;letter-spacing:.28em;opacity:.85}
+ html .cv .n small{font:700 13px/1 "Noto Serif SC","Songti SC",serif;margin-left:3px;letter-spacing:0;opacity:.9}
+}
+@media(min-width:1024px){
+ .cv header:before{font-size:clamp(13px,.95vw,17px);padding:.4em .65em .32em}
+ .cv .peek{font-size:clamp(12px,.85vw,15px)}
+ html .cv h2{font-size:clamp(32px,2.6vw,52px)}
+ html .cv .n{font-size:clamp(54px,4.2vw,84px)}
+ html .cv .n small{font-size:clamp(14px,1vw,19px)}
+ html .cv .n:before{font-size:clamp(9.5px,.66vw,12px);margin-bottom:.6em}
+}
+/* phone: magazine-cover header too, re-stacked for the narrow 2-col card. Same layout open and closed (header height is fixed per
+   card on phone), so nothing reflows during the morph and the poster crop stays put. Rows: issue chip / space / count / hairline /
+   masthead title / cast line. Title keeps whole words (keep-all), never letter-by-letter. */
+@media(max-width:639px){
+ .covers{counter-reset:iss}.cv{counter-increment:iss}
+ html .cv header,html .cv.open header{display:grid!important;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr auto auto auto auto;align-items:end!important;justify-content:stretch!important}
+ .cv header:before{content:"No." counter(iss,decimal-leading-zero);grid-area:1/1;justify-self:start;align-self:start;position:relative;z-index:1;
+  font:italic 700 11px/1 "Didot","Bodoni 72","Bodoni Moda","Playfair Display",Georgia,serif;letter-spacing:.04em;color:#fff;
+  background:color-mix(in srgb,var(--c) 82%,#000);padding:4px 6px 3px;border:1.5px solid #fff;border-radius:3px;box-shadow:2px 2px 0 #0005}
+ html .cv .n{grid-area:3/1;justify-self:start;position:relative;z-index:1;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display",Georgia,serif;
+  font-size:40px;font-weight:700;line-height:.82;letter-spacing:-.03em;font-variant-numeric:lining-nums;text-shadow:0 2px 12px #0007,0 1px 2px #0009}
+ html .cv .n:before{content:none}/* no MEMBERS kicker on phone: short (landscape) covers need the room under the chip */
+ html .cv .n small{font:700 12px/1 "Noto Serif SC","Songti SC",serif;margin-left:2px;letter-spacing:0;opacity:.9}
+ .cv header:after{content:"";grid-area:4/1;height:1px;margin:6px 0 7px;background:linear-gradient(90deg,#fffe,#fff8 60%,#fff0);position:relative;z-index:1;max-width:calc(var(--tw,170px) - 34px)}
+ html .cv h2{grid-area:5/1;position:relative;z-index:1;margin:0;padding-right:0;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;
+  font-size:23px;font-weight:700;line-height:1.02;letter-spacing:-.005em;word-break:keep-all;overflow-wrap:normal;hyphens:none;text-shadow:0 2px 12px #0007,0 1px 2px #0009}
+ html .cv .peek,html .cv.open .peek{grid-area:6/1;display:block!important;position:relative;z-index:1;margin-top:5px;font-size:11px;font-weight:600;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.92}
+}
+
+/* no issue number on magazine covers (desktop + phone); grid row 1 collapses, 1fr spacer absorbs it */
+html .cv header:before,html .cv.open header:before{content:none!important;display:none!important}

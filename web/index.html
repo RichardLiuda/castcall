@@ -1,0 +1,382 @@
+<!doctype html><html lang=zh><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content="light dark"><meta name=theme-color content="#fffaf0" media="(prefers-color-scheme: light)"><meta name=theme-color content="#14110e" media="(prefers-color-scheme: dark)"><title>{{title}} · {{subtitle}}</title>
+<link rel=icon href="{{favicon}}">{{head}}
+<link rel=stylesheet href=cbase.css><link rel=stylesheet href=motion.css><link rel=stylesheet href=edit.css><link rel=stylesheet href=cast.css><style>
+.bar{position:sticky;top:0;z-index:20;background:var(--page);padding:10px 16px;box-shadow:0 2px 0 var(--line)}
+main{max-width:1100px;margin:auto;padding:14px 16px 60px}
+.covers{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(min-width:640px){.covers{grid-template-columns:repeat(3,1fr)}}@media(min-width:1100px){.covers{grid-template-columns:repeat(4,1fr)}}
+.cv{position:relative;border:2.5px solid var(--ink);border-radius:16px;box-shadow:4px 4px 0 var(--ink);background:var(--paper);overflow:hidden;transition:.2s}
+.cv header{cursor:pointer;padding:14px 12px 12px;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 35%,transparent) 0%,rgba(20,14,10,.15) 35%,color-mix(in srgb,var(--c) 55%,#000) 100%),var(--img,none) center 22%/cover,linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,#fff));color:#fff;min-height:150px;display:flex;flex-direction:column;justify-content:space-between}
+.cv h2{margin:0;padding-right:30px;overflow-wrap:anywhere;font-size:19px;line-height:1.15;text-shadow:0 1px 3px #000c,1px 1px 0 #0008}.cv .n,.cv .peek{text-shadow:0 1px 3px #000c}.cv .n{font-size:30px;font-weight:900;line-height:1}.cv .n small{font-size:12px;margin-left:2px}
+.cv .peek{font-size:11px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cv .body{display:none;padding:12px}.cv.open{grid-column:1/-1}.cv.open .body{display:block;animation:pop .35s cubic-bezier(.3,1.5,.5,1)}.cv.open header{min-height:120px;align-items:flex-end!important;background-position:0 0,center 25%,0 0;flex-direction:row;align-items:center}
+.cv.open .peek{display:none}.cv .chev{position:absolute;display:grid;place-items:center}
+@keyframes pop{from{opacity:0;transform:translateY(-8px)}}
+#res{display:none}.searching #res{display:block}.searching .covers{display:none}#res h3{font-size:13px;color:var(--gold);margin:0 0 10px}
+#res .grp{margin-bottom:14px}#res .grp h4{margin:0 0 6px;color:var(--c);font-size:14px}
+</style><body data-mode={{mode}}><div class=hdr><h1>{{logo}}{{title}} <span>{{subtitle}}</span></h1><div class=d>{{date}}{{loc}}<span class=dd>· <b id=tot></b> 位伙伴</span>{{poster}}</div></div>
+<div class=bar><span class=loc-bar aria-label="地点">{{location}}</span><span class=mt>{{logo}}{{title}}</span><input class=q id=q placeholder="搜索" aria-label="搜索角色或成员"><button class=xall id=castbtn type=button aria-pressed=false aria-controls=cast>缺人</button><button class=xall id=xall type=button>全部展开</button></div><main id=m><div class=bn id=bn aria-label="公告"><div class=bn-track><div class="bn-s cdn" id=cdn><div class=cd-stub><small>ADMIT ONE</small><b></b><span></span></div><i class=cd-perf aria-hidden=true></i><div class=cd-main><p class=cd-k>距离开场<span>COUNTDOWN</span></p><span class=cd-gap></span><div class=cd-tl role=timer aria-label="距离开场"><span><i>--</i><em>天</em></span><span><i>--</i><em>时</em></span><span><i>--</i><em>分</em></span><span class=cd-s><i>--</i><em>秒</em></span></div><p class=cd-live>玩得开心！</p></div></div></div></div><div class=covers id=cv></div><div id=res></div><div id=cast role=region aria-label="缺人看板" aria-hidden=true></div></main>
+<section id=guestbook class=gb aria-labelledby=gb-title>
+<div class=gb-mast><div class=gb-copy><p class=gb-kicker><span>NOTES</span></p><h2 id=gb-title>留言区</h2></div><div class=gb-acts><button type=button class=gb-write id=gb-open>写一条留言</button></div></div>
+<div id=gb-list class=gb-list aria-live=polite></div>
+</section>
+<div id=sheet><div class=card></div></div><div id=signup role=dialog aria-modal=true aria-labelledby=signup-title aria-hidden=true hidden><div class=signup-card></div></div><div id=gb role=dialog aria-modal=true aria-labelledby=gb-form-title aria-hidden=true hidden><div class=gb-card></div></div><script>/* a script that fails to load (flaky network/tunnel) would leave a blank page: retry the page once */try{addEventListener('error',e=>{if(e.target&&e.target.tagName=='SCRIPT'&&!sessionStorage.kr_rl){sessionStorage.kr_rl=1;location.reload()}},true)}catch(e){}</script><script src=icons.js></script><script src=site.js></script><script src=data.js></script><script src=chars.js></script><script src=edit.js defer></script><script src=cbase.js></script><script>
+$('#tot').textContent=total;$('.hdr .di').innerHTML=icon('calendar',16);const _li=$('.hdr .loc .li');if(_li)_li.innerHTML=icon('mapPin',14);const CV=R.groups.map(g=>g.cover||null);
+$('#cv').innerHTML=R.groups.map((g,gi)=>{const seats=g.members.map((m,i)=>[m,i]).filter(([m])=>hasCN(m));const peek=seats.slice(0,4).map(([m])=>esc(m.member)).join(' · ');
+ return `<article class=cv id=c${gi} style="--dl:${gi*45}ms;--c:${g.color}${CV[gi]?`;--img:${img('covers/'+CV[gi])}`:''}"><div class=cv-clip><header data-o="${gi}"><i class=art><i class=bg></i><i class=ov></i></i><i class=sh></i><h2>${esc(g.name)}</h2><div class=n>${seats.length}<small>人</small></div><div class=peek>${peek}${seats.length>4?'…':''}</div></header><span class=chev aria-hidden=true><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span><div class=bw><div class=body>${gmeta(g)}<div class=pills>${seats.map(([m,i])=>pill(gi,i,'')).join('')}</div></div></div></div></article>`}).join('');
+/* Phone ::after is sized off the padding box. The used border snaps (2.5px→2px at
+   dpr 2), so the 4px L has to follow getComputedStyle, not the specified 2.5. */
+/* 单团：唯一的团直接展开当主页，不折叠（data-mode 由服务端按 site.json mode 和团数算好） */
+const SINGLE=document.body.dataset.mode==='single';if(SINGLE)document.body.classList.add('single');
+function syncCvB(){const c=document.querySelector('.cv');if(!c)return;const b=getComputedStyle(c).borderTopWidth;if(b&&b!=='0px')document.documentElement.style.setProperty('--cvb',b)}
+syncCvB();
+const ANIM_MS=440;let mEnd=null;let animUntil=0,endT;function follow(){animUntil=performance.now()+ANIM_MS+60;clearTimeout(endT);endT=setTimeout(()=>flipRaw(lay),ANIM_MS+80)}
+function flipRaw(fn){const els=$$('.cv'),f=new Map(els.map(e=>[e,e.getBoundingClientRect()]));fn();if(RM)return;
+ /* casting hides .covers (display:none) → 0×0 first rects; FLIP would translate every card toward the origin and stack them */
+ if([...f.values()].some(r=>r.width<2||r.height<2))return;
+ els.forEach(e=>{const a=f.get(e),b=e.getBoundingClientRect();if(b.width<2||b.height<2)return;const dx=a.left-b.left,dy=a.top-b.top;if(dx||dy)e.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:320,easing:'cubic-bezier(.2,.8,.2,1)'})})}
+const flip=(fn,skip)=>{const els=$$('.cv'),cv=$('#cv');if(mEnd)mEnd();if(mDone)mDone();
+ /* First = what is on screen now, read BEFORE cancelling the last flight and stripping the header's inline height.
+    Read after, a fast re-tap started every card from the last flight's END: neighbours teleported and overlapped
+    (one card's top border and sticker drawn across the card above), the header and the pill rows snapped. */
+ const f=new Map(els.map(e=>{const h=e.querySelector('header');return[e,{r:e.getBoundingClientRect(),h:h.offsetHeight,g:getComputedStyle(e.querySelector('.bw')).gridTemplateRows,o:e.classList.contains('open')}]}));
+ els.forEach(e=>e.getAnimations().forEach(x=>x.cancel()));
+ els.forEach(e=>{const h=e.querySelector('header');clearTimeout(h._t);h.style.cssText=h.style.cssText.replace(/(min-|max-)?height:[^;]*;?|transition:[^;]*;?|aspect-ratio:[^;]*;?/g,'');e.querySelector('.bw').style.cssText='transition:none'});
+ follow();fn();bgAll();
+ const G1=new Map(els.map(e=>[e,getComputedStyle(e.querySelector('.bw')).gridTemplateRows]));
+ const ch=els.filter(e=>f.get(e).o!==e.classList.contains('open')||Math.abs(e.querySelector('header').offsetHeight-f.get(e).h)>1||Math.abs(parseFloat(G1.get(e))-parseFloat(f.get(e).g))>1);
+ const fin=new Map(els.map(e=>[e,e.getBoundingClientRect()]));const H1=new Map(ch.map(e=>[e,e.querySelector('header').offsetHeight]));
+ if(RM){els.forEach(e=>e.querySelector('.bw').style.cssText='');return}
+ /* Pill rows run px→px: Chrome does not interpolate px↔fr, so a mid-flight start would snap. 0fr/1fr come back at the end. */
+ ch.forEach(e=>{const h=e.querySelector('header'),o=f.get(e);h.style.transition='none';h.style.minHeight='0';h.style.maxHeight='none';h.style.height=o.h+'px';/* open/closed aspect-ratio (2/1 vs 16/10) would derive the width from this height: the poster zoomed ±25% and settled back */h.style.setProperty('aspect-ratio','auto','important');e.querySelector('.bw').style.gridTemplateRows=o.g});
+ cv.offsetWidth;els.forEach(e=>{if(!ch.includes(e))e.querySelector('.bw').style.cssText=''});
+ const E='cubic-bezier(.2,.8,.2,1)';
+ ch.forEach(e=>{const h=e.querySelector('header'),bw=e.querySelector('.bw');h.style.transition=`height ${ANIM_MS}ms ${E}`;h.style.height=H1.get(e)+'px';bw.style.cssText=`transition:grid-template-rows ${ANIM_MS}ms ${E};grid-template-rows:${G1.get(e)}`;h._t=setTimeout(()=>{h.style.transition='';h.style.height='';h.style.minHeight='';h.style.maxHeight='';h.style.removeProperty('aspect-ratio');bw.style.cssText=''},ANIM_MS+40)});
+ els.forEach(e=>{if(e===skip)return;const a=f.get(e).r,b=fin.get(e);const dx=a.left-b.left,dy=a.top-b.top;if(dx||dy)e.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:ANIM_MS,easing:E,id:'fl',fill:'backwards'})});
+ return fin};
+function morphD(c,open){const hd=c.querySelector('header'),body=c.querySelector('.body'),a=c.getBoundingClientRect();
+ if(open)ciLoad(c);const fin=flip(()=>{c.classList.toggle('open',open);if(open){fitAll(c);c._fitX=0}lay()},c);
+ if(RM)return;const b=fin.get(c);
+ const cr=open&&b.width>a.width+1?[`inset(0 ${b.width-a.width}px 0 0 round 16px)`,'inset(0 0 0 0 round 16px)']:null;
+ const dx=a.left-b.left,dy=a.top-b.top,opt={duration:420,easing:'cubic-bezier(.2,.8,.2,1)',fill:'backwards'};
+ const flight=c.animate([{transform:`translate(${dx}px,${dy}px)`,...(cr?{clipPath:cr[0]}:{})},{transform:'none',...(cr?{clipPath:cr[1]}:{})}],opt);
+ /* clip-path clips box-shadow. The card stays at its final border box and only
+    the clip+translate run, so the sticker must too. Also animating width/height
+    shrinks the L a second time and the height no longer matches the card. */
+ if(cr){const sh=document.createElement('div');sh.setAttribute('aria-hidden','true');sh.className='cv-dsh';
+  sh.style.cssText=`position:fixed;left:${b.left+4}px;top:${b.top+4}px;width:${b.width}px;height:${b.height}px;margin:0;background:var(--ink);border-radius:16px;pointer-events:none;z-index:4;box-sizing:border-box`;
+  document.body.appendChild(sh);c.style.boxShadow='none';c.style.zIndex='5';
+  sh.animate([{transform:`translate(${dx}px,${dy}px)`,clipPath:cr[0]},{transform:'none',clipPath:cr[1]}],opt);
+  const done=()=>{sh.remove();c.style.removeProperty('box-shadow');c.style.removeProperty('z-index')};
+  flight.finished.then(done,done)}
+ }
+const EZ=(()=>{const x1=.32,y1=.72,x2=.28,y2=1,B=(t,a,b)=>3*a*t*(1-t)*(1-t)+3*b*t*t*(1-t)+t*t*t;return p=>{if(p<=0)return 0;if(p>=1)return 1;let lo=0,hi=1,t=p;for(let i=0;i<24;i++){t=(lo+hi)/2;if(B(t,x1,x2)<p)lo=t;else hi=t}return B(t,y1,y2)}})();
+function coverAR(c){if(c._ar!==undefined)return c._ar;c._ar=0;c._arGuess=c._arGuess||.8;const u=[...(c.getAttribute('style')||'').matchAll(/url\(["']?([^"')]+)/g)].map(m=>m[1]);if(u.length){const im=new Image();im.decoding='async';im.onload=()=>{c._ar=im.naturalWidth/im.naturalHeight;/* AR arrived: refit rest crop even if a morph just ended; skip only while mx owns .bg */requestAnimationFrame(()=>{if(!c._m)bgfit(c)})};im.onerror=()=>{if(im.src.indexOf(u[u.length-1])<0)im.src=u[u.length-1]};im.src=u[0]}return 0}
+// Phone resting .bg uses the same absolute crop as morph (100% 100% at the cover image rect) so morph↔static handoff does not teleport the element.
+function fpXY(c){if(c._fx==null||c._fy==null){const fp=(getComputedStyle(c).getPropertyValue('--fp')||'50% 30%').trim().split(/\s+/);c._fx=(parseFloat(fp[0])||50)/100;c._fy=(parseFloat(fp[1])||30)/100}return[c._fx,c._fy]}
+function coverCrop(c){const ar=c._ar||c._arGuess||.8;if(!ar)return null;const hd=c.querySelector('header'),W=hd.offsetWidth,H=hd.offsetHeight;if(!c.classList.contains('open'))c._hc=H;const[fx,fy]=fpXY(c),hc=c._hc||W*.625,bh=Math.ceil(1.1*Math.max(W*.625,hc)),dy=Math.max(H-bh,Math.min(0,fy*(H-bh))),boxL=-.05*W,boxW=1.1*W,boxT=dy,boxH=bh,w=Math.max(boxW,boxH*ar),h=w/ar;return{x:boxL+(boxW-w)*fx,y:boxT+(boxH-h)*fy,w,h,bh,dy,H,feBox:bh}}
+function applyBgCrop(bg,r){if(!r)return;const S=(k,v)=>bg.style.setProperty(k,v,'important');[['inset','auto'],['left',r.x+'px'],['top',r.y+'px'],['width',r.w+'px'],['height',r.h+'px'],['transform','none'],['transform-origin','0 0'],['background-size','100% 100%'],['background-position','0 0']].forEach(([k,v])=>S(k,v));bg.style.paddingBottom='0';bg.style.removeProperty('--dy')}
+// image rect (relative to header): prefer live absolute crop; else cover math
+function imgRect(c){const hd=c.querySelector('header'),bg=hd.querySelector('.bg'),H=hd.getBoundingClientRect(),B=bg.getBoundingClientRect(),bs=getComputedStyle(bg);
+ /* absolute 100% crop: read live box even before real _ar decodes (phone rest never uses cover) */
+ if(/100%/.test(bs.backgroundSize||'')){const pad=parseFloat(bs.paddingBottom)||0;return{x:B.left-H.left,y:B.top-H.top,w:B.width,h:Math.max(0,B.height-pad)}}
+ const ar=c._ar||c._arGuess;if(!ar)return null;
+ const[fx,fy]=fpXY(c),Bh=B.height-(parseFloat(bs.paddingBottom)||0),w=Math.max(B.width,Bh*ar),h=w/ar;return{x:B.left-H.left+(B.width-w)*fx,y:B.top-H.top+(Bh-h)*fy,w,h}}
+// phone (<640): 2-col masonry, open card spans full width. Every card is ONE layer at all times.
+// Cards that only move get a FLIP translate. Cards that change size are morphed: one window animates
+// left/top/width/height. The 4px sticker and the border are children of that window (no second geometry
+// track, no union-rect clip). The poster moves between its static crops on the same duration/easing.
+function setTW(){const cv=$('#cv');if(innerWidth>=640)return;
+ /* casting hides .covers → clientWidth 0; Math.floor((0-12)/2)=-6 poisons --tw and crushes every header to a thin strip */
+ if(document.body.classList.contains('casting'))return;const w=cv.clientWidth;if(w<80)return;const tw=Math.floor((w-12)/2);if(tw<60)return;cv.style.setProperty('--tw',tw+'px');
+ $$('.cv').forEach((c,i)=>{if(!c.style.getPropertyValue('--hr')){const n=((R.groups[i]||{members:[]}).members||[]).filter(hasCN).length;c.style.setProperty('--hr',Math.min(1.3,Math.max(.82,.78+n*.025)).toFixed(3))}})}
+const MD=420,ME='cubic-bezier(.3,.75,.2,1)';let mDone=null;
+// clip-path / width animations run on the main thread, transform-only ones on the compositor: after any main-thread/raster hiccup the two
+// drift apart (neighbours already in place under a card whose clip is still open, then a snap). An inert non-compositable property
+// in every keyframe set keeps all morph animations on one timeline, so a slow frame is late but never inconsistent.
+// --mx is @property inherits:false (motion.css). An unregistered custom property would inherit onto every pill.
+const SYNC=k=>k.map((f,i)=>Object.assign({'--mx':i},f));
+const lerp=(a,b,p)=>a+(b-a)*p,lerpR=(a,b,p)=>({x:lerp(a.x,b.x,p),y:lerp(a.y,b.y,p),w:lerp(a.w,b.w,p),h:lerp(a.h,b.h,p)});
+function mVis(e){const r=e.getBoundingClientRect(),m=e._m;
+ if(m){const t=m.a.effect.getComputedTiming(),p=t.progress==null?1:t.progress,V=lerpR(m.Va,m.Vb,p);
+  /* live .bg box (transform included) — uniform scale≠lerpR aspect, so interrupt remorph must start from painted pixels */
+  let img=null;if(m.ia&&m.ib){const bg=m.hd.querySelector('.bg'),H=m.hd.getBoundingClientRect(),B=bg.getBoundingClientRect();img={x:B.left-H.left,y:B.top-H.top,w:B.width,h:B.height}}
+  return {left:r.left+V.x,top:r.top+V.y,width:V.w,height:V.h,img,rot:lerp(m.ra,m.rb,p)}}
+ return {left:r.left,top:r.top,width:r.width,height:r.height,img:imgRect(e),rot:e.classList.contains('open')?180:0}}
+/* Batched teardown. Single-card and xall share morph(); Android Edge flashes when N cards
+   flush layout between hides (cover already pulled, .mxp still up, neighbours mid-cancel).
+   endMorph only commits the poster crop and turns .mxp off while the cover is still inside
+   the window. endMorphFlush then homes every cover, shuts every layer, flushes once, and
+   cancels. No CT transparent↔#fff. */
+let tear=[];
+function endMorph(e,soft){const m=e._m;if(!m)return;e._m=null;const hd=m.hd,bw=m.bw,ch=e.querySelector('.chev'),bg=hd.querySelector('.bg'),body=e.querySelector('.body');
+ let crop=m.ib,p=1;try{const t=m.a.effect.getComputedTiming();p=t.progress==null?1:t.progress}catch(_){}
+ /* soft: live .bg box, before this card's paper is hidden. xall hard-settle skips the read. */
+ if(soft&&p<1&&m.ia&&m.ib){const H=hd.getBoundingClientRect(),B=bg.getBoundingClientRect();crop={x:B.left-H.left,y:B.top-H.top,w:B.width,h:B.height}}
+ if(crop)applyBgCrop(bg,crop);else['transform'].forEach(k=>bg.style.removeProperty(k));
+ e.querySelectorAll('.mxp').forEach(p=>{p.style.display='none';p.style.visibility='hidden';p.style.opacity='0';p.style.background='transparent';p.style.backgroundColor='transparent'});
+ tear.push({e,m,hd,bw,ch,body,soft})}
+function endMorphFlush(){const jobs=tear;if(!jobs.length)return;tear=[];
+ jobs.forEach(j=>{const clip=j.e.querySelector('.cv-clip');
+  /* Phone clip stays overflow:clip. The chevron sits on .cv during the flight so
+     the clip does not cut it; the window is a sibling, so the sticker is not cut. */
+  if(clip){clip.insertBefore(j.hd,clip.firstChild);clip.appendChild(j.bw);if(j.ch)clip.insertBefore(j.ch,j.bw)}
+  else{j.e.insertBefore(j.hd,j.e.firstChild);j.e.appendChild(j.bw)}
+  j.m.L.forEach(d=>{d.style.display='none';d.style.visibility='hidden';d.style.opacity='0';d.style.background='transparent';d.style.backgroundColor='transparent';d.style.setProperty('clip-path','inset(0 0 100% 0)')});
+  /* Hard settle: the sticker and the ring live on the window we just hid. Put the
+     resting shadow, border, and paper back in this same write so the flush cannot
+     paint a frame with neither sticker nor card shadow. */
+  if(!j.soft)['box-shadow','border-color','background'].forEach(k=>j.e.style.removeProperty(k))});
+ void jobs[0].e.offsetHeight;
+ jobs.forEach(j=>{j.m.anims.forEach(a=>{try{a.cancel()}catch(_){}});j.m.L.forEach(d=>d.remove());
+  if(j.ch)j.ch.style.removeProperty('transform');
+  j.e.style.transition='none';['height','overflow','border-color','box-shadow','background','z-index','box-sizing','pointer-events'].forEach(k=>j.e.style.removeProperty(k));if(j.ch)j.ch.style.removeProperty('pointer-events');j.e.classList.remove('mx');
+  if(j.soft&&j.body){j.body.style.setProperty('opacity','0','important');j.body.style.setProperty('visibility','hidden','important');j.body.style.setProperty('transition','none','important')}
+  if(!j.soft&&j.body){['opacity','visibility','transition'].forEach(k=>j.body.style.removeProperty(k))}
+  j.e.style.removeProperty('transition')});
+ void jobs[0].e.offsetHeight;
+ jobs.forEach(j=>{if(!j.soft)bgfit(j.e)})}
+/* [kr-mx] flight log + .mxf/.mxc clip pin. Off unless ?krDbg=mx or localStorage.krDebug=mx (krDbg=0 / krDebug=0 force off). */
+function mxDbg(){const q=new URLSearchParams(location.search);
+ if(q.get('krDbg')==='0'||q.get('krDbg')==='off')return false;
+ try{const ls=localStorage.getItem('krDebug')||'';if(ls==='0'||ls==='off')return false;if(ls==='mx')return true}catch(e){}
+ return q.get('krDbg')==='mx'}
+try{if(mxDbg())console.log('[kr-mx] on')}catch(_){}
+function mxPin(el){const v=el&&el.dataset.mxClip;if(!v)return;
+ /* Width/height WAAPI on the parent can resolve a child's clip-path as none for the
+    whole flight. Author !important wins over that animation; re-assert if a frame clears it. */
+ if(getComputedStyle(el).clipPath==='none'||el.style.getPropertyPriority('clip-path')!=='important')el.style.setProperty('clip-path',v,'important')}
+let mxPinRaf=0,mxLogT=0;
+function mxBox(el){if(!el)return null;const r=el.getBoundingClientRect(),cs=getComputedStyle(el);
+ return {l:+r.left.toFixed(1),t:+r.top.toFixed(1),w:+r.width.toFixed(1),h:+r.height.toFixed(1),ov:cs.overflow,br:cs.borderTopLeftRadius,cp:cs.clipPath,bg:cs.backgroundColor}}
+function mxTip(card,wr){const out={},page=getComputedStyle(document.body).backgroundColor;
+ const corners={TL:[wr.left,wr.top,1,1],TR:[wr.right,wr.top,-1,1],BL:[wr.left,wr.bottom,1,-1],BR:[wr.right,wr.bottom,-1,-1]};
+ Object.keys(corners).forEach(k=>{const c=corners[k],x=c[0]+c[2]*3,y=c[1]+c[3]*3;
+  const hit=document.elementFromPoint(Math.min(Math.max(x,0),innerWidth-1),Math.min(Math.max(y,0),innerHeight-1));
+  let node=hit,bg='';
+  while(node){const c=getComputedStyle(node).backgroundColor,m=(c.match(/[\d.]+/g)||[]).map(Number);
+   if(c&&c!=='transparent'&&!(m.length>=4&&m[3]===0)){bg=c;break} node=node.parentElement}
+  if(!bg)bg=page;const rgb=(bg.match(/\d+/g)||[]).map(Number);
+  const near=rgb.length>=3&&rgb[0]>240&&rgb[1]>240&&rgb[2]>240;
+  const cream=rgb.length>=3&&rgb[0]>245&&rgb[1]>235&&rgb[2]>220&&rgb[2]<252&&(rgb[0]-rgb[2])>6;
+  const leak=!!(hit&&card.contains(hit));
+  out[k]={hit:hit?(hit.className||hit.tagName):'',bg,near,cream,leak,page}});
+ return out}
+function mxLog(cards){if(!mxDbg())return;const now=performance.now();if(now-mxLogT<50)return;mxLogT=now;
+ cards.forEach(card=>{const w=card.querySelector('.mxw');if(!w)return;let p=null;
+  try{p=card._m&&card._m.a?card._m.a.effect.getComputedTiming().progress:null}catch(e){}
+  const paper=card.querySelector('.mxp'),rect=paper&&paper.querySelector('rect'),wr=w.getBoundingClientRect();
+  console.log('[kr-mx]',{id:card.id,p:p==null?null:+(+p).toFixed(3),mxw:mxBox(w),mxf:mxBox(card.querySelector('.mxf')),mxc:mxBox(card.querySelector('.mxc')),mxp:mxBox(paper),mxb:mxBox(card.querySelector('.mxb')),fill:rect?rect.getAttribute('fill'):'',tips:mxTip(card,wr)})})}
+function mxPinLoop(){const cards=document.querySelectorAll('.cv.mx');if(!cards.length){mxPinRaf=0;return}
+ cards.forEach(card=>{mxPin(card.querySelector('.mxf'));mxPin(card.querySelector('.mxc'))});
+ mxLog(cards);mxPinRaf=requestAnimationFrame(mxPinLoop)}
+function morph(e,s,f,O,anims,pre){const hd=e.querySelector('header'),bw=e.querySelector('.bw'),chev=e.querySelector('.chev'),bg=hd.querySelector('.bg'),shell=e.querySelector('.cv-clip');
+ const cs=pre?null:getComputedStyle(e),Bw=pre?pre.Bw:(parseFloat(cs.borderTopWidth)||2.5),Rr=pre?pre.Rr:(parseFloat(cs.borderTopLeftRadius)||16),col=pre?pre.col:cs.borderTopColor;
+ const ib=pre?pre.ib:imgRect(e);// end crop: static image rect for the final header width, measured before the morph DOM exists
+ const Va={x:s.left-f.left,y:s.top-f.top,w:s.width,h:s.height},Vb={x:0,y:0,w:f.width,h:f.height};
+ Object.assign(e.style,{transition:'none',boxSizing:'border-box',height:f.height+'px',overflow:'visible',borderColor:'transparent',boxShadow:'none',background:'transparent',zIndex:'3',pointerEvents:'none'});e.classList.add('mx');if(chev)chev.style.pointerEvents='auto';
+ /* Window is a sibling of .cv-clip, never inside it. overflow:clip would shave the sticker. */
+ if(shell&&chev&&chev.parentNode!==e)e.insertBefore(chev,shell);
+ const L=[],mk=css=>{const d=document.createElement('div');d.className='mxl';d.style.cssText='position:absolute;pointer-events:none;visibility:hidden;'+css;e.insertBefore(d,shell||chev);L.push(d);return d};
+ /* The clip window is transparent. White member paper is a separate box that starts at the
+    header's bottom edge and stretches to the window bottom — it is not an ancestor of the cover,
+    and at the closed size its height is ~0. A clip/layer race on Android Edge can no longer show
+    #fff through the poster. Rejected: CT backgroundColor transparent↔#fff (6b89326 washed capsules). */
+ const iW=V=>Math.max(0,V.w-2*Bw),iH=V=>Math.max(0,V.h-2*Bw),rad=Math.max(0,Rr-Bw);
+ const hdH=pre?pre.hdH:Math.round(hd.getBoundingClientRect().height);
+ /* One geometry track: the outer border box. Absolute left/top are from the padding edge,
+    which already sits Bw inside the border box, so the window starts at V - Bw.
+    Shadow and border are percentage children — a second L/T/W/H animation snapped --bxh
+    (5c97ccd). A union-rect #333 clip and a box-shadow on the overflow window both flash
+    on Android Edge: the clip misses a frame (full #333 slab) and the shadow shows through
+    the transparent crowd body, then pops off at settle. */
+ const WIN=mk(`left:${Va.x-Bw}px;top:${Va.y-Bw}px;width:${Va.w}px;height:${Va.h}px;overflow:visible;background:transparent;box-shadow:none;filter:none;pointer-events:auto;border-radius:${Rr}px`);WIN.classList.add('mxw');
+ const slab=document.createElement('div');slab.className='mxs';
+ slab.style.cssText=`position:absolute;left:4px;top:4px;width:100%;height:100%;background:${col};border-radius:${Rr}px;pointer-events:none;z-index:0;box-shadow:none;filter:none`;
+ WIN.appendChild(slab);
+ /* .mxw stays overflow:visible so the 4px sticker is not shaved. The member sheet
+    is clipped by .mxf to the OUTER ink curve (radius Rr). .mxc's inner radius sits
+    on the stroke, so #fff AA walks past .mxb onto the page. .mxf's ink fill is what
+    shows in that hairline; crowd CSS clears it. */
+ const frame=document.createElement('div');frame.className='mxf';
+ const clipF=`inset(0 round ${Rr}px)`;
+ frame.style.cssText=`position:absolute;inset:0;overflow:hidden;border-radius:${Rr}px;background:var(--ink);z-index:1;pointer-events:none`;
+ frame.dataset.mxClip=clipF;frame.style.setProperty('clip-path',clipF,'important');
+ WIN.appendChild(frame);
+ /* Clip is inset only by the ring. A 16px corner needs ~4.7px before a square child
+    stays inside the curve. Desktop overflow / clip-path / border-radius hide the
+    wedge; Android Edge drops all three on a child of the resizing window (PR#9).
+    The sheet is an SVG fill: rx is part of the path, so the corner pixels are not
+    white even when CSS clip fails. The short top rect squares the seam under the
+    header. Crowd fill is none. */
+ const clip=document.createElement('div');clip.className='mxc';
+ const clipC=`inset(0 round ${rad}px)`;
+ clip.style.cssText=`position:absolute;inset:${Bw}px;overflow:hidden;background:transparent;pointer-events:auto;border-radius:${rad}px;--mxr:${rad}px;z-index:1`;
+ clip.dataset.mxClip=clipC;clip.style.setProperty('clip-path',clipC,'important');
+ frame.appendChild(clip);
+ /* Sheet fill tracks --paper so the morph paper matches the settled .bw.
+    Light --paper is #fff (the attribute the seam tests lock). Crowd passes none. */
+ const sheetFill=()=>{const v=getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();return v||'#fff'};
+ const NS='http://www.w3.org/2000/svg',fill=pre&&pre.box?'none':sheetFill();
+ const paper=document.createElementNS(NS,'svg');paper.setAttribute('class','mxp');paper.setAttribute('width','100%');paper.setAttribute('height','100%');
+ /* 1px inside the clip so the #fff curve sits under the stroke, not on the outer AA.
+    rx stays >= 12 when the inner radius does (corner probe). Crowd keeps a zero inset. */
+ const slack=(pre&&pre.box)||rad<13?0:1,srx=Math.max(0,rad-slack);
+ /* SVG is replaced: top/bottom alone leave it at the 300×150 default and the fill never reaches the card corner. */
+ paper.style.cssText=pre&&pre.box?`position:absolute;left:0;top:${hdH}px;width:100%;height:calc(100% - ${hdH}px);display:block;overflow:hidden;visibility:hidden;opacity:0;pointer-events:none`:`position:absolute;left:${slack}px;top:${hdH}px;width:calc(100% - ${2*slack}px);height:calc(100% - ${hdH}px - ${slack}px);display:block;overflow:hidden;pointer-events:none`;
+ const rk=(h,rx)=>{const r=document.createElementNS(NS,'rect');r.setAttribute('width','100%');r.setAttribute('height',h);r.setAttribute('fill',fill);if(rx)r.setAttribute('rx',rx);return r};
+ paper.append(rk('100%',srx?String(srx):''),rk((srx||rad)+'px',''));clip.appendChild(paper);
+ const inner=document.createElement('div');inner.className='mxi';inner.style.cssText=`position:relative;width:${Math.max(iW(Va),iW(Vb))}px;background:transparent;pointer-events:auto`;clip.appendChild(inner);inner.appendChild(hd);inner.appendChild(bw);
+ const ring=document.createElement('div');ring.className='mxb';
+ ring.style.cssText=`position:absolute;inset:0;box-sizing:border-box;border:${Bw}px solid ${col};border-radius:${Rr}px;background:transparent;pointer-events:none;z-index:2;box-shadow:none;filter:none`;
+ frame.appendChild(ring);
+ const wk=V=>({left:(V.x-Bw)+'px',top:(V.y-Bw)+'px',width:V.w+'px',height:V.h+'px'}),T=(x,y)=>`translate(${x}px,${y}px)`;
+ /* fill:both holds the end box after finish so cancel cannot fall back to a taller start sheet. Start size is also inline before reveal. */
+ const a0=anims.length,A=(el,k)=>{Object.assign(el.style,k[0]);el.style.visibility='visible';const a=el.animate(SYNC(k),{...O,fill:'both'});anims.push(a);return a};
+ /* Same-value clip keyframes: the window's width/height animation must not be the
+    only effect in the flight. Owning clip-path here keeps the used value an inset
+    round clip instead of letting it resolve to none. Not a second L/T/W/H track. */
+ anims.push(frame.animate(SYNC([{clipPath:clipF},{clipPath:clipF}]),{...O,fill:'both'}));
+ anims.push(clip.animate(SYNC([{clipPath:clipC},{clipPath:clipC}]),{...O,fill:'both'}));
+ const a=A(WIN,[wk(Va),wk(Vb)]);
+ const rb=e.classList.contains('open')?180:0;if(chev)A(chev,[{transform:`${T(Va.x+Va.w-Vb.w,Va.y)} rotate(${s.rot}deg)`},{transform:`rotate(${rb}deg)`}]);
+ const ia=s.img;
+ if(ia&&ib){bg.style.removeProperty('--dy');bg.style.paddingBottom='0';
+  /* Crowd (N cards): move the crop box on the main thread. scale() is a compositor
+     layer per poster; Android Edge drops those textures to white while expand-all runs.
+     One card keeps the scale FLIP — that path is the one that already stays clean. */
+  if(pre&&pre.box){const kv=i=>({'--bxl':i.x+'px','--byt':i.y+'px','--bxw':i.w+'px','--bxh':i.h+'px'});Object.assign(bg.style,kv(ia));anims.push(bg.animate(SYNC([kv(ia),kv(ib)]),{...O,fill:'both'}))}
+  else{const g=ia.w>=ib.w?ia:ib;applyBgCrop(bg,g);bg.style.removeProperty('transform');
+   const tf=i=>`${T(i.x-g.x,i.y-g.y)} scale(${i.w/g.w})`;anims.push(bg.animate(SYNC([{transform:tf(ia)},{transform:tf(ib)}]),{...O,fill:'forwards'}))}}
+ e._m={a,Va,Vb,ia,ib,ra:s.rot,rb,hd,bw,L,anims:anims.slice(a0),crowd:!!(pre&&pre.box)}}
+// mutate(): apply the class change. anchor: card whose top must stay put on screen (or null = keep scroll)
+const mHist=new Map(),openKey=()=>$$('.cv.open').map(c=>c.id).join();let mSY=-1;
+addEventListener('scroll',()=>{if(performance.now()>animUntil&&Math.abs(scrollY-mSY)>2)mHist.clear()},{passive:true});
+function mobAnim(mutate,anchor){const els=$$('.cv'),de=document.documentElement,cv=$('#cv');
+ if(Math.abs(scrollY-mSY)>2)mHist.clear();if(!mHist.has(openKey()))mHist.set(openKey(),scrollY);
+ const S0=scrollY,wasMorph=els.some(e=>e._m),st=new Map(els.map(e=>[e,mVis(e)]));
+ const TOPS=[...document.querySelectorAll('body>.hdr,body>.bar')],tp0=TOPS.map(t=>t.getBoundingClientRect().top);
+ /* Freeze .sm/.sm2 so the compact-header CSS transition cannot slide the title during a morph.
+    The visible top-bar jump is the ~130px scroll that pixel-locked the tapped card: sticky .bar stayed put
+    and body>.hdr (already above the viewport) unloaded that delta. Keeping scroll when the card still
+    meets the viewport removes the delta; chrome-lock only stops .sm from animating on its own. */
+ de.classList.add('chrome-lock');
+ /* interrupt: tear down from CURRENT visual (soft) — never finish-to-ib then remorph (that teleports .bg / flashes #333) */
+ if(mDone){const d=mDone;mDone=null;d(true)}
+ endMorphFlush();
+ els.forEach(e=>{endMorph(e,wasMorph)});endMorphFlush();
+ els.forEach(e=>{e.classList.remove('press');e.getAnimations().forEach(a=>a.cancel());e.style.transition='none';e.style.removeProperty('transform')});/* no CSS transform transition while JS owns transforms */
+ cv.classList.add('morphing');
+ /* interrupt gap: suppress white .body only between soft teardown and remorph start (not whole morph — seams) */
+ if(wasMorph)cv.classList.add('int-gap');
+ animUntil=performance.now()+MD+150;
+ mutate();lay();bgAll();
+ cv.classList.remove('int-gap');
+ let S1=S0;if(anchor){const r=anchor.getBoundingClientRect();S1=Math.round(Math.max(0,Math.min(de.scrollHeight-innerHeight,r.top+scrollY-st.get(anchor).top)))}
+ const hk=openKey();
+ /* mid-morph reverse: keep anchor/S0 — mHist closed→sy=0 was stacking a 220→0 jump on interrupt */
+ if(!wasMorph&&mHist.has(hk))S1=Math.max(0,Math.min(de.scrollHeight-innerHeight,mHist.get(hk)));
+ /* Pixel-locking the tapped card scrolls ~130px while the sticky bar stays put, then body>.hdr
+    (already above the viewport) pin-unloads that delta in one frame. Same delta slides every card
+    under the top bar — the visible jump. If the card still meets the viewport here, keep scroll. */
+ if(Math.abs(S1-scrollY)>1){const r=anchor&&anchor.getBoundingClientRect();if(!r||(r.bottom>72&&r.top<innerHeight-48))S1=scrollY}
+ if(Math.abs(scrollY-S1)>.5)scrollTo({top:S1,behavior:'instant'});mSY=scrollY;
+ if(RM){cv.classList.remove('morphing','int-gap','crowd');de.classList.remove('chrome-lock');syncChrome();return}
+ /* compact header matches the post-scroll scrollY before the first paint (transitions stay off under chrome-lock) */
+ {const sm=scrollY>40;$('.hdr').classList.toggle('sm',sm);document.body.classList.toggle('sm2',scrollY>90)}
+ const F=new Map(els.map(e=>[e,e.getBoundingClientRect()]));
+ // final image crops need the static final state: measure before morph DOM is built
+ const O={duration:MD*(window.KRslow||1),easing:ME},anims=[];
+ const vh=innerHeight,off=r=>r.top+r.height<-40||r.top>vh+40;
+ /* Measure every chrome delta and every card crop BEFORE starting any WAAPI. A getComputedStyle
+    between cards lets Android Edge paint card 1's new window while card 2 is still being built. */
+ const topJobs=TOPS.map((t,i)=>{const now=t.getBoundingClientRect(),d=tp0[i]-now.top;
+  const preVis=tp0[i]<innerHeight&&tp0[i]+now.height>0,postVis=now.top<innerHeight&&now.bottom>0;
+  return {t,d,skip:Math.abs(d)<=.5||(!preVis&&!postVis)}});
+ const morphJobs=[],moveJobs=[];
+ els.forEach(e=>{const s=st.get(e),f=F.get(e);if(off(s)&&off(f))return;/* off-screen before and after: snap, no layers to raster */
+  if(Math.abs(s.width-f.width)>.5||Math.abs(s.height-f.height)>.5){const cs=getComputedStyle(e),hd=e.querySelector('header');
+   morphJobs.push({e,s,f,pre:{Bw:parseFloat(cs.borderTopWidth)||2.5,Rr:parseFloat(cs.borderTopLeftRadius)||16,col:cs.borderTopColor,ib:imgRect(e),hdH:Math.round(hd.getBoundingClientRect().height)}})}
+  else{const dx=s.left-f.left,dy=s.top-f.top;if(Math.abs(dx)>.3||Math.abs(dy)>.3)moveJobs.push({e,dx,dy})}});
+ /* N concurrent posters: same morph DOM, but no per-card scale layer and no white sheet while the windows cross. */
+ const crowd=morphJobs.length>1;cv.classList.toggle('crowd',crowd);if(crowd)morphJobs.forEach(j=>j.pre.box=1);
+ topJobs.forEach(j=>{if(j.skip){j.t.style.removeProperty('transform');return}
+  /* both ends off-screen: pinning only creates the one-frame unload (hdr y -163→-295, ty 132→0, scroll already final) */
+  const ty=`translateY(${j.d}px)`;j.t.style.transform=ty;anims.push(j.t.animate([{transform:ty},{transform:'none'}],{...O,fill:'both'}))});
+ /* The soft-teardown hide on .body only bridges teardown → remorph. Lift it in this same task,
+    before anything paints: left on, it hid the member pills for the whole reverse flight and
+    they popped in at hard settle. */
+ els.forEach(e=>{const b=e.querySelector('.body');if(b)['opacity','visibility','transition'].forEach(k=>b.style.removeProperty(k))});
+ morphJobs.forEach(j=>morph(j.e,j.s,j.f,O,anims,j.pre));
+ 
+ if(morphJobs.length&&!mxPinRaf)mxPinRaf=requestAnimationFrame(mxPinLoop);
+ moveJobs.forEach(j=>{const kf=[{transform:`translate(${j.dx}px,${j.dy}px)`},{transform:'none'}];const a=j.e.animate(SYNC(kf),{...O,fill:'both'});j.e.style.removeProperty('transform');anims.push(a)});
+ let done=false;mDone=(soft)=>{if(done)return;done=true;mDone=null;els.forEach(e=>endMorph(e,soft));endMorphFlush();
+  /* drop the inline pin while fill:both still holds the end transform, then cancel — cancelling first would flash the start translateY */
+  TOPS.forEach(t=>t.style.removeProperty('transform'));anims.forEach(a=>{try{a.cancel()}catch(_){}});TOPS.forEach(t=>t.getAnimations().forEach(a=>{try{a.cancel()}catch(_){}}));els.forEach(e=>e.style.removeProperty('transform'));els[0]&&getComputedStyle(els[0]).transform;els.forEach(e=>{if(!e._m)e.style.removeProperty('transition')});
+  /* hard settle: allow white .body again; soft interrupt keeps .morphing (caller remorphs / will hard-end later) */
+  if(!soft){cv.classList.remove('morphing','int-gap','crowd');cv.classList.add('hush');addEventListener('pointermove',()=>cv.classList.remove('hush'),{once:true});const sm=scrollY>40;$('.hdr').classList.toggle('sm',sm);document.body.classList.toggle('sm2',scrollY>90);de.classList.remove('chrome-lock');els.forEach(e=>{const b=e.querySelector('.body');if(b)['opacity','visibility','transition'].forEach(k=>b.style.removeProperty(k))})}};
+ Promise.all(anims.map(a=>a.finished)).then(()=>mDone&&mDone(),()=>{})}
+function mobToggle(c,open){coverAR(c);if(open)ciLoad(c);mobAnim(()=>{c.classList.toggle('open',open);if(open&&c._fitW!==$('#cv').clientWidth){fitAll(c);c._fitW=$('#cv').clientWidth}},c)}
+
+function prefit(c){const cv=$('#cv'),W=cv.clientWidth;if(c._fitW===W)return;if(c.classList.contains('open')){fitAll(c);c._fitW=W;return}
+ const box=document.createElement('div');box.className='covers';box.style.cssText=`position:absolute;left:-10000px;top:0;width:${W}px;display:block;visibility:hidden;contain:layout style`;const k=c.cloneNode(true);k.removeAttribute('id');k.classList.add('open');box.appendChild(k);document.body.appendChild(box);fitAll(k);
+ const P=c.querySelectorAll('.pill'),Q=k.querySelectorAll('.pill');Q.forEach((q,i)=>{const p=P[i];if(!p)return;p.className=q.className;['.a','.b'].forEach(sel=>{const x=q.querySelector(sel),y=p.querySelector(sel);if(x&&y){y.className=x.className;y.style.fontSize=x.style.fontSize}})});box.remove();c._fitW=W}
+$$('.cv').forEach(c=>typeof coverAR=='function'&&coverAR(c));(()=>{const ric=window.requestIdleCallback||(f=>setTimeout(f,60));let i=0;const step=()=>{const cs=$$('.cv');if(i>=cs.length)return;prefit(cs[i++]);ric(step)};addEventListener('load',()=>setTimeout(()=>ric(step),400))})();
+$('#cv').onclick=e=>{if(SINGLE)return;const h=e.target.closest('[data-o]')||(e.target.closest('.chev')&&e.target.closest('.cv').querySelector('header'));if(!h)return;const c=h.closest('.cv'),was=c.classList.contains('open');
+ if(innerWidth>=640)morphD(c,!was);else mobToggle(c,!was);requestAnimationFrame(()=>setTimeout(saveOpen))};
+$('#cv').addEventListener('pointerdown',e=>{const c=e.target.closest('.cv:not(.open)');if(c&&e.target.closest('header')){ciLoad(c);c.classList.add('press');const u=()=>{c.classList.remove('press');removeEventListener('pointerup',u)};addEventListener('pointerup',u)}});
+$('#cv').addEventListener('pointermove',e=>{const c=e.target.closest('.cv');if(!c)return;const r=c.getBoundingClientRect();c.style.setProperty('--px',((e.clientX-r.left)/r.width-.5)*-10+'px');c.style.setProperty('--py',((e.clientY-r.top)/r.height-.5)*-10+'px')});
+const DESK=()=>innerWidth>=640;
+function bgcalc(c){const hd=c.querySelector('header'),bg=hd.querySelector('.bg');const W=hd.offsetWidth;if(!c.classList.contains('open'))c._hc=hd.offsetHeight;const hc=c._hc||W*.625;const bh=Math.ceil(1.1*Math.max(W*.625,hc));if(c._fy==null){const fp=(getComputedStyle(c).getPropertyValue('--fp')||'50% 30%').trim().split(/\s+/);c._fy=(parseFloat(fp[1])||30)/100}const H=hd.offsetHeight;const dy=Math.max(H-bh,Math.min(0,c._fy*(H-bh)));
+ // short poster bleed under open body: not full-bleed, but not none either, and the edge where the art ends must fade.
+ // Cap --fe so cover continues a little under the top of the member sheet (kills the seam) without
+ // painting the whole pill area. --vt soft-fades the bleed into paper (no hard crop). Closed cards
+ // keep last values for collapse morph. Title/--fp untouched.
+ // Cap --fe into open .body:before white gutter (~44px) so art_bottom sample misses pill #333.
+ // Was W*.25/120 → fe≈89 on row1 pill bottoms (max1≈201). Short-pave; --fp/--fs untouched.
+ let fe=c._fe||0,vt=c._vt||0;if(c.classList.contains('open')){const ar=c._ar,ih=ar?Math.max(bh,W*1.1/ar):bh,room=dy+(bh-ih)*c._fy+ih-H,bd=c.querySelector('.body').scrollHeight,cap=Math.min(Math.round(W*.07),28);
+  fe=c._fe=Math.max(0,Math.floor(Math.min(cap,room,bd)));vt=c._vt=fe<=0?0:Math.round(Math.min(fe,Math.max(20,fe*.85)))}
+ const pad=Math.max(0,Math.ceil(H+fe-dy-bh));
+ return()=>{bg.style.setProperty('--dy',dy.toFixed(1)+'px');hd.style.setProperty('--fe',fe+'px');hd.style.setProperty('--vt',vt+'px');
+  /* phone: resting .bg ALWAYS absolute 100% crop (AR guess until decode) — never CSS cover (cover→100% was Δtop ~67–100px on Android) */
+  if(innerWidth<640){const r=coverCrop(c);if(r){applyBgCrop(bg,r);return}}
+  bg.style.height=bh+'px';bg.style.paddingBottom=pad+'px';
+  ['inset','left','top','width','transform-origin','background-size','background-position','transform'].forEach(k=>bg.style.removeProperty(k))}}
+function bgfit(c){bgcalc(c)()}
+function bgAll(){$$('.cv').map(bgcalc).forEach(w=>w())}
+function lay(){const cv=$('#cv'),y=scrollY;const m=innerWidth<640||DESK()&&(!!$('.cv.open')||performance.now()<animUntil);const cs=$$('.cv');if(!m){cv.classList.remove('mas');cs.forEach(c=>c.style.gridRowEnd='')}else{const g=innerWidth<640?12:18;let hs;if(innerWidth<640){/* phone: whole-px card heights; one layout read */const fr=cs.map(c=>c.getBoundingClientRect().height-(parseFloat(c.querySelector('.bw').style.paddingBottom)||0));hs=fr.map(h=>Math.ceil(h-.01));cs.forEach((c,i)=>{const d=hs[i]-fr[i];c.querySelector('.bw').style.paddingBottom=d>.01?d.toFixed(3)+'px':''})}else hs=cs.map(c=>c.offsetHeight);cs.forEach((c,i)=>{c.style.gridRowEnd='span '+Math.ceil((hs[i]+g)/4)});cv.classList.add('mas')}if(Math.abs(scrollY-y)>1)scrollTo({top:y,behavior:'instant'})}
+function saveOpen(){try{localStorage.setItem('kr_open_set',JSON.stringify($$('.cv.open').map(c=>c.id)))}catch(e){}xb()}
+function xb(){if(xWant!==null)return xb2();const all=$$('.cv').every(c=>c.classList.contains('open'));$('#xall').innerHTML=icon(all?'collapse':'expand',18)+(all?'全部收起':'全部展开')}
+/* expand/collapse-all never interrupts its own run: taps during a run only flip the wanted state; the latest one runs when the current run ends */
+let xWant=null,xBusy=0,xT=0;const allOpen=()=>$$('.cv').every(c=>c.classList.contains('open'));
+function xRun(){xT=0;const want=xWant;xWant=null;if(want===null||want===allOpen())return;const all=!want;window.KRL&&KRL('xall.run',{want});
+ (innerWidth<640?f=>mobAnim(f,null):flip)(()=>{const W=$('#cv').clientWidth,ph=innerWidth<640,K=ph?W:'all'+W;$$('.cv').forEach(c=>c.classList.toggle('open',!all));if(!all){let dirty=false;$$('.cv').forEach(c=>{ciLoad(c);if((ph?c._fitW:c._fitX)!==K)dirty=true});if(dirty){fitAll();$$('.cv').forEach(c=>{if(ph)c._fitW=K;else c._fitX=K})}}if(!ph)lay()});/* one batched fitAll for every open pill; per-card fitAll was a layout pass each. phone mobAnim lays once */xBusy=performance.now()+(innerWidth<640?MD*(window.KRslow||1):ANIM_MS)+40;saveOpen()}
+$('#xall').onclick=()=>{xWant=!(xWant!==null?xWant:allOpen());window.KRL&&KRL('xall.intent',{want:xWant,busy:performance.now()<xBusy});const w=xBusy-performance.now();if(w>0){if(!xT)xT=setTimeout(xRun,w)}else xRun();xb2()};
+function xb2(){if(xWant===null)return;$('#xall').innerHTML=icon(xWant?'collapse':'expand',18)+(xWant?'全部收起':'全部展开')}
+try{(JSON.parse(localStorage.getItem('kr_open_set')||'[]')).forEach(id=>{const c=document.getElementById(id);if(c){c.classList.add('open');ciLoad(c);fitAll(c)}})}catch(e){}
+if(SINGLE)$$('.cv').forEach(c=>{c.classList.add('open');ciLoad(c);fitAll(c)});
+$$('.cv').forEach(c=>{const o=c.classList.contains('open');if(o){c.classList.remove('open');bgfit(c);c.classList.add('open')}});xb();setTW();lay();bgAll();addEventListener('load',lay);document.fonts&&document.fonts.ready.then(()=>{$$('.cv:not(.open)').forEach(c=>c._fitW=0);lay()});let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(document.body.classList.contains('casting'))return;syncCvB();setTW();$$('.cv').forEach(c=>{c._hc=0;c._fitW=0;c._fitX=0});$$('.cv.open').forEach(c=>{c.classList.remove('open');bgfit(c);c.classList.add('open')});$$('.cv.open').forEach(fitAll);lay();bgAll()},120)});
+window.KRlay=lay;window.KRcastBack=()=>{$$('.cv').forEach(c=>{c.getAnimations().forEach(a=>a.cancel());c.style.removeProperty('transform')});setTW();lay();bgAll()};let lq=0;const need=()=>{const m=innerWidth<640||DESK()&&!!$('.cv.open');if(m!==$('#cv').classList.contains('mas'))return true;return m&&$$('.cv').some(c=>c.style.gridRowEnd!=='span '+Math.ceil((c.offsetHeight+(innerWidth<640?12:18))/4))};const ro=new ResizeObserver(()=>{if(document.body.classList.contains('casting'))return;if(performance.now()<animUntil)return;if(lq)return;lq=requestAnimationFrame(()=>{lq=0;if(document.body.classList.contains('casting'))return;if(need())flip(lay);else bgAll()})});$$('.cv').forEach(c=>ro.observe(c));
+requestAnimationFrame(()=>requestAnimationFrame(()=>{$$('.cv').forEach(c=>c.classList.add('in'))}));
+try{sessionStorage.removeItem('kr_rl')}catch(e){}
+function syncChrome(){if(document.documentElement.classList.contains('chrome-lock'))return;const s=scrollY>40;$('.hdr').classList.toggle('sm',s);document.body.classList.toggle('sm2',scrollY>90)}
+let tk=0;addEventListener('scroll',()=>{if(tk)return;tk=requestAnimationFrame(()=>{tk=0;syncChrome()})},{passive:true});
+$('#q').oninput=e=>{const q=e.target.value.trim().toLowerCase();$('#m').classList.toggle('searching',!!q);if(!q){$('#res').innerHTML='';return}let n=0,h='';
+ R.groups.forEach((g,gi)=>{const ix=g.members.map((m,i)=>i).filter(i=>hasCN(g.members[i])&&match(g.members[i],q));n+=ix.length;if(ix.length)h+=`<div class=grp style="--c:${g.color}"><h4>${esc(g.name)} · ${ix.length}</h4><div class=pills>${ix.map(i=>pill(gi,i,q)).join('')}</div></div>`});
+ const old=new Map($$('#res .pill').map(p=>[p.dataset.g+'-'+p.dataset.i,p.getBoundingClientRect()]));
+ $('#res').innerHTML=`<h3>找到 ${n} 位</h3>`+(h||'<p class=empty>没有找到匹配的成员 🥲</p>');ciLoad($('#res'));fitAll($('#res'));if(RM)return;
+ $$('#res .pill').forEach((p,k)=>{const o=old.get(p.dataset.g+'-'+p.dataset.i),r=p.getBoundingClientRect();p.animate(o?[{transform:`translate(${o.left-r.left}px,${o.top-r.top}px)`},{transform:'none'}]:[{opacity:0,transform:'scale(.9) translateY(6px)'},{opacity:1,transform:'none'}],{duration:o?350:300,delay:o?0:Math.min(k,20)*15,easing:'cubic-bezier(.2,.8,.2,1)',fill:'backwards'})})};
+(()=>{const bn=$('#bn'),cd=$('#cdn'),E=(window.SITE||{}).event||{},S0=E.startAt||'',T=Date.parse(S0),END=E.endAt?Date.parse(E.endAt):T+12*3600e3;
+ if(!bn)return;if(!(T>0)||!(END>T)||Date.now()>=END){bn.remove();return}
+ /* 票根：按 startAt 自己的时区写 月.日 / 星期 · 时:分（不跟着看网页的人的时区变） */
+ {const m=/([+-])(\d\d):?(\d\d)$/.exec(S0),z=m||/Z$/i.test(S0),off=m?(m[1]=='-'?-1:1)*(+m[2]*60+ +m[3]):0,d=new Date(T+off*6e4),p=n=>String(n).padStart(2,'0');
+  const g=k=>z?d['getUTC'+k]():new Date(T)['get'+k](),mo=p(g('Month')+1),dd=p(g('Date')),hm=p(g('Hours'))+':'+p(g('Minutes')),wd=['SUN','MON','TUE','WED','THU','FRI','SAT'][g('Day')];
+  const st=cd.querySelector('.cd-stub');st.querySelector('b').textContent=mo+'.'+dd;st.querySelector('span').textContent=wd+' · '+hm;st.setAttribute('aria-label',`${+mo}月${+dd}日 ${hm}`)}
+ const N=[...cd.querySelectorAll('.cd-tl i')],p=n=>String(n).padStart(2,'0');
+ (function tick(){const now=Date.now();
+  if(now>=END){bn.remove();return}
+  if(now>=T){cd.classList.add('live');cd.querySelector('.cd-k').firstChild.textContent='活动进行中';setTimeout(tick,Math.min(END-now,2147483000));return}
+  const s=Math.floor((T-now)/1000);[s/86400,s%86400/3600,s%3600/60,s%60].forEach((v,k)=>{const t=p(Math.floor(v));if(N[k].textContent!==t){const f=N[k].textContent!=='--';N[k].textContent=t;if(f&&!RM)N[k].animate([{transform:'translateY(-.18em)',opacity:.2},{transform:'none',opacity:1}],{duration:320,easing:'cubic-bezier(.2,.8,.2,1)'})}});
+  setTimeout(tick,1000-now%1000+5)})();
+})();
+</script>

@@ -1,0 +1,6 @@
+# 一图流（可选）。核心服务不需要这些。
+#   pip install -r requirements-poster.txt
+#   playwright install chromium
+# 还需要中文字体：Linux 装 fonts-noto-cjk（Debian/Ubuntu）或 google-noto-sans-cjk-fonts（Fedora）。
+Pillow>=10
+playwright>=1.40

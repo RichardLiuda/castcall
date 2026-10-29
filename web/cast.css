@@ -1,0 +1,311 @@
+/* 缺人看板. Paper, ink, and the work color — same magazine as the roster.
+   Phone pill/morph rules live in motion.css and are not restated here. */
+#cast{display:none;color:var(--ink);word-break:keep-all;line-break:strict}
+#m.casting #cast{display:block;animation:castin .4s cubic-bezier(.2,.8,.2,1) both}
+@keyframes castin{from{opacity:0;transform:translateY(8px)}}
+#m.searching #cast{display:none}
+#m.casting .covers{display:none}
+body.casting #xall{display:none}
+body.casting main{padding-bottom:96px}
+
+#castbtn[aria-pressed="true"]{background:var(--ink);color:var(--paper);transform:translate(2px,2px);box-shadow:none}
+#castbtn b{background:var(--mark);color:#2a2114;border-radius:999px;min-width:1.25em;padding:0 5px;font-size:11px;line-height:1.45;text-align:center;font-variant-numeric:tabular-nums}
+#castbtn,#cast .cast-chip,#cast .cast-row,#cast .cast-aside{white-space:nowrap}
+#castbtn:focus-visible,#cast .cast-chip:focus-visible,#cast .cast-row:focus-visible,#cast .cast-aside:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.cast-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 28px;margin:2px 0 18px}
+.cast-kicker{display:flex;align-items:baseline;gap:10px;margin:0}
+.cast-kicker span:first-child{font:700 11px/1 system-ui,sans-serif;letter-spacing:.28em;color:var(--gold)}
+.cast-when{font-size:12px;font-weight:600;color:var(--ink-soft);letter-spacing:0}
+#cast h2{margin:8px 0 0;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;font-weight:700;font-size:clamp(40px,8vw,72px);line-height:.92;letter-spacing:-.03em;white-space:nowrap}
+.cast-lede{margin:10px 0 0;max-width:36em;color:var(--ink-soft);font-size:15px;line-height:1.55;font-weight:600}
+.cast-chips{display:flex;flex-wrap:wrap;gap:8px}
+.cast-chip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);border-radius:999px;padding:7px 12px 7px 14px;font:inherit;font-weight:800;font-size:14px;line-height:1.2;box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+.cast-chip b{font-variant-numeric:tabular-nums;font-weight:800;background:color-mix(in srgb,var(--ink) 8%,var(--paper));border-radius:999px;min-width:1.2em;padding:0 6px;font-size:12px;text-align:center}
+.cast-chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);transform:translate(1px,1px);box-shadow:none}
+.cast-chip[aria-pressed="true"] b{background:var(--mark);color:#2a2114}
+.cast-chip:active{transform:translate(1px,1px)}
+
+.cast-work{position:relative;margin:0 0 16px;background:var(--paper);border:2.5px solid var(--ink);border-radius:16px;box-shadow:4px 4px 0 var(--ink);overflow:hidden}
+.cast-wh{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px 12px 12px;background:linear-gradient(100deg,color-mix(in srgb,var(--c) 24%,var(--paper)),color-mix(in srgb,var(--c) 7%,var(--paper)) 46%,var(--paper))}
+.cast-cover{width:84px;height:56px;border-radius:8px;border:1.5px solid var(--ink);box-shadow:2px 2px 0 color-mix(in srgb,var(--c) 65%,#000);background:var(--img,none) center 22%/cover no-repeat,linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 55%,#fff))}
+.cast-wt{min-width:0}
+.cast-no{margin:0 0 3px;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif",Georgia,serif;font-style:italic;font-weight:700;font-size:13px;letter-spacing:.04em;color:var(--c);line-height:1}
+.cast-wh h3{margin:0;min-width:0;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;font-weight:700;font-size:clamp(22px,3vw,32px);line-height:1.05;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cast-count{margin:0;font-weight:800;font-size:13px;color:var(--c);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.cast-line{display:grid;grid-template-columns:3.4em 48px minmax(0,1.45fr) minmax(0,1fr) 5em;column-gap:12px;align-items:center;padding:11px 14px 11px 14px}
+.cast-cols{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--gold);border-bottom:1px solid var(--line);padding-top:8px;padding-bottom:8px}
+.cast-cols span:last-child{justify-self:end}
+.cast-row{width:100%;margin:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;min-height:60px}
+.cast-row+.cast-row{border-top:1px solid var(--line)}
+.cast-ord{font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif",Georgia,serif;font-weight:700;font-size:20px;letter-spacing:-.03em;color:var(--gold);font-variant-numeric:lining-nums tabular-nums}
+.cast-av{width:48px;height:48px;border-radius:12px;background:var(--ci,none) center 20%/cover no-repeat,color-mix(in srgb,var(--c) 16%,var(--paper));border:1.5px solid color-mix(in srgb,var(--c) 55%,var(--ink));box-shadow:0 0 0 1.5px var(--paper)}
+.cast-av.cast-mono,.cast-av.cast-cam{display:grid;place-items:center;font-style:normal;font-weight:900;font-size:16px;color:var(--c)}
+.cast-av.cast-cam .ic{width:18px;height:18px}
+.cast-role,.cast-mem,.cast-meta{min-width:0}
+.cast-role{font-weight:800;font-size:18px;line-height:1.25;letter-spacing:.01em}
+.cast-role b{font-weight:inherit;display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cast-role .cast-p,.cast-meta{display:none}
+.cast-mem{font-size:17px;font-weight:700;line-height:1.3;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cast-mem.miss,.cast-role .miss{color:var(--ink-soft);font-weight:600}
+.cast-st{justify-self:end;min-width:4.6em;text-align:center;font-size:13px;font-weight:800;letter-spacing:.08em;line-height:1;border:1.5px solid var(--ink);border-radius:999px;padding:6px 8px;background:var(--paper)}
+.cast-row[data-k="vacant"] .cast-st{background:var(--ink);color:var(--paper)}
+.cast-row[data-k="loose"] .cast-st{background:var(--mark);color:#2a2114;border-color:#2a2114}
+.cast-row[data-k="art"] .cast-st{background:transparent;color:var(--gold);border-color:var(--gold)}
+@media(hover:hover){.cast-row:hover{background:color-mix(in srgb,var(--c) 9%,var(--paper))}}
+.cast-row:active{background:color-mix(in srgb,var(--c) 16%,var(--paper))}
+
+.cast-empty{max-width:560px;background:var(--paper);border:2.5px solid var(--ink);border-radius:20px;box-shadow:5px 5px 0 var(--ink);padding:18px 20px 22px;text-align:center}
+.cast-empty.hero{padding-top:16px}
+.cast-spine{display:flex;height:8px;border-radius:99px;overflow:hidden;border:1.5px solid var(--ink);margin:0 0 14px}
+.cast-spine i{flex:1;display:block}
+.cast-illu{width:min(240px,78%);height:auto;display:block;margin:2px auto 4px;color:var(--ink);overflow:visible}
+.cast-illu .pg{fill:color-mix(in srgb,var(--gold) 8%,var(--paper));stroke:currentColor;stroke-width:2.25}
+.cast-illu .rules{fill:none;stroke:color-mix(in srgb,var(--ink) 32%,var(--paper));stroke-width:4;stroke-linecap:round}
+.cast-illu .seal{fill:var(--mark);stroke:#2a2114;stroke-width:2}
+.cast-illu .tick{fill:none;stroke:#2a2114;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.cast-empty h3{margin:4px 0 0;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;font-weight:700;font-size:clamp(36px,8vw,52px);line-height:1;letter-spacing:-.03em;white-space:nowrap}
+.cast-empty .lede{margin:10px auto 0;max-width:24em;color:var(--ink-soft);font-size:15px;line-height:1.6}
+.cast-census{display:flex;align-items:baseline;justify-content:center;gap:8px;margin:16px 0 0}
+.cast-census strong{font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif",Georgia,serif;font-weight:700;font-size:64px;line-height:.8;letter-spacing:-.04em;font-variant-numeric:lining-nums}
+.cast-census span{font-size:14px;font-weight:700;color:var(--ink-soft);text-align:left}
+.cast-aside{margin-top:16px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);border-radius:999px;padding:7px 14px;font:inherit;font-weight:800;font-size:13.5px;box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+.cast-aside:active{transform:translate(1px,1px);box-shadow:none}
+
+.cast-note{margin:26px 0 4px;padding-top:14px;border-top:1px solid var(--line);max-width:70em;color:var(--ink-soft);font-size:12.5px;line-height:1.7}
+.cast-note b{display:block;margin:0 0 4px;font-size:11px;letter-spacing:.22em;color:var(--gold);font-weight:800}
+.cast-note p{margin:0}
+
+#sheet #sm:not(.ie):empty:before,#sheet #sc:not(.ie):empty:before{content:attr(data-ph);color:var(--ink-soft);font-weight:700}
+#sheet .cast-join{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin:14px 0 0;min-height:44px;border:2px solid var(--ink);border-radius:12px;background:var(--ink);color:var(--paper);font:inherit;font-weight:800;font-size:15px;cursor:pointer}
+#sheet .cast-join .ic{width:16px;height:16px}
+#sheet .cast-join:focus-visible{outline:2px solid var(--gold);outline-offset:-3px}
+#sheet .cast-join:active{transform:translate(1px,1px)}
+
+@media(max-width:639px){
+ .cast-top{margin-bottom:14px}
+ .cast-cover{width:64px;height:44px}
+ .cast-wh{padding:10px}
+ .cast-wh h3{font-size:22px}
+ .cast-cols,.cast-ord,.cast-mem,.cast-role .cast-d{display:none}
+ .cast-role .cast-p,.cast-meta{display:block}
+ .cast-row{grid-template-columns:46px minmax(0,1fr) auto;grid-template-areas:"av role st" "av meta st";row-gap:2px;min-height:68px;padding:12px 12px 12px 10px}
+ .cast-av{grid-area:av;width:46px;height:46px}
+ .cast-role{grid-area:role;font-size:18px}
+ .cast-meta{grid-area:meta;font-size:13.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .cast-st{grid-area:st;align-self:center}
+ .cast-census strong{font-size:56px}
+ .cast-empty h3{font-size:40px}
+}
+@media(min-width:800px){
+ .cast-empty.hero{max-width:none;display:grid;grid-template-columns:240px minmax(0,1fr);grid-template-areas:"spine spine" "illu copy";align-items:center;text-align:left;gap:6px 36px;padding:18px 28px 22px}
+ .cast-empty.hero .cast-spine{grid-area:spine;margin-bottom:6px}
+ .cast-empty.hero .cast-illu{grid-area:illu;width:220px;margin:0}
+ .cast-empty.hero .cast-copy{grid-area:copy}
+ .cast-empty.hero .lede{margin-left:0}
+ .cast-empty.hero .cast-census{justify-content:flex-start}
+}
+@media(min-width:960px){
+ /* 宽屏瀑布流：按列往下排，矮卡下面不留整行空隙 */
+ .cast-board{column-count:2;column-gap:16px}
+ .cast-board .cast-work{break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid}
+ .cast-board .cast-work:only-child{column-span:all}
+}
+@media(min-width:1024px){
+ .cast-lede{font-size:16px}
+ .cast-role{font-size:18px}
+ .cast-row{min-height:64px}
+}
+@media(prefers-reduced-motion:reduce){
+ .cast-chip,.cast-row,.cast-aside,#castbtn,.cast-join{transition:none}
+}
+
+/* 空缺报名。独立浮层，不用位移/缩放（暗色下圆角会闪白）。
+   JS 把这层铺进可见视口。卡片在层内滚动，CN 和微信都不许被 flex 压成 0。投影留在层的内边距里，不露到角色卡上。 */
+#signup{position:fixed;z-index:70;display:none;pointer-events:none;overscroll-behavior:none;box-sizing:border-box;overflow:hidden;top:0;left:0;width:100%;height:100%;background:transparent}
+#signup.open{display:flex;flex-direction:column;justify-content:flex-end;justify-content:safe flex-end;align-items:center;pointer-events:auto;background:var(--scrim-sheet);padding:12px 16px var(--vv-pad, min(48px, max(16px, env(safe-area-inset-bottom))))}
+#signup .signup-card{position:relative;left:auto;right:auto;bottom:auto;width:min(100%,440px);max-height:100%;min-height:0;margin:0;flex:0 1 auto;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;overflow-anchor:none;background:var(--paper);color:var(--ink);border:3px solid var(--ink);border-radius:20px;box-shadow:6px 6px 0 var(--c,var(--ink));padding:0 18px 16px}
+#signup form{display:flex;flex-direction:column;flex:none}
+#signup .signup-ctx,#signup .signup-cn,#signup .signup-wx,#signup .signup-foot{flex:none}
+#signup .signup-ctx{margin:0 -18px 14px;padding:16px 18px 12px;background:linear-gradient(100deg,color-mix(in srgb,var(--c) 24%,var(--paper)),color-mix(in srgb,var(--c) 7%,var(--paper)) 46%,var(--paper));border-bottom:1px solid var(--line);border-radius:17px 17px 0 0}
+#signup .signup-kicker{display:flex;align-items:center;gap:6px;margin:0;font:800 11px/1 system-ui,sans-serif;letter-spacing:.22em;color:var(--gold)}
+#signup .signup-kicker .ic{width:14px;height:14px}
+#signup h2{margin:8px 0 0;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;font-weight:700;font-size:clamp(28px,7vw,36px);line-height:1.05;letter-spacing:-.03em;overflow-wrap:anywhere}
+#signup .signup-work{margin:4px 0 0;font-weight:800;font-size:14px;color:var(--c)}
+#signup .signup-fld{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--gold)}
+#signup .signup-fld span{display:inline-flex;align-items:center;gap:6px}
+#signup .signup-fld .ic{width:14px;height:14px}
+#signup input{width:100%;box-sizing:border-box;letter-spacing:0;font:700 16px/1.3 "Noto Sans SC",system-ui,sans-serif;color:var(--ink);caret-color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:12px;padding:12px;box-shadow:2px 2px 0 var(--ink);outline:none;scroll-margin:12px 0 88px}
+#signup input:focus{box-shadow:3px 3px 0 var(--c,var(--ink))}
+#signup input:-webkit-autofill{-webkit-text-fill-color:var(--ink);caret-color:var(--ink);box-shadow:0 0 0 1000px var(--paper) inset,2px 2px 0 var(--ink)}
+#signup .signup-foot{margin:0;padding:8px 0 0;background:var(--paper)}
+#signup .signup-err{min-height:0;margin:0;color:var(--err);font-size:13px;font-weight:700;letter-spacing:0}
+#signup .signup-err:not(:empty){min-height:1.2em;margin:0 0 8px}
+#signup.signup-short .signup-ctx{margin-bottom:8px;padding:10px 16px 8px}
+#signup.signup-short h2{font-size:22px}
+#signup.signup-short .signup-fld{gap:4px;margin-bottom:8px}
+#signup.signup-short input{padding:10px 12px}
+#signup.signup-short .signup-foot{padding-top:4px}
+#signup.signup-short .signup-fine{margin-top:6px}
+#signup.signup-short .signup-card{padding-bottom:12px}
+#signup .signup-actions{display:flex;gap:8px}
+#signup .signup-btn{flex:1;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:2px solid var(--ink);border-radius:12px;background:var(--paper);color:var(--ink);font:inherit;font-weight:800;font-size:15px;box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+#signup .signup-btn.go{background:var(--ink);color:var(--paper);box-shadow:none}
+#signup .signup-btn:disabled{opacity:.55;cursor:progress}
+#signup .signup-btn .ic{width:16px;height:16px}
+#signup .signup-btn:focus-visible,#signup input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+#signup .signup-fine{margin:10px 0 0;color:var(--ink-soft);font-size:12.5px;line-height:1.55;font-weight:600}
+@media(min-width:720px){
+ #signup.open{justify-content:center;padding:24px 16px}
+ #signup .signup-card{width:min(100%,420px)}
+}
+
+/* 留言区。名册底下的一栏，缺人看板和搜索时先让开。浮层沿用报名的视口定位。 */
+#guestbook{max-width:1100px;margin:-28px auto 0;padding:0 16px 72px;color:var(--ink)}
+body.casting #guestbook,#m.searching~#guestbook{display:none}
+.gb-mast{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 24px;margin:0 0 16px}
+.gb-kicker{display:flex;align-items:center;gap:6px;margin:0;font:800 11px/1 system-ui,sans-serif;letter-spacing:.22em;color:var(--gold)}
+.gb-kicker .ic{width:14px;height:14px}
+#guestbook h2{margin:8px 0 0;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;font-weight:700;font-size:clamp(32px,6vw,48px);line-height:.95;letter-spacing:-.03em}
+.gb-lede{margin:8px 0 0;max-width:36em;color:var(--ink-soft);font-size:14px;line-height:1.55;font-weight:600}
+.gb-write{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border:2px solid var(--ink);border-radius:12px;background:var(--ink);color:var(--paper);font:inherit;font-weight:800;font-size:15px;cursor:pointer;box-shadow:3px 3px 0 var(--gold-2)}
+.gb-write .ic{width:16px;height:16px}
+.gb-write:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.gb-write:active{transform:translate(1px,1px);box-shadow:none}
+.gb-list{display:grid;gap:12px}
+@media(min-width:720px){
+ /* 宽屏瀑布流：两列填缝，避免等高 grid 矮卡旁留空 */
+ .gb-list{display:block;column-count:2;column-gap:12px}
+ .gb-list>.gb-note,.gb-list>.gb-empty{break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid;margin:0 0 12px}
+ .gb-list>.gb-note:last-child,.gb-list>.gb-empty:last-child{margin-bottom:0}
+}
+@keyframes gbin{from{opacity:0;transform:translateY(-10px)}}
+.gb-note.gb-in{animation:gbin .45s cubic-bezier(.2,.8,.2,1) both}
+@media(prefers-reduced-motion:reduce){.gb-note.gb-in{animation:none}}
+.gb-note{margin:0;padding:14px 16px 16px;background:var(--paper);border:2.5px solid var(--ink);border-radius:16px;box-shadow:4px 4px 0 var(--ink)}
+.gb-note header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 8px}
+.gb-note b{font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.gb-note time{flex:none;color:var(--ink-soft);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.gb-note p{margin:0;font-size:15px;line-height:1.6;font-weight:600;font-family:"Noto Sans SC",system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI","Apple Symbols","Segoe UI Symbol","Noto Sans Symbols","Noto Sans Symbols 2","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-variant-emoji:emoji;white-space:pre-wrap;overflow-wrap:anywhere}
+.gb-empty{margin:0;padding:28px 16px;text-align:center;border:2px dashed var(--line);border-radius:16px;background:color-mix(in srgb,var(--paper) 72%,var(--page))}
+.gb-empty b{display:block;margin:0 0 6px;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;font-size:22px;font-weight:700}
+.gb-empty span{color:var(--ink-soft);font-size:14px;font-weight:600}
+.gb-pager{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0 0}
+.gb-page{min-height:40px;padding:0 14px;border:2px solid var(--ink);border-radius:12px;background:var(--paper);color:var(--ink);font:inherit;font-weight:800;font-size:14px;box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+.gb-page:disabled{opacity:.4;cursor:default;box-shadow:none}
+.gb-page:not(:disabled):active{transform:translate(1px,1px);box-shadow:none}
+.gb-page:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.gb-page-meta{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+#gb{position:fixed;z-index:70;display:none;pointer-events:none;overscroll-behavior:none;box-sizing:border-box;overflow:hidden;top:0;left:0;width:100%;height:100%;background:transparent}
+#gb.open{display:flex;flex-direction:column;justify-content:flex-end;justify-content:safe flex-end;align-items:center;pointer-events:auto;background:var(--scrim-sheet);padding:12px 16px var(--vv-pad, min(48px, max(16px, env(safe-area-inset-bottom))))}
+#gb .gb-card{position:relative;width:min(100%,440px);max-height:100%;min-height:0;margin:0;flex:0 1 auto;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;overflow-anchor:none;background:var(--paper);color:var(--ink);border:3px solid var(--ink);border-radius:20px;box-shadow:6px 6px 0 var(--ink);padding:0 18px 16px}
+#gb form{display:flex;flex-direction:column;flex:none}
+#gb .gb-ctx,#gb .gb-cn,#gb .gb-body,#gb .gb-foot{flex:none}
+#gb .gb-ctx{margin:0 -18px 14px;padding:16px 18px 12px;background:linear-gradient(100deg,color-mix(in srgb,var(--gold) 22%,var(--paper)),color-mix(in srgb,var(--gold) 6%,var(--paper)) 46%,var(--paper));border-bottom:1px solid var(--line);border-radius:17px 17px 0 0}
+#gb h2{margin:8px 0 0;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;font-weight:700;font-size:clamp(28px,7vw,36px);line-height:1.05;letter-spacing:-.03em}
+#gb .gb-work{margin:4px 0 0;font-weight:800;font-size:14px;color:var(--gold)}
+#gb .gb-fld{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--gold)}
+#gb .gb-fld span{display:inline-flex;align-items:center;gap:6px}
+#gb .gb-fld .ic{width:14px;height:14px}
+#gb input,#gb textarea{width:100%;box-sizing:border-box;letter-spacing:0;font:700 16px/1.45 "Noto Sans SC",system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI","Apple Symbols","Segoe UI Symbol","Noto Sans Symbols","Noto Sans Symbols 2","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;color:var(--ink);caret-color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:12px;padding:12px;box-shadow:2px 2px 0 var(--ink);outline:none;scroll-margin:12px 0 88px;resize:vertical}
+#gb input::placeholder,#gb textarea::placeholder{color:var(--ink-soft);opacity:1}
+#gb textarea{min-height:112px}
+#gb input:focus,#gb textarea:focus{box-shadow:3px 3px 0 var(--gold)}
+#gb input:-webkit-autofill{-webkit-text-fill-color:var(--ink);caret-color:var(--ink);box-shadow:0 0 0 1000px var(--paper) inset,2px 2px 0 var(--ink)}
+#gb .gb-foot{margin:0;padding:8px 0 0;background:var(--paper)}
+#gb .gb-err{min-height:0;margin:0;color:var(--err);font-size:13px;font-weight:700;letter-spacing:0}
+#gb .gb-err:not(:empty){min-height:1.2em;margin:0 0 8px}
+#gb.gb-short .gb-ctx{margin-bottom:8px;padding:10px 16px 8px}
+#gb.gb-short h2{font-size:22px}
+#gb.gb-short .gb-fld{gap:4px;margin-bottom:8px}
+#gb.gb-short input,#gb.gb-short textarea{padding:10px 12px}
+#gb.gb-short textarea{min-height:72px}
+#gb.gb-short .gb-foot{padding-top:4px}
+#gb.gb-short .gb-card{padding-bottom:12px}
+#gb .gb-actions{display:flex;gap:8px}
+#gb .gb-btn{flex:1;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:2px solid var(--ink);border-radius:12px;background:var(--paper);color:var(--ink);font:inherit;font-weight:800;font-size:15px;box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+#gb .gb-btn.go{background:var(--ink);color:var(--paper);box-shadow:none}
+#gb .gb-btn:disabled{opacity:.55;cursor:progress}
+#gb .gb-btn .ic{width:16px;height:16px}
+#gb .gb-btn:focus-visible,#gb input:focus-visible,#gb textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media(min-width:720px){
+ #gb.open{justify-content:center;padding:24px 16px}
+ #gb .gb-card{width:min(100%,420px)}
+}
+/* 纸条 ↔ 表单：几何走 FLIP（top/left/width/height），不用缩放，暗色圆角才不会闪白。
+   飞行层只盖内容，纸面阴影留在 .gb-card 上。减少动效时 JS 不启动这段。 */
+#gb.gb-morph{padding:0;background:transparent}
+#gb.gb-morph .gb-card{position:absolute;z-index:2;margin:0;max-height:none;flex:none;overflow:hidden}
+#gb .gb-flight{position:absolute;z-index:3;margin:0;padding:0;pointer-events:none;overflow:hidden;box-sizing:border-box;background:transparent}
+#gb .gb-flight .gb-note,#gb .gb-flight .gb-empty,#gb .gb-flight .gb-write{box-shadow:none;margin:0;max-width:none}
+/* 写作时锁住页面，避免焦点或视口变化把第一条纸条顶出屏幕。触摸仍可滚表单。 */
+body.gb-lock{touch-action:none}
+#gb,#gb .gb-card{touch-action:auto}
+#guestbook,.gb-list,.gb-note,.gb-empty{overflow-anchor:none}
+@media(prefers-reduced-motion:reduce){
+ .gb-write,.gb-btn,#gb,#gb .gb-card,#gb .gb-flight{transition:none;animation:none}
+}
+
+/* 一图流：只留抬头金边胶囊，不进留言区、不进顶栏缺人/展开那排 */
+.gb-acts{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.hdr .poster-mini.go{display:inline-flex;align-items:center;margin-left:10px;padding:4px 12px;border:1.5px solid var(--gold-2);border-radius:999px;background:color-mix(in srgb,var(--gold) 22%,var(--paper));color:var(--ink);font-weight:800;font-size:12px;letter-spacing:.1em;text-decoration:none;box-shadow:2px 2px 0 var(--gold-2);vertical-align:middle}
+.hdr .poster-mini.go:hover{background:color-mix(in srgb,var(--gold) 36%,var(--paper))}
+.hdr .poster-mini.go:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+/* 首页 banner：倒计时票根。轨道留 14px 内边距给阴影，负外边距抵消 */
+.bn{margin:0 0 14px}
+.bn-track{display:flex;gap:18px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;margin:-14px -14px -10px -6px;padding:14px 14px 10px 6px;scroll-padding-left:6px}
+.bn-track::-webkit-scrollbar{display:none}
+.bn-s{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always}
+.bn-dots{display:flex;justify-content:center;margin-top:2px}
+.bn-dots button{display:grid;place-items:center;width:26px;height:20px;padding:0;border:0;background:none;cursor:pointer}
+.bn-dots button:before{content:"";width:6px;height:6px;border-radius:3px;background:var(--gold-2);opacity:.45;transition:width .25s,opacity .25s}
+.bn-dots button[aria-current=true]:before{width:18px;opacity:1}
+.bn-dots button:focus-visible{outline:2px solid var(--gold);outline-offset:-2px;border-radius:6px}
+/* 倒计时：入场券。票根用印章色（深色模式自动反转），撕口两端的半圆靠 overflow:hidden 裁出缺口 */
+.cdn{--serif:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif",Georgia,serif;position:relative;display:flex;overflow:hidden;border:2px solid var(--ink);border-radius:14px;background:repeating-linear-gradient(-45deg,transparent 0 10px,color-mix(in srgb,var(--gold-2) 9%,transparent) 10px 20px),var(--paper);color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.cd-stub{flex:none;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;width:84px;padding:10px 6px;background:var(--stamp-bg);color:var(--stamp-fg);text-align:center}
+.cd-stub small{font-size:8px;font-weight:800;letter-spacing:.24em;opacity:.7}
+.cd-stub b{font:700 24px/1 var(--serif);letter-spacing:-.02em}
+.cd-stub span{font-size:10px;font-weight:700;letter-spacing:.08em;opacity:.85}
+.cd-perf{position:relative;flex:none;width:0;border-left:2px dashed var(--ink);opacity:.9}
+.cd-perf:before,.cd-perf:after{content:"";position:absolute;left:-10px;width:14px;height:14px;border:2px solid var(--ink);border-radius:50%;background:var(--page)}
+.cd-perf:before{top:-11px}.cd-perf:after{bottom:-11px}
+.cd-main{flex:1;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"k y" "t t";align-content:center;align-items:end;gap:4px 12px;padding:10px 14px 10px 16px}
+.cd-k{grid-area:k}.cd-tl,.cd-live{grid-area:t}
+.cd-k{margin:0;font-size:11px;font-weight:800;letter-spacing:.18em;color:var(--gold)}
+.cd-k span{margin-left:8px;font-size:9px;letter-spacing:.24em;opacity:.65}
+.cd-tl{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.cd-tl span{display:flex;align-items:baseline;gap:2px}
+.cd-tl i{display:inline-block;font:700 30px/1 var(--serif);font-style:normal;font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.02em;min-width:1.15em}
+.cd-tl em{font-style:normal;font-size:12px;font-weight:800;color:var(--ink-soft)}
+.cd-s i{color:var(--gold)}
+.cd-live{display:none;margin:0;font:700 28px/1.1 var(--serif),"Noto Serif SC","Songti SC",serif}
+.cdn.live .cd-tl{display:none}.cdn.live .cd-live{display:block}
+/* 尺寸跟卡片宽度走（cqi），宽卡片不再把四组数字拉散；够宽时标题竖排在左、数字靠右 */
+.cdn{container-type:inline-size}
+.cd-stub{width:clamp(84px,19cqi,118px)}.cd-stub b{font-size:clamp(24px,5.2cqi,30px)}
+.cd-main{padding:10px clamp(14px,3.5cqi,24px) 10px clamp(16px,3.5cqi,24px)}
+.cd-tl{justify-content:flex-start;gap:clamp(6px,3.2cqi,22px)}
+.cd-tl i{font-size:clamp(28px,7cqi,42px)}
+.cd-tl em{font-size:clamp(12px,2.3cqi,14px)}
+@container (min-width:540px){.cd-main{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"k y t";align-items:center;gap:0 24px}
+.cd-k{display:flex;flex-direction:column;gap:4px;font-size:15px;letter-spacing:.2em;color:var(--ink)}
+.cd-k span{margin:0;color:var(--gold);opacity:1}
+.cd-tl i{font-size:clamp(36px,6.4cqi,46px)}}
+/* 桌面：两张并排，不再横滑 */
+@media(min-width:900px){.bn-track{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:20px;overflow:visible;margin:0;padding:0}.bn-dots{display:none}}
+@media(min-width:700px){.bn{margin:0 0 21px}}
+.cd-main{position:relative}
+.cd-gap{grid-area:y;align-self:stretch;min-height:14px}
+.cd-k,.cd-tl,.cd-live{position:relative;z-index:1}
+@container (max-width:419px){.cd-k span{display:none}}
+/* castcall: group meta, single-group page, guestbook honeypot */
+.gmeta{margin:0 0 12px;padding:10px 12px;border:2px dashed color-mix(in srgb,var(--c) 55%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--c) 7%,var(--paper));font-size:13px;line-height:1.55}
+.gmeta p{margin:0}.gm-row{display:flex;flex-wrap:wrap;gap:4px 16px}.gm-row b{margin-right:6px;color:var(--c);filter:brightness(.8)}
+.gm-note{white-space:pre-wrap;overflow-wrap:anywhere}.gm-row+.gm-note{margin-top:6px}
+body.single .covers{grid-template-columns:1fr!important}
+body.single .cv header{cursor:default}body.single .cv .chev,body.single #xall{display:none}
+.hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0}
+.loc-bar:empty{display:none!important}
+.brandlogo{height:1.12em;width:auto;vertical-align:-.2em;margin:0 .12em 0 0;display:inline-block;object-fit:contain}

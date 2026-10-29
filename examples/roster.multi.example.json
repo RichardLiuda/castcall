@@ -1,0 +1,94 @@
+{
+ "groups": [
+  {
+   "name": "示例作品 A",
+   "color": "#e07a5f",
+   "lead": "阿杏",
+   "contact": "微信 example_a",
+   "note": "校服主题，下午两点在东门集合。",
+   "members": [
+    {
+     "character": "主角",
+     "member": "小鹿"
+    },
+    {
+     "character": "青梅竹马",
+     "member": "阿杏"
+    },
+    {
+     "character": "学生会长",
+     "member": ""
+    },
+    {
+     "character": "转学生",
+     "member": "橘子"
+    },
+    {
+     "character": "班主任",
+     "member": ""
+    }
+   ]
+  },
+  {
+   "name": "示例作品 B",
+   "color": "#3d8bd9",
+   "members": [
+    {
+     "character": "骑士",
+     "member": "白桃"
+    },
+    {
+     "character": "魔法师",
+     "member": "阿蓝"
+    },
+    {
+     "character": "公主",
+     "member": ""
+    },
+    {
+     "character": "龙",
+     "member": "大熊"
+    }
+   ]
+  },
+  {
+   "name": "示例作品 C",
+   "color": "#7b61c4",
+   "signup": "closed",
+   "note": "这个团已经满员，暂停报名。",
+   "members": [
+    {
+     "character": "偶像",
+     "member": "星星"
+    },
+    {
+     "character": "经纪人",
+     "member": "阿柚"
+    },
+    {
+     "character": "制作人",
+     "member": "小林"
+    }
+   ]
+  },
+  {
+   "name": "摄影 / 后勤",
+   "color": "#2a9d8f",
+   "kind": "crew",
+   "members": [
+    {
+     "character": "摄影",
+     "member": "阿光"
+    },
+    {
+     "character": "摄影",
+     "member": ""
+    },
+    {
+     "character": "后勤",
+     "member": "糯米"
+    }
+   ]
+  }
+ ]
+}
