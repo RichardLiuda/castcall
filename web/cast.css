@@ -360,19 +360,20 @@ body.qfocus #res{position:relative;z-index:19;background:var(--page);border-radi
 .bar .mt{overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 /* 单团的角色卡：不用多团为了紧凑做的胶囊，改成竖版角色卡——上面是立绘（没有立绘就是大号首字），
    下面是角色名和 CN。招募中的空位是同样大小的虚线空卡。只改样式，点击、搜索、编辑都还是 .pill / .seat-open */
-#solo .pills,#solo .solo-open{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important;gap:14px}
+#solo .pills,#solo .solo-open{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))!important;gap:26px 22px}
+#solo .solo-h{margin-top:36px;margin-bottom:16px}
 #solo .pill{flex-direction:column;align-items:stretch;padding:0;border-radius:18px;box-shadow:4px 4px 0 var(--ink);font-size:15px;background:var(--paper)}
 #solo .pill:hover{transform:translate(-2px,-3px) rotate(-1deg)}
 #solo .pill .ci{position:relative;inset:auto;order:-1;width:100%!important;height:auto;aspect-ratio:4/5;background:var(--ci) center 18%/cover no-repeat,color-mix(in srgb,var(--c) 14%,var(--paper));-webkit-mask:none!important;mask:none!important;border-bottom:2px solid var(--ink)}
 #solo .pill .ci:after{display:none}
 #solo .pill:not(:has(.ci)) .ni{position:relative;order:-1;inset:auto;margin:0;width:100%;height:auto;aspect-ratio:4/5;border:0;border-bottom:2px solid var(--ink);border-radius:0;font-size:56px;font-weight:900;display:grid;place-items:center;background:linear-gradient(160deg,color-mix(in srgb,var(--c) 30%,var(--paper)),color-mix(in srgb,var(--c) 12%,var(--paper)))}
 #solo .pill .ci~.ni{display:none}
-#solo .pill .a{max-width:none;padding:9px 12px 2px;background:none;color:color-mix(in srgb,var(--c) 75%,var(--ink));font-size:13px;font-weight:800;letter-spacing:.04em}
-#solo .pill .b{padding:0 12px 11px;font-size:18px;font-weight:800}
+#solo .pill .a{max-width:none;padding:12px 14px 3px;background:none;color:color-mix(in srgb,var(--c) 75%,var(--ink));font-size:13px;font-weight:800;letter-spacing:.04em}
+#solo .pill .b{padding:0 14px 14px;font-size:18px;font-weight:800}
 #solo .seat-open{flex-direction:column;justify-content:center;gap:10px;aspect-ratio:auto;min-height:0;padding:22px 12px;border-radius:18px;border-width:2.5px;text-align:center}
 #solo .seat-open .ni{width:64px;height:64px;font-size:28px}
 #solo .seat-open .a{flex:none;font-size:17px}
 #solo .seat-open .go{font-size:13px;padding:6px 14px}
-@media(max-width:639px){#solo .pills,#solo .solo-open{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px}#solo .pill .b{font-size:16px}}
+@media(max-width:639px){#solo .pills,#solo .solo-open{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px 14px}#solo .pill .b{font-size:16px}}
 #solo .pill .a,#solo .pill .b{flex:none!important;display:block;white-space:normal;overflow:visible;line-height:1.3;text-shadow:none}
-#solo .pill .b{padding-right:12px!important}
+#solo .pill .b{padding-right:14px!important}
