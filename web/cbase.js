@@ -40,6 +40,20 @@ function ciLoad(r){if(!r)return;(r.matches&&r.matches('.pill[data-ci]')?[r]:r.qu
 function ci(gi,i){const g=R.groups[gi],m=g.members[i],c=(window.CHARS||{})[g.name+'|'+m.character];return c||''}
 function pill(gi,i,q){const g=R.groups[gi],m=g.members[i];const P=v=>v||'（待定）';const[x,y]=memberFirst?[P(m.member),P(m.character)]:[P(m.character),P(m.member)];
  const u0=ci(gi,i),u=u0.startsWith('chars/')?u0.replace('chars/','chars/thumb/'):u0;return `<button class="pill" style="--c:${g.color};--k:${Math.min(i,24)}"${u?` data-ci="${esc(u)}"`:''} data-g="${gi}" data-i="${i}">${u?'<i class="ci"></i>'+(crew(g)?'<i class="ni cam">'+icon('camera',13)+'</i>':''):`<i class="ni">${crew(g)?icon('camera',16):esc([...(m.character||m.member||'?')][0])}</i>`}<span class="a">${hl(x,q)}</span><span class="b">${hl(y,q)}</span></button>`}
+/* 单团页：一个团就是整个活动，不需要「点开/收起」。顶部是团的封面和人数，然后是团长、咨询、说明，
+   招募中的角色排在最前、直接点「报名」；已定的阵容放后面。多个团时 index.html 走封面卡墙，不用这里。 */
+function soloHTML(gi){const g=R.groups[gi],seats=g.members.map((m,i)=>[m,i]);
+ const set=seats.filter(([m])=>hasCN(m)),open=seats.filter(([m])=>!hasCN(m)&&(m.character||'').trim()),on=signupOn(g),cov=g.cover?img('covers/'+g.cover):'';
+ const stat=(n,t,k)=>`<span class="solo-st${k?' '+k:''}"><b>${n}</b>${t}</span>`;
+ const seat=([m,i])=>`<button type="button" class="seat-open" data-g="${gi}" data-i="${i}"><i class="ni">${esc([...(m.character||'?')][0])}</i><span class="a">${esc(m.character)}</span><span class="go">${on?'报名 →':'暂停报名'}</span></button>`;
+ return `<section id="solo" style="--c:${g.color}"><header class="solo-hero"${cov?` style="--img:${cov}"`:''}><i class="solo-bg"></i><div class="solo-tx">`+
+  `<p class="solo-k">CAST CALL${crew(g)?'':' · '+g.members.length+' 个角色'}</p><h2>${esc(g.name)}</h2>`+
+  `<p class="solo-sts">${stat(set.length,'已定')}${open.length?stat(open.length,'招募中','hot'):stat('✓','全员已定')}</p></div></header>`+
+  `<div class="solo-body"><div class="solo-tools"></div>${gmeta(g)}`+
+  (open.length?`<h3 class="solo-h">招募中<b>${open.length}</b>${on?'':'<small>暂停报名</small>'}</h3><div class="solo-open">${open.map(seat).join('')}</div>`:'')+
+  `<h3 class="solo-h">${crew(g)?'成员':'已定阵容'}<b>${set.length}</b></h3>`+
+  (set.length?`<div class="pills">${set.map(([m,i])=>pill(gi,i,'')).join('')}</div>`:`<p class="empty">还没有人，等你来。</p>`)+`</div></section>`}
+function renderSolo(){const cv=$('#cv');if(!cv)return;cv.innerHTML=soloHTML(0);const s=$('#solo');ciLoad(s);fitAll(s)}
 const match=(m,q)=>!q||(m.character+'\u0001'+m.member).toLowerCase().includes(q);
 let cur=null;
 function openSheet(gi,i,dir,from){const g=R.groups[gi],n=g.members.length;if(!n)return;
@@ -58,6 +72,7 @@ function openSheet(gi,i,dir,from){const g=R.groups[gi],n=g.members.length;if(!n)
 document.addEventListener('pointerenter',e=>{const p=e.target.closest&&e.target.closest('.pill');if(!p)return;artWarm(ci(+p.dataset.g,+p.dataset.i))},true);
 document.addEventListener('pointerdown',e=>{const p=e.target.closest('.pill');if(p){ciLoad(p);artWarm(ci(+p.dataset.g,+p.dataset.i))}if(!p||RM)return;const r=p.getBoundingClientRect(),s=Math.max(r.width,r.height)*2.2,d=document.createElement('span');d.className='rp';d.style.cssText=`width:${s}px;height:${s}px;left:${e.clientX-r.left-s/2}px;top:${e.clientY-r.top-s/2}px`;p.appendChild(d);setTimeout(()=>d.remove(),500)});
 document.addEventListener('click',e=>{const p=e.target.closest('.pill');if(p)return openSheet(+p.dataset.g,+p.dataset.i,0,p);
+ const so=e.target.closest('.seat-open');if(so){const g=R.groups[+so.dataset.g];if(g&&signupOn(g)&&!document.body.classList.contains('editing'))return openSignup(+so.dataset.g,+so.dataset.i);return openSheet(+so.dataset.g,+so.dataset.i,0,so)}
  if(e.target.closest('#sheet [data-signup]')){if(cur)openSignup(cur[0],cur[1]);return}
  if(e.target.id=='sheet'||e.target.closest('#sheet .x'))return $('#sheet').classList.remove('open');
  const d=e.target.closest('#sheet [data-d]');if(d)openSheet(cur[0],cur[1]+ +d.dataset.d,+d.dataset.d)});

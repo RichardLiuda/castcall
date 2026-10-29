@@ -304,10 +304,31 @@ body.gb-lock{touch-action:none}
 .gmeta{margin:0 0 12px;padding:10px 12px;border:2px dashed color-mix(in srgb,var(--c) 55%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--c) 7%,var(--paper));font-size:13px;line-height:1.55}
 .gmeta p{margin:0}.gm-row{display:flex;flex-wrap:wrap;gap:4px 16px}.gm-row b{margin-right:6px;color:var(--c);filter:brightness(.8)}
 .gm-note{white-space:pre-wrap;overflow-wrap:anywhere}.gm-row+.gm-note{margin-top:6px}
-body.single .covers{grid-template-columns:1fr!important}
-body.single .cv header{cursor:default}body.single .cv .chev,body.single #xall{display:none}
+body.single #xall{display:none}
 .hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0}
 .loc-bar:empty{display:none!important}
 .brandlogo{height:1.12em;width:auto;vertical-align:-.2em;margin:0 .12em 0 0;display:inline-block;object-fit:contain}
-/* 单团：唯一的卡片全宽常开，标题条给个固定高度（多团的 2:1 在整行宽度下会把席位挤出首屏） */
-body.single .cv.open header{aspect-ratio:auto!important;height:clamp(150px,22vw,260px)!important;min-height:0!important;max-height:none!important}
+/* 单团页（cbase.js soloHTML）。#cv 还是 .covers 网格，#solo 占满一整行：搜索、缺人看板照旧把 .covers 藏起来 */
+#solo{grid-column:1/-1;border:2.5px solid var(--ink);border-radius:18px;box-shadow:5px 5px 0 var(--ink);background:var(--paper);overflow:hidden}
+.solo-hero{position:relative;display:flex;align-items:flex-end;min-height:clamp(170px,26vw,300px);padding:18px 20px;color:#fff;isolation:isolate}
+.solo-bg{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,transparent 30%,color-mix(in srgb,var(--c) 55%,#000) 100%),var(--img,none) center 30%/cover,linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 65%,#fff))}
+.solo-tx{width:100%}
+.solo-k{margin:0 0 6px;font:800 11px/1 system-ui,sans-serif;letter-spacing:.22em;opacity:.9;text-shadow:0 1px 3px #0009}
+.solo-hero h2{margin:0;font-size:clamp(30px,5.4vw,52px);line-height:1.05;overflow-wrap:anywhere;text-shadow:0 2px 6px #000a,1px 1px 0 #0008}
+.solo-sts{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+.solo-st{display:inline-flex;align-items:baseline;gap:5px;padding:5px 12px;border-radius:999px;background:#0006;backdrop-filter:blur(4px);font-size:13px;font-weight:700;border:1.5px solid #fff6}
+.solo-st b{font-size:20px;line-height:1}.solo-st.hot{background:#fff;color:color-mix(in srgb,var(--c) 70%,#000);border-color:#fff}
+.solo-body{padding:16px}
+.solo-body .gmeta{margin:0 0 6px}
+.solo-h{display:flex;align-items:center;gap:8px;margin:18px 0 10px;font-size:16px}
+.solo-h b{font-size:12px;padding:1px 8px;border-radius:999px;background:var(--c);color:#fff}.solo-h small{font-size:12px;color:var(--ink-soft);font-weight:600}
+.solo-open{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.seat-open{display:flex;align-items:center;gap:10px;min-width:0;padding:10px 12px;border:2px dashed color-mix(in srgb,var(--c) 70%,var(--ink));border-radius:14px;background:color-mix(in srgb,var(--c) 8%,var(--paper));color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.seat-open:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--c)}.seat-open:active{transform:translate(1px,1px);box-shadow:none}
+.seat-open .ni{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--c);color:#fff;font-style:normal;font-weight:800}
+.seat-open .a{flex:1;min-width:0;font-weight:800;font-size:15px;overflow-wrap:anywhere}
+.seat-open .go{flex:none;font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;background:var(--ink);color:var(--paper);white-space:nowrap}
+.solo-tools:empty{display:none}.solo-tools .gtools{margin:0 0 10px}
+@media(min-width:760px){.solo-hero{padding:24px 28px}.solo-body{padding:20px 24px 24px}}
+/* 手机端的瀑布流（.covers.mas）是 4px 的行 + JS 给每张 .cv 算跨几行；#solo 不是 .cv，让它按自己的内容撑开 */
+body.single .covers.mas{grid-auto-rows:auto!important}

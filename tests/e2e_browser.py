@@ -92,11 +92,11 @@ def main(a):
       step('phone: card opens',m.locator('.cv.open').count()==1)
       # ── single ──
       S=f'http://127.0.0.1:{ports["single"]}/';s=page();s.goto(S);s.wait_for_timeout(800)
-      step('single: minimal config renders, no countdown',s.locator('#bn').count()==0 and s.locator('.cv').count()==1)
-      step('single: one open card',s.locator('.cv').count()==1 and s.locator('.cv.open').count()==1)
-      step('single: no expand-all',not s.locator('#xall').is_visible())
-      s.locator('.cv header').first.click();s.wait_for_timeout(500)
-      step('single: header click does not fold',s.locator('.cv.open').count()==1)
+      step('single: minimal config renders, no countdown',s.locator('#bn').count()==0 and s.locator('#solo').count()==1)
+      step('single: no cover wall, no expand-all',s.locator('.cv').count()==0 and not s.locator('#xall').is_visible())
+      op=s.locator('.seat-open');step('single: open roles listed first',op.count()>=1 and s.locator('.pills .pill').count()>=1,op.count())
+      op.first.click();s.wait_for_timeout(500);step('single: open role → signup form directly',s.locator('#signup').is_visible())
+      s.keyboard.press('Escape');s.wait_for_timeout(300)
       shot(s,'12-single-home')
       sm=page(390,844,True);sm.goto(S);sm.wait_for_timeout(800);shot(sm,'13-single-phone')
       # ── poster ──

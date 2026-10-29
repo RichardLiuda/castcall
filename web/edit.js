@@ -16,14 +16,18 @@ function login(){const pw=inp('','','password'),er=h('div',{class:'err'});const 
 let editing=false;
 function setEdit(on){editing=on;document.body.classList.toggle('editing',on);$('#fab').replaceChildren(iconEl(on?'unlock':'lock',22));$('#fab').setAttribute('aria-label',on?'编辑中':'进入编辑');
  const tb=$('#etb');tb.innerHTML='';if(on){tb.append(h('button',{class:'btn pri',id:'newrole',onclick:()=>{const c=$('.cv.open');const gi=c?+c.id.slice(1):+(SS.getItem('kr_open_last')||0);entryForm(Math.min(gi,D.groups.length-1),-1,1)}},iconEl('plus'),'新角色'),h('button',{class:'btn',onclick:()=>review('signups')},iconEl('users'),'审核',h('b',{id:'rvn',hidden:''})),h('button',{class:'btn',onclick:()=>links('all')},iconEl('links'),'连线视图'),h('button',{class:'btn',onclick:()=>groupForm(-1)},iconEl('plus'),SITE.mode==='single'?'加一个团':'新团'),...(SITE.poster.enabled?[h('button',{class:'btn',onclick:posterBuild},iconEl('palette'),'生成一图流')]:[]),h('button',{class:'btn',onclick:async()=>{await api('POST','/api/logout');SS.removeItem('kr_edit');setEdit(false);toast('已退出编辑')}},iconEl('logout'),'退出'))}
+ soloTools();
  $$('.cv').forEach((c,gi)=>{let t=c.querySelector('.gtools');if(!t){t=h('div',{class:'gtools'},h('button',{class:'btn',onclick:()=>entryForm(gi,-1)},iconEl('plus'),'添加'),h('button',{class:'btn',onclick:()=>groupForm(gi)},iconEl('pencil'),SITE.mode==='single'?'活动 / 团信息':'团信息'),h('button',{class:'btn',onclick:()=>links(gi)},iconEl('links'),'连线'));c.querySelector('.body').prepend(t)}});
  if(on)reviewCount()}
 /* still signed in (cookie alive) → straight back into edit mode, no password prompt */
+/* 单团页没有卡片，团级工具条放在 #solo 的信息区上方 */
+function soloTools(){const so=$('#solo .solo-tools');if(so&&!so.firstChild)so.append(h('div',{class:'gtools'},h('button',{class:'btn',onclick:()=>entryForm(0,-1)},iconEl('plus'),'添加角色'),h('button',{class:'btn',onclick:()=>groupForm(0)},iconEl('pencil'),'活动 / 团信息'),h('button',{class:'btn',onclick:()=>links(0)},iconEl('links'),'连线')))}
 $('#fab').onclick=async()=>{if(editing)return setEdit(false);try{if((await api('GET','/api/me')).auth){SS.setItem('kr_edit','1');return setEdit(true)}}catch(e){}login()};
 /* inline edit in detail card */
 const toastAct=(t,label,fn,ms=5000)=>{const e=$('#toast');e.innerHTML='';e.append(h('span',{},t),h('button',{class:'tact',onclick:()=>{e.classList.remove('on');fn()}},label));e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),ms)};
 async function saveField(gi,i,key,val,old,undoing){D=clone(R);const m=D.groups[gi]&&D.groups[gi].members[i];if(!m)return;m[key]=val;if(key==='character')movePortrait(D.groups[gi].name,old,D.groups[gi].name,val);
  try{const r=await api('PUT','/api/data',D);R.groups=r.data.groups;D=clone(R);
+  if(document.getElementById('solo')){renderSolo();soloTools()}
   const p=document.querySelector(`.cv .pill[data-g="${gi}"][data-i="${i}"]`);if(p){const t=document.createElement('div');t.innerHTML=pill(gi,i,'');const np=t.firstChild;p.replaceWith(np);if(np.closest('.cv.open,#res'))ciLoad(np);window.fitAll&&fitAll(document.querySelector('#c'+gi))}
   if(cur&&cur[0]===gi&&cur[1]===i){const el=$(key==='member'?'#sm':'#sc');if(el&&document.activeElement!==el)el.textContent=val}
   const lbl=key==='member'?'成员':'角色';
