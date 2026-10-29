@@ -17,6 +17,8 @@ python3 server/server.py
 
 想先看看名册多的时候长什么样，可以用大样例初始化。下面两份样例照搬了一次真实团建的作品、角色和空缺分布，CN 全是随机生成的假名：
 
+> ⚠️ 这两份样例目前还用着真实的作品名和角色名，公开发布前会换成虚构版本，见 [examples/README.md](../examples/README.md)。
+
 ```bash
 python3 init.py --example key-demo      # 13 个团、150 个席位（多团）
 python3 init.py --example key-single    # 其中一个团、20 个席位（单团）
