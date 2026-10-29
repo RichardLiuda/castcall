@@ -55,7 +55,10 @@ function soloHTML(gi){const g=R.groups[gi],seats=g.members.map((m,i)=>[m,i]);
   (set.length?`<div class="pills">${set.map(([m,i])=>pill(gi,i,'')).join('')}</div>`:`<p class="empty">还没有人，等你来。</p>`)+`</div></section>`}
 function renderSolo(){const cv=$('#cv');if(!cv)return;cv.innerHTML=soloHTML(0);
  /* 封面不再放在卡片里：整页背景用它（cast.css body.single::before），没封面就用团的主题色渐变 */
- const g=R.groups[0],bs=document.body.style;bs.setProperty('--solo-c',g.color);bs.setProperty('--solo-img',g.cover?img('covers/'+g.cover):'none');const s=$('#solo');ciLoad(s);fitAll(s)}
+ const g=R.groups[0],bs=document.body.style;bs.setProperty('--solo-c',g.color);bs.setProperty('--solo-img',g.cover?img('covers/'+g.cover):'none');
+ /* 横幅铺到团名和人数徽章下面为止 */
+ const fit=()=>{const h=$('.solo-hero');if(h)bs.setProperty('--solo-h',Math.ceil(h.getBoundingClientRect().bottom+scrollY+28)+'px')};
+ fit();if(!renderSolo._on){renderSolo._on=1;addEventListener('resize',fit);addEventListener('load',fit);document.fonts&&document.fonts.ready.then(fit)}const s=$('#solo');ciLoad(s);fitAll(s)}
 const match=(m,q)=>!q||(m.character+'\u0001'+m.member).toLowerCase().includes(q);
 let cur=null;
 function openSheet(gi,i,dir,from){const g=R.groups[gi],n=g.members.length;if(!n)return;

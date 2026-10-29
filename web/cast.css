@@ -308,15 +308,20 @@ body.single #xall{display:none}
 .hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0}
 .loc-bar:empty{display:none!important}
 .brandlogo{height:1.12em;width:auto;vertical-align:-.2em;margin:0 .12em 0 0;display:inline-block;object-fit:contain}
-/* 单团页（cbase.js soloHTML）：没有外框。团的封面（没有就用主题色渐变）铺成整页背景，从页顶开始，
-   在团名下方渐隐回纸色，所以抬头的深色字、下面的席位和留言都还读得清。随页面滚动，不用 fixed（iOS 不支持）。
+/* 单团页（cbase.js soloHTML）：没有外框。团的封面（没有就用主题色渐变）做成页顶的横幅：从页顶铺到团名下方
+   （--solo-h 由 renderSolo 量出来），压一层暗色让白字清楚，下沿用 mask 渐隐成页面底色，浅色深色模式都一样。
+   席位、团信息都在横幅下面的纸色上。搜索栏在页顶时透明、和横幅连成一片，往下滚（.sm2）才变回实底。
    #solo 仍是 .covers 网格里占满一整行的元素：搜索、缺人看板照旧把 .covers 藏起来 */
 body.single{background:transparent;position:relative}
-body.single::before{content:"";position:absolute;left:0;right:0;top:0;height:clamp(620px,92vh,980px);z-index:-1;pointer-events:none;
- background:linear-gradient(180deg,color-mix(in srgb,var(--page) 80%,transparent) 0,color-mix(in srgb,var(--page) 45%,transparent) 200px,transparent 340px,transparent 52%,color-mix(in srgb,var(--page) 70%,transparent) 76%,var(--page) 100%),
-  var(--solo-img,none) center 30%/cover no-repeat,linear-gradient(135deg,var(--solo-c,#e6b35a),color-mix(in srgb,var(--solo-c,#e6b35a) 60%,#fff))}
-body.single .hdr{background:transparent}
-body.single .bar{background:color-mix(in srgb,var(--page) 82%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+body.single::before{content:"";position:absolute;left:0;right:0;top:0;height:var(--solo-h,520px);z-index:-1;pointer-events:none;
+ background:linear-gradient(180deg,rgba(12,10,8,.62) 0,rgba(12,10,8,.30) 42%,rgba(12,10,8,.50) 100%),
+  var(--solo-img,none) center 28%/cover no-repeat,linear-gradient(135deg,var(--solo-c,#e6b35a),color-mix(in srgb,var(--solo-c,#e6b35a) 55%,#000));
+ -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 90px),transparent);mask-image:linear-gradient(180deg,#000 calc(100% - 90px),transparent)}
+body.single .hdr{background:transparent;border-bottom-color:transparent}
+body.single .hdr h1{color:#fff;text-shadow:0 2px 8px #000a}
+body.single .hdr .d,body.single .hdr .dd{color:#fffc}
+body.single:not(.sm2) .bar{background:transparent;box-shadow:none}
+body.single:not(.sm2) .bar .mt{color:#fff}
 #solo{grid-column:1/-1}
 .solo-hero{display:flex;align-items:flex-end;min-height:clamp(150px,24vw,260px);padding:8px 2px 18px;color:#fff}
 .solo-tx{width:100%}
@@ -325,8 +330,7 @@ body.single .bar{background:color-mix(in srgb,var(--page) 82%,transparent);-webk
 .solo-sts{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
 .solo-st{display:inline-flex;align-items:baseline;gap:5px;padding:5px 12px;border-radius:999px;background:#0006;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);font-size:13px;font-weight:700;border:1.5px solid #fff6}
 .solo-st b{font-size:20px;line-height:1}.solo-st.hot{background:#fff;color:color-mix(in srgb,var(--c) 70%,#000);border-color:#fff}
-.solo-body{padding:0}
-.solo-body .gmeta{margin:0 0 6px;background:color-mix(in srgb,var(--c) 8%,var(--paper));box-shadow:3px 3px 0 color-mix(in srgb,var(--c) 40%,transparent)}
+.solo-body{padding-top:10px}.solo-body .gmeta{margin:0 0 6px}
 .solo-h{display:flex;align-items:center;gap:8px;margin:22px 0 10px;font-size:17px}
 .solo-h b{font-size:12px;padding:1px 8px;border-radius:999px;background:var(--c);color:#fff}.solo-h small{font-size:12px;color:var(--ink-soft);font-weight:600}
 .solo-open{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
