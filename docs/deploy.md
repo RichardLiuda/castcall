@@ -6,7 +6,7 @@
 
 ```bash
 sudo useradd --system --create-home --home-dir /srv/castcall castcall
-sudo -u castcall git clone <这个仓库> /srv/castcall/app
+sudo -u castcall git clone https://github.com/RichardLiuda/castcall.git /srv/castcall/app
 cd /srv/castcall/app
 sudo -u castcall python3 init.py
 ```

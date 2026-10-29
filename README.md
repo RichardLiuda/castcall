@@ -11,7 +11,7 @@
 ## 三分钟跑起来
 
 ```bash
-git clone <这个仓库> castcall && cd castcall
+git clone https://github.com/RichardLiuda/castcall.git && cd castcall
 python3 init.py              # 问几个问题：单团还是多团、活动名称、管理密码…
 python3 server/server.py     # 打开 http://127.0.0.1:5510/
 ```
