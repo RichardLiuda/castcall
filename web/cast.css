@@ -310,7 +310,7 @@ body.single #xall{display:none}
 .brandlogo{height:1.12em;width:auto;vertical-align:-.2em;margin:0 .12em 0 0;display:inline-block;object-fit:contain}
 /* 单团页（cbase.js soloHTML）：没有外框。团的封面（没有就用主题色渐变）做成页顶的横幅：从页顶铺到团名下方
    （--solo-h 由 renderSolo 量出来），压一层暗色让白字清楚，下沿用 mask 渐隐成页面底色，浅色深色模式都一样。
-   席位、团信息都在横幅下面的纸色上。搜索栏在页顶时透明、和横幅连成一片，往下滚（.sm2）才变回实底。
+   席位、团信息都在横幅下面的纸色上。搜索栏一直是半透明毛玻璃，开始搜索时才变实底（见下面的 #qdim）。
    #solo 仍是 .covers 网格里占满一整行的元素：搜索、缺人看板照旧把 .covers 藏起来 */
 body.single{background:transparent;position:relative}
 body.single::before{content:"";position:absolute;left:0;right:0;top:0;height:var(--solo-h,520px);z-index:-1;pointer-events:none;
@@ -320,8 +320,7 @@ body.single::before{content:"";position:absolute;left:0;right:0;top:0;height:var
 body.single .hdr{background:transparent;border-bottom-color:transparent}
 body.single .hdr h1{color:#fff;text-shadow:0 2px 8px #000a}
 body.single .hdr .d,body.single .hdr .dd{color:#fffc}
-body.single:not(.sm2) .bar{background:transparent;box-shadow:none}
-body.single:not(.sm2) .bar .mt{color:#fff}
+body.single .bar{background:color-mix(in srgb,var(--page) 50%,transparent);box-shadow:none;-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2)}
 #solo{grid-column:1/-1}
 .solo-hero{display:flex;align-items:flex-end;min-height:clamp(150px,24vw,260px);padding:8px 2px 18px;color:#fff}
 .solo-tx{width:100%}
@@ -343,3 +342,11 @@ body.single:not(.sm2) .bar .mt{color:#fff}
 @media(min-width:760px){.solo-hero{padding:16px 2px 24px}}
 /* 手机端的瀑布流（.covers.mas）是 4px 的行 + JS 给每张 .cv 算跨几行；#solo 不是 .cv，让它按自己的内容撑开 */
 body.single .covers.mas{grid-auto-rows:auto!important}
+/* 搜索时整屏压暗（index.html 里给 body 加 .qfocus）：暗层在搜索栏（z 20）下面，结果面板浮在暗层上 */
+#qdim{position:fixed;inset:0;z-index:18;background:rgba(12,10,8,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .2s}
+body.qfocus #qdim{opacity:1;pointer-events:auto}
+body.qfocus .bar{background:var(--page)!important;box-shadow:0 2px 0 var(--line)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+body.qfocus #res{position:relative;z-index:19;background:var(--page);border-radius:16px;padding:14px;box-shadow:0 10px 40px #0006}
+@media(prefers-reduced-motion:reduce){#qdim{transition:none}}
+/* 搜索栏里的小标题：收起时宽度是 0，但文字会溢出到输入框上并接住点击（活动名一长，手机上就点不到搜索框）。裁掉、不接点击 */
+.bar .mt{overflow:hidden;text-overflow:ellipsis;pointer-events:none}

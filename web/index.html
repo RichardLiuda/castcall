@@ -360,6 +360,12 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{$$('.cv').forEach(c=>c.clas
 try{sessionStorage.removeItem('kr_rl')}catch(e){}
 function syncChrome(){if(document.documentElement.classList.contains('chrome-lock'))return;const s=scrollY>40;$('.hdr').classList.toggle('sm',s);document.body.classList.toggle('sm2',scrollY>90)}
 let tk=0;addEventListener('scroll',()=>{if(tk)return;tk=requestAnimationFrame(()=>{tk=0;syncChrome()})},{passive:true});
+/* 搜索时整屏压暗：搜索栏变实底浮在上面，结果（#res）也浮在暗层上；点暗处或 Esc 清空退出。单团、多团都用 */
+{const q=$('#q'),qd=document.createElement('div');qd.id='qdim';qd.setAttribute('aria-hidden','true');document.body.append(qd);
+ const sync=()=>document.body.classList.toggle('qfocus',document.activeElement===q||!!q.value.trim());
+ const quit=()=>{if(q.value){q.value='';q.dispatchEvent(new Event('input'))}q.blur();sync()};
+ q.addEventListener('focus',sync);q.addEventListener('blur',()=>setTimeout(sync));q.addEventListener('input',sync);
+ qd.addEventListener('click',quit);q.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();quit()}})}
 $('#q').oninput=e=>{const q=e.target.value.trim().toLowerCase();$('#m').classList.toggle('searching',!!q);if(!q){$('#res').innerHTML='';return}let n=0,h='';
  R.groups.forEach((g,gi)=>{const ix=g.members.map((m,i)=>i).filter(i=>hasCN(g.members[i])&&match(g.members[i],q));n+=ix.length;if(ix.length)h+=`<div class=grp style="--c:${g.color}"><h4>${esc(g.name)} · ${ix.length}</h4><div class=pills>${ix.map(i=>pill(gi,i,q)).join('')}</div></div>`});
  const old=new Map($$('#res .pill').map(p=>[p.dataset.g+'-'+p.dataset.i,p.getBoundingClientRect()]));
