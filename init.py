@@ -66,6 +66,8 @@ def main(argv):
   server.set_password(pw,C.AUTH)
   print(f'\n完成。名册是示例数据，登录后台（右下角的锁）就能改。')
   if shown:print(f'\n  管理密码：{shown}\n  只显示这一次，请现在记下来。忘了就再跑一次 python3 init.py --force。')
-  print(f'\n启动：python3 server/server.py\n然后打开 http://127.0.0.1:{site["server"]["port"]}/')
+  default=os.path.abspath(os.path.join(ROOT,'instance'))==C.INSTANCE
+  env='' if default else f'CASTCALL_INSTANCE={os.path.relpath(C.INSTANCE) if C.INSTANCE.startswith(os.getcwd()) else C.INSTANCE} '
+  print(f'\n启动：{env}python3 server/server.py\n然后打开 http://127.0.0.1:{site["server"]["port"]}/'+('' if default else '（同时开多个实例时，再加 CASTCALL_PORT=其他端口）'))
   return 0
 if __name__=='__main__':sys.exit(main(sys.argv[1:]))
