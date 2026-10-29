@@ -266,7 +266,7 @@ class H(SimpleHTTPRequestHandler):
       b=gen_js(p);e=etag(b);s._cc='public, max-age=31536000, immutable' if s.path.endswith('?v='+e.strip('"')) else 'no-cache'
       if e in (s.headers.get('If-None-Match') or ''):s.send_response(304);s.send_header('ETag',e);s.send_header('Content-Length','0');return s.end_headers()
       return s.send(200,b,'application/javascript; charset=utf-8',[('ETag',e)])
-    if p=='/favicon.svg':return s.send(200,FAVICON,'image/svg+xml')
+    if p in ('/favicon.svg','/favicon.ico'):return s.send(200,FAVICON,'image/svg+xml')   # .ico: pages without a <link rel=icon> (the poster)
     if p=='/api/guestbook':
       if not config.C.site['guestbook']['enabled']:return s.js(404,{'error':'留言区没开'})
       try:return s.js(200,{'items':review.public_notes()})

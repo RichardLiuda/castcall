@@ -6,3 +6,5 @@ __pycache__/
 poster/out/
 poster/cache/
 .claude/
+.e2e-out/
+.venv*/

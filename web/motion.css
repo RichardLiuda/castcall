@@ -100,8 +100,7 @@ main{max-width:calc(var(--wrap) + 32px)!important}
 @media(max-width:600px){.xall{padding:7px 9px;font-size:12px;margin-left:8px}.sm2 .bar .mt{display:none}.sm2 .bar .loc-bar{display:inline-flex;padding:3px 7px;font-size:10px;margin-right:6px}}
 @media(max-width:360px){.sm2 .bar .loc-bar{display:none}}
 
-/* cover focal points */
-#c0{--fp:47% 30%}#c1{--fp:48% 35%}#c2{--fp:50% 25%}#c3{--fp:47% 36%}#c4{--fp:59% 19%}#c5{--fp:69% 21%}#c6{--fp:65% 28%}#c7{--fp:37% 40%}#c8{--fp:50% 25%}#c9{--fp:49% 54%}#c10{--fp:71% 20%}#c11{--fp:53% 26%}#c12{--fp:48% 44%}
+/* cover focal point: --fp on .cv (default 50% 30%) */
 .cv .bg{background:var(--img,none) var(--fp,center 22%)/cover,linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,#fff))}
 @media(min-width:640px){.cv.open header{aspect-ratio:2/1!important;max-height:220px}}
 @media(max-width:639px){.cv.open header{min-height:130px!important;max-height:180px}}

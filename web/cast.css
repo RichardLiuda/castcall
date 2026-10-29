@@ -309,3 +309,5 @@ body.single .cv header{cursor:default}body.single .cv .chev,body.single #xall{di
 .hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0}
 .loc-bar:empty{display:none!important}
 .brandlogo{height:1.12em;width:auto;vertical-align:-.2em;margin:0 .12em 0 0;display:inline-block;object-fit:contain}
+/* 单团：唯一的卡片全宽常开，标题条给个固定高度（多团的 2:1 在整行宽度下会把席位挤出首屏） */
+body.single .cv.open header{aspect-ratio:auto!important;height:clamp(150px,22vw,260px)!important;min-height:0!important;max-height:none!important}
