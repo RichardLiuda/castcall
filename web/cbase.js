@@ -43,17 +43,19 @@ function pill(gi,i,q){const g=R.groups[gi],m=g.members[i];const P=v=>v||'（待�
 /* 单团页：一个团就是整个活动，不需要「点开/收起」。顶部是团的封面和人数，然后是团长、咨询、说明，
    招募中的角色排在最前、直接点「报名」；已定的阵容放后面。多个团时 index.html 走封面卡墙，不用这里。 */
 function soloHTML(gi){const g=R.groups[gi],seats=g.members.map((m,i)=>[m,i]);
- const set=seats.filter(([m])=>hasCN(m)),open=seats.filter(([m])=>!hasCN(m)&&(m.character||'').trim()),on=signupOn(g),cov=g.cover?img('covers/'+g.cover):'';
+ const set=seats.filter(([m])=>hasCN(m)),open=seats.filter(([m])=>!hasCN(m)&&(m.character||'').trim()),on=signupOn(g);
  const stat=(n,t,k)=>`<span class="solo-st${k?' '+k:''}"><b>${n}</b>${t}</span>`;
  const seat=([m,i])=>`<button type="button" class="seat-open" data-g="${gi}" data-i="${i}"><i class="ni">${esc([...(m.character||'?')][0])}</i><span class="a">${esc(m.character)}</span><span class="go">${on?'报名 →':'暂停报名'}</span></button>`;
- return `<section id="solo" style="--c:${g.color}"><header class="solo-hero"${cov?` style="--img:${cov}"`:''}><i class="solo-bg"></i><div class="solo-tx">`+
+ return `<section id="solo" style="--c:${g.color}"><header class="solo-hero"><div class="solo-tx">`+
   `<p class="solo-k">CAST CALL${crew(g)?'':' · '+g.members.length+' 个角色'}</p><h2>${esc(g.name)}</h2>`+
   `<p class="solo-sts">${stat(set.length,'已定')}${open.length?stat(open.length,'招募中','hot'):stat('✓','全员已定')}</p></div></header>`+
   `<div class="solo-body"><div class="solo-tools"></div>${gmeta(g)}`+
   (open.length?`<h3 class="solo-h">招募中<b>${open.length}</b>${on?'':'<small>暂停报名</small>'}</h3><div class="solo-open">${open.map(seat).join('')}</div>`:'')+
   `<h3 class="solo-h">${crew(g)?'成员':'已定阵容'}<b>${set.length}</b></h3>`+
   (set.length?`<div class="pills">${set.map(([m,i])=>pill(gi,i,'')).join('')}</div>`:`<p class="empty">还没有人，等你来。</p>`)+`</div></section>`}
-function renderSolo(){const cv=$('#cv');if(!cv)return;cv.innerHTML=soloHTML(0);const s=$('#solo');ciLoad(s);fitAll(s)}
+function renderSolo(){const cv=$('#cv');if(!cv)return;cv.innerHTML=soloHTML(0);
+ /* 封面不再放在卡片里：整页背景用它（cast.css body.single::before），没封面就用团的主题色渐变 */
+ const g=R.groups[0],bs=document.body.style;bs.setProperty('--solo-c',g.color);bs.setProperty('--solo-img',g.cover?img('covers/'+g.cover):'none');const s=$('#solo');ciLoad(s);fitAll(s)}
 const match=(m,q)=>!q||(m.character+'\u0001'+m.member).toLowerCase().includes(q);
 let cur=null;
 function openSheet(gi,i,dir,from){const g=R.groups[gi],n=g.members.length;if(!n)return;
