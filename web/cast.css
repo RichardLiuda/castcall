@@ -313,10 +313,12 @@ body.single #xall{display:none}
    席位、团信息都在横幅下面的纸色上。搜索栏这一条是透明的，只有搜索框和按钮是半透明毛玻璃；开始搜索时才变实底（见下面的 #qdim）。
    #solo 仍是 .covers 网格里占满一整行的元素：搜索、缺人看板照旧把 .covers 藏起来 */
 body.single{background:transparent;position:relative}
-body.single::before{content:"";position:absolute;left:0;right:0;top:0;height:var(--solo-h,520px);z-index:-1;pointer-events:none;
- background:linear-gradient(180deg,rgba(12,10,8,.62) 0,rgba(12,10,8,.30) 42%,rgba(12,10,8,.50) 100%),
+body.single::before{content:"";position:absolute;left:0;right:0;top:0;height:var(--solo-h,900px);z-index:-1;pointer-events:none;
+ background:linear-gradient(180deg,rgba(12,10,8,.62) 0,rgba(12,10,8,.30) calc(var(--solo-e,520px)*.42),rgba(12,10,8,.42) var(--solo-e,520px),rgba(12,10,8,0) calc(var(--solo-e,520px) + 220px)),
   var(--solo-img,none) center 28%/cover no-repeat,linear-gradient(135deg,var(--solo-c,#e6b35a),color-mix(in srgb,var(--solo-c,#e6b35a) 55%,#000));
- -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 90px),transparent);mask-image:linear-gradient(180deg,#000 calc(100% - 90px),transparent)}
+ /* 团名以上不透明；往下先快后慢地淡，一直拖到留言区才完全消失 */
+ -webkit-mask-image:linear-gradient(180deg,#000 calc(var(--solo-e,520px) - 80px),rgba(0,0,0,.6) calc(var(--solo-e,520px) + 90px),rgba(0,0,0,.32) calc(var(--solo-e,520px) + 280px),rgba(0,0,0,.14) calc(100% - 160px),transparent 100%);
+ mask-image:linear-gradient(180deg,#000 calc(var(--solo-e,520px) - 80px),rgba(0,0,0,.6) calc(var(--solo-e,520px) + 90px),rgba(0,0,0,.32) calc(var(--solo-e,520px) + 280px),rgba(0,0,0,.14) calc(100% - 160px),transparent 100%)}
 body.single .hdr{background:transparent;border-bottom-color:transparent}
 body.single .hdr h1{color:#fff;text-shadow:0 2px 8px #000a}
 body.single .hdr .d,body.single .hdr .dd{color:#fffc}
@@ -333,7 +335,7 @@ body.single.qfocus .bar .q{background-color:var(--paper);-webkit-backdrop-filter
 .solo-st{display:inline-flex;align-items:baseline;gap:5px;padding:5px 12px;border-radius:999px;background:#0006;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);font-size:13px;font-weight:700;border:1.5px solid #fff6}
 .solo-st b{font-size:20px;line-height:1}.solo-st.hot{background:#fff;color:color-mix(in srgb,var(--c) 70%,#000);border-color:#fff}
 .solo-body{padding-top:10px}.solo-body .gmeta{margin:0 0 6px}
-.solo-h{display:flex;align-items:center;gap:8px;margin:22px 0 10px;font-size:17px}
+.solo-h{display:flex;align-items:center;gap:8px;margin:24px 0 12px;font-size:19px;text-shadow:0 0 6px var(--page),0 0 12px var(--page),0 0 2px var(--page)}
 .solo-h b{font-size:12px;padding:1px 8px;border-radius:999px;background:var(--c);color:#fff}.solo-h small{font-size:12px;color:var(--ink-soft);font-weight:600}
 .solo-open{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
 .seat-open{display:flex;align-items:center;gap:10px;min-width:0;padding:10px 12px;border:2px dashed color-mix(in srgb,var(--c) 70%,var(--ink));border-radius:14px;background:color-mix(in srgb,var(--c) 8%,var(--paper));color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:transform .15s,box-shadow .15s}
@@ -356,3 +358,13 @@ body.qfocus #res{position:relative;z-index:19;background:var(--page);border-radi
 @media(prefers-reduced-motion:reduce){#qdim{transition:none}}
 /* 搜索栏里的小标题：收起时宽度是 0，但文字会溢出到输入框上并接住点击（活动名一长，手机上就点不到搜索框）。裁掉、不接点击 */
 .bar .mt{overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+/* 单团的角色卡片放大：每行少几张，立绘露得更多 */
+#solo .pills{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))!important;gap:12px}
+#solo .pill{font-size:17px;min-height:64px;border-radius:16px;box-shadow:3px 3px 0 var(--ink)}
+#solo .pill .a{padding:12px 14px;display:flex;align-items:center;max-width:50%}
+#solo .pill .b{padding:12px 14px;font-weight:600}
+#solo .pill .ci{width:96px}
+#solo .pill .ni{width:30px;height:30px;margin-top:-15px;font-size:14px}
+#solo .seat-open{min-height:64px;padding:12px 14px}#solo .seat-open .a{font-size:17px}#solo .seat-open .ni{width:40px;height:40px;font-size:17px}
+#solo .solo-open{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+@media(max-width:639px){#solo .pills,#solo .solo-open{grid-template-columns:1fr!important}}

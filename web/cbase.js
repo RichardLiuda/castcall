@@ -56,8 +56,8 @@ function soloHTML(gi){const g=R.groups[gi],seats=g.members.map((m,i)=>[m,i]);
 function renderSolo(){const cv=$('#cv');if(!cv)return;cv.innerHTML=soloHTML(0);
  /* 封面不再放在卡片里：整页背景用它（cast.css body.single::before），没封面就用团的主题色渐变 */
  const g=R.groups[0],bs=document.body.style;bs.setProperty('--solo-c',g.color);bs.setProperty('--solo-img',g.cover?img('covers/'+g.cover):'none');
- /* 横幅铺到团名和人数徽章下面为止 */
- const fit=()=>{const h=$('.solo-hero');if(h)bs.setProperty('--solo-h',Math.ceil(h.getBoundingClientRect().bottom+scrollY+28)+'px')};
+  /* 横幅从页顶铺到留言区，但最多到团名下 620px（--solo-h；手机页面很长，再高封面会被放大得只剩局部）；--solo-e 是团名徽章下沿，深色压层到这里为止，之后慢慢淡出 */
+ const fit=()=>{const h=$('.solo-hero'),gb=$('#guestbook');if(!h)return;const e=Math.ceil(h.getBoundingClientRect().bottom+scrollY+24);bs.setProperty('--solo-e',e+'px');const g=gb&&gb.offsetParent?Math.ceil(gb.getBoundingClientRect().top+scrollY):e+600;bs.setProperty('--solo-h',Math.max(e+240,Math.min(g,e+620))+'px')};
  fit();if(!renderSolo._on){renderSolo._on=1;addEventListener('resize',fit);addEventListener('load',fit);document.fonts&&document.fonts.ready.then(fit)}const s=$('#solo');ciLoad(s);fitAll(s)}
 const match=(m,q)=>!q||(m.character+'\u0001'+m.member).toLowerCase().includes(q);
 let cur=null;
