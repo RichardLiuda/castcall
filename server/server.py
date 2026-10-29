@@ -10,9 +10,10 @@ import hashlib,hmac,html,json,os,re,secrets,subprocess,sys,threading,time,urllib
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
 from http.cookies import SimpleCookie
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-import config,roster,review,store
+import config,roster,review,setup,store
 from config import ROOT,WEB
 LOCK=threading.Lock();SESS={};HITS={}
+SETUP={'token':None,'instance':None}   # set while the instance is not initialized: the first-run wizard needs this token
 log=roster.log
 
 # ── auth ──────────────────────────────────────────────────────────────────
@@ -21,13 +22,7 @@ def check_pw(p):
   if not a:return False
   h=hashlib.pbkdf2_hmac('sha256',p.encode(),bytes.fromhex(a['salt']),int(a.get('iter',200000))).hex()
   return hmac.compare_digest(h,a['hash'])
-def set_password(pw,path=None):
-  """Write auth.json (PBKDF2-SHA256). Used by init.py; there is no built-in default password."""
-  s=secrets.token_hex(16);path=path or config.C.AUTH
-  os.makedirs(os.path.dirname(path),exist_ok=True)
-  with open(path,'w',encoding='utf-8') as f:json.dump({'salt':s,'iter':200000,'hash':hashlib.pbkdf2_hmac('sha256',pw.encode(),bytes.fromhex(s),200000).hex()},f)
-  try:os.chmod(path,0o600)
-  except OSError:pass
+from setup import set_password   # re-exported: tests and older scripts call server.set_password
 
 # ── uploads (covers, portraits, logo) ─────────────────────────────────────
 UP_DIRS=('covers','portraits','brand')
@@ -260,6 +255,7 @@ class H(SimpleHTTPRequestHandler):
   def do_HEAD(s):return s.do_GET()
   def do_GET(s):
     p=s.path.split('?')[0]
+    if SETUP['token'] and s.setup_get(p):return
     if p in ('/','/index.html'):return s.send(200,index_html(),'text/html; charset=utf-8')
     if p in GEN:
       # ?v=<content hash> from index.html: immutable when it still matches, else revalidate via ETag
@@ -283,6 +279,46 @@ class H(SimpleHTTPRequestHandler):
         return s.send(200,b,'text/html; charset=utf-8')
     if p.startswith('/api/'):return s.js(404,{'error':'not found'})
     return super().do_HEAD() if s.command=='HEAD' else super().do_GET()
+  # ── first-run wizard (only while the instance has no roster / password) ──
+  def setup_get(s,p):
+    """True when handled. Static files stay reachable (the wizard uses cbase.css / icons.js); everything else goes to /setup."""
+    if p in ('/setup','/setup/'):
+      s.send(200,readf(os.path.join(WEB,'setup.html')).encode(),'text/html; charset=utf-8');return True
+    if p=='/api/setup/examples':s.js(200,{'items':setup.examples()});return True
+    if p=='/api/health':s.js(200,{'ok':True,'setup':True});return True
+    if p in ('/','/index.html') or p in GEN or p.startswith('/api/') or p.startswith('/poster'):
+      s.send_response(302);s.send_header('Location','/setup');s.send_header('Content-Length','0');s.end_headers();return True
+    return False
+  def setup_post(s,p):
+    if p not in ('/api/setup','/api/setup/preview'):return s.js(409,{'error':'还没初始化，先打开 /setup'})
+    hits,cap,now=s.limited('login')
+    if len(hits)>=cap:return s.js(429,{'error':'尝试次数过多，请 10 分钟后再试'})
+    try:b=s.body(400_000)
+    except Exception:return s.js(400,{'error':'提交格式不对'})
+    if not isinstance(b,dict) or not hmac.compare_digest(str(b.get('token') or ''),SETUP['token']):
+      hits.append(now);return s.js(403,{'error':'口令不对：用服务器启动时终端里打印的那个链接打开'})
+    import importer
+    text=str(b.get('names') or '');src=b.get('source') or 'blank'
+    try:
+      parsed=importer.parse(text,str(b.get('title') or '我们的团').strip()[:59] or '我们的团') if src=='paste' else None
+    except ValueError as e:return s.js(400,{'error':str(e)})
+    if p=='/api/setup/preview':
+      return s.js(200,{'summary':importer.summary(parsed),'groups':[{'name':g['name'],'n':len(g['members']),'open':sum(1 for m in g['members'] if not m['member'])} for g in parsed['groups']]} if parsed else {'summary':''})
+    try:
+      with LOCK:
+        setup.create(SETUP['instance'],title=str(b.get('title') or ''),password=str(b.get('password') or ''),date=str(b.get('date') or ''),
+          start=str(b.get('start') or ''),location=str(b.get('location') or ''),contact=str(b.get('contact') or ''),contact_label=str(b.get('contactLabel') or '微信'),
+          roster=parsed,example=str(b.get('example') or '') or None if src=='example' else None,seed=src=='example')
+        if b.get('mode')=='multi' and src!='example':
+          j=jload(config.C.SITE,{});j['mode']='multi';tmp=config.C.SITE+'.tmp'
+          with open(tmp,'w',encoding='utf-8') as f:json.dump(j,f,ensure_ascii=False,indent=1)
+          os.replace(tmp,config.C.SITE)
+        SETUP['token']=None
+    except ValueError as e:return s.js(400,{'error':str(e)})
+    except Exception as e:log('setup err',repr(e));return s.js(500,{'error':'初始化失败：'+str(e)[:120]})
+    log('setup done',config.C.INSTANCE)
+    t=secrets.token_urlsafe(32);ttl=int(float(config.C.site['server'].get('sessionDays') or 7)*86400);SESS[t]=time.time()+ttl
+    return s.js(200,{'ok':True},f'cc_s={t}; Path=/; HttpOnly; SameSite=Strict; Max-Age={ttl}')
   def admin_get(s,p):
     if not s.tok():return s.js(401,{'error':'需要登录'})
     if p=='/api/admin/signups':return s.js(200,{'items':store.signups(),'state':review.window_state()})
@@ -292,6 +328,7 @@ class H(SimpleHTTPRequestHandler):
     return s.js(404,{'error':'not found'})
   def do_POST(s):
     p=s.path.split('?')[0]
+    if SETUP['token']:return s.setup_post(p)
     if p=='/api/login':
       hits,cap,now=s.limited('login')
       if len(hits)>=cap:return s.js(429,{'error':'尝试次数过多，请 10 分钟后再试'})
@@ -412,16 +449,17 @@ def notion():
   import notion as N
   return N
 def preflight():
-  """Refuse to start half-configured: no default password, no implicit empty roster."""
-  C=config.C;miss=[p for p in (C.AUTH,C.ROSTER) if not os.path.isfile(p)]
-  if miss:
-    print('还没初始化：缺少 '+'、'.join(os.path.relpath(p,ROOT) for p in miss)+'\n先运行  python3 init.py',file=sys.stderr);return False
+  """True when the instance is ready. Otherwise the server starts in wizard mode (no default password, no implicit
+  roster): /setup, guarded by a one-time token that only the person who started the server sees in the console."""
+  C=config.C
+  if not setup.initialized(C):
+    SETUP.update(token=secrets.token_urlsafe(9),instance=C.INSTANCE);return False
   roster.validate(roster.load());config.C.site;store.db().close()
   return True
 def make_server(host=None,port=None):
   return ThreadingHTTPServer((host or config.C.host(),config.C.port() if port is None else port),H)
 def main():
-  if not preflight():return 1
+  ready=preflight()
   try:srv=make_server()
   except OSError as e:
     if e.errno in (48,98,10048):   # EADDRINUSE on macOS / Linux / Windows
@@ -430,7 +468,9 @@ def main():
   host,port=srv.server_address[:2]
   threading.Thread(target=lambda:notion().loop(LOCK),daemon=True).start()
   log('start',host,port,'notion' if config.C.notion_on() else 'local-only')
-  print(f'castcall: http://{host}:{port}/  （实例目录 {config.C.INSTANCE}，Notion {"已启用" if config.C.notion_on() else "未启用"}）',flush=True)
+  shown='127.0.0.1' if host in ('0.0.0.0','::','') else host
+  if ready:print(f'castcall: http://{shown}:{port}/  （实例目录 {config.C.INSTANCE}，Notion {"已启用" if config.C.notion_on() else "未启用"}）',flush=True)
+  else:print(f'castcall 还没初始化。在浏览器里打开下面这个链接完成设置（链接里的口令只在这里出现，别发给别人）：\n\n  http://{shown}:{port}/setup?t={SETUP["token"]}\n\n（也可以停掉服务器，用 python3 init.py 在命令行里初始化）',flush=True)
   try:srv.serve_forever()
   except KeyboardInterrupt:pass
   return 0

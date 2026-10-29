@@ -12,9 +12,11 @@
 
 ```bash
 git clone https://github.com/RichardLiuda/castcall.git && cd castcall
-python3 init.py              # 问几个问题：单团还是多团、活动名称、管理密码…
-python3 server/server.py     # 打开 http://127.0.0.1:5510/
+python3 server/server.py     # 终端里会打印一个带口令的链接，在浏览器里打开它
 ```
+
+第一次启动时网页会进入**开团向导**：选单团 / 多团，填活动信息，**把群公告或表格里的角色名单直接粘贴进去**，设管理密码，完成。
+喜欢命令行的话也可以先跑 `python3 init.py`（一问一答），名单之后用 `python3 tools/import.py 名单.txt` 导入。
 
 右下角的锁是后台入口。示例名册登录后就能改：加团、加角色、上传封面和立绘、审核报名。
 

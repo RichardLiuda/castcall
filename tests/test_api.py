@@ -46,12 +46,14 @@ class Auth(Base):
     edit_site(lambda j:j['server'].update(trustProxyHeader='X-Forwarded-For'))
     for i in range(5):s.c.req('POST','/api/login',{'password':'x'},headers={'X-Forwarded-For':'10.0.0.1'})
     s.assertEqual(s.c.req('POST','/api/login',{'password':PW},headers={'X-Forwarded-For':'10.0.0.2'}).status,200)
-  def test_preflight_refuses_without_auth(s):
+  def test_uninitialized_server_goes_to_wizard(s):
     import server
-    import contextlib,io
     os.remove(config.C.AUTH)
-    with contextlib.redirect_stderr(io.StringIO()) as err:s.assertFalse(server.preflight())
-    s.assertIn('init.py',err.getvalue())
+    try:
+      s.assertFalse(server.preflight());s.assertTrue(server.SETUP['token'])
+      r=s.c.get('/');s.assertEqual(r.status,302);s.assertEqual(r.header('location'),'/setup')
+      s.assertEqual(s.c.post('/api/login',{'password':PW}).status,409)
+    finally:server.SETUP.update(token=None,instance=None)
 
 class Saving(Base):
   def test_save_chain_backup_outbox(s):
@@ -185,5 +187,67 @@ class Examples(unittest.TestCase):
       with s.subTest(f=os.path.basename(f)):
         roster.validate(d)
         s.assertTrue(all(not m.get('id') for g in d['groups'] for m in g['members']),'examples carry no ids')
+
+class Importer(unittest.TestCase):
+  def test_text_formats(s):
+    import importer
+    d=importer.parse('## A团\n> 说明\n1. 古河渚 云果\n冈崎朋也\n藤林杏：糖球圆\n- 春原阳平 | 待定\n## 摄影\n摄影 阿光')
+    s.assertEqual([g['name'] for g in d['groups']],['A团','摄影'])
+    s.assertEqual(d['groups'][0]['note'],'说明');s.assertEqual(d['groups'][1].get('kind'),'crew')
+    s.assertEqual([(m['character'],m['member']) for m in d['groups'][0]['members']],[('古河渚','云果'),('冈崎朋也',''),('藤林杏','糖球圆'),('春原阳平','')])
+    s.assertEqual(importer.parse('古河渚\t云果','我们')['groups'][0]['name'],'我们')
+    s.assertRaises(ValueError,importer.parse,'\n\n## 空团\n')
+  def test_csv(s):
+    import importer
+    d=importer.parse('团,角色,CN\nCLANNAD,古河渚,云果\nCLANNAD,冈崎朋也,\nKanon,月宫亚由,大圆\n')
+    s.assertEqual([(g['name'],len(g['members'])) for g in d['groups']],[('CLANNAD',2),('Kanon',1)])
+  def test_merge_never_overwrites(s):
+    import importer
+    base={'groups':[{'name':'A','color':'#111111','members':[{'character':'x','member':'甲'},{'character':'y','member':''}]}]}
+    ag,ar,fl=importer.merge(base,importer.parse('## A\nx 乙\ny 丙\nz\n## B\nw'))
+    s.assertEqual((ag,ar,fl),(1,2,1));s.assertEqual(base['groups'][0]['members'][0]['member'],'甲');s.assertEqual(base['groups'][0]['members'][1]['member'],'丙')
+
+class Wizard(unittest.TestCase):
+  def setUp(s):
+    import tempfile,server
+    s.dir=tempfile.mkdtemp(prefix='castcall-wz-');config.use(s.dir);server.HITS.clear();server.SESS.clear();server.bg=lambda fn:fn()
+    s.assertFalse(server.preflight());s.tok=server.SETUP['token'];s.c=Client()
+  def tearDown(s):
+    import shutil,server
+    server.SETUP.update(token=None,instance=None);shutil.rmtree(s.dir,ignore_errors=True)
+  def body(s,**k):
+    b={'token':s.tok,'mode':'single','title':'测试团片','date':'2026-12-12','start':'2026-12-12T11:00:00+08:00','location':'公园',
+       'contact':'微信 abc','contactLabel':'QQ','source':'paste','names':'古河渚 云果\n冈崎朋也','password':'pw-12345678'};b.update(k);return b
+  def test_wizard_flow(s):
+    s.assertEqual(s.c.get('/setup').status,200)
+    s.assertEqual(s.c.post('/api/setup',s.body(token='wrong')).status,403)
+    pv=s.c.post('/api/setup/preview',s.body());s.assertEqual(pv.status,200);s.assertIn('1 已定',pv.json()['summary'])
+    r=s.c.post('/api/setup',s.body());s.assertEqual(r.status,200,r.text)
+    s.assertTrue(s.c.get('/api/me').json()['auth'],'wizard logs the admin in')
+    import roster
+    d=roster.load();s.assertEqual([m['member'] for m in d['groups'][0]['members']],['云果',''])
+    site=config.C.site;s.assertEqual(site['event']['title'],'测试团片');s.assertEqual(site['signup']['contactLabel'],'QQ')
+    s.assertEqual(s.c.get('/').status,200)
+    s.assertEqual(s.c.post('/api/setup',s.body()).status,404,'wizard closes after the first success')
+  def test_wizard_multi_blank_and_example(s):
+    r=s.c.post('/api/setup',s.body(mode='multi',source='blank'));s.assertEqual(r.status,200,r.text)
+    s.assertEqual(config.C.site['mode'],'multi')
+  def test_wizard_example(s):
+    r=s.c.post('/api/setup',s.body(source='example',example='key-single'));s.assertEqual(r.status,200,r.text)
+    import store;s.assertGreaterEqual(len(store.signups('pending')),3)
+  def test_short_password(s):
+    s.assertEqual(s.c.post('/api/setup',s.body(password='short')).status,400)
+
+class ImportCLI(Base):
+  def test_import_merge_and_replace(s):
+    import contextlib,io,tempfile
+    from helpers import ROOT
+    sys.path.insert(0,os.path.join(ROOT,'tools'));imp=__import__('import')
+    f=os.path.join(s.dir,'n.txt')
+    with open(f,'w',encoding='utf-8') as fh:fh.write('## 新团\n角色甲 小甲\n角色乙\n')
+    with contextlib.redirect_stdout(io.StringIO()):s.assertEqual(imp.main([f,'--instance',s.dir]),0)
+    names=[g['name'] for g in s.roster()['groups']];s.assertIn('新团',names);s.assertGreater(len(names),1)
+    with contextlib.redirect_stdout(io.StringIO()):s.assertEqual(imp.main([f,'--instance',s.dir,'--replace']),0)
+    s.assertEqual([g['name'] for g in s.roster()['groups']],['新团'])
 
 if __name__=='__main__':unittest.main()

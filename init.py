@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""第一次用：生成实例目录（默认 ./instance）。
+"""第一次用：生成实例目录（默认 ./instance）。也可以直接启动服务器，在浏览器里走初始化向导。
 
   python3 init.py                    # 一问一答
   python3 init.py --mode single --title "XX 团片" --yes      # 不问，其余用默认值，密码随机生成并打印一次
+  python3 init.py --import 名单.txt --title "XX 团片" --yes  # 名册直接用一份名单（格式见 server/importer.py）
   python3 init.py --example key-demo --yes                   # 用 examples/roster.key-demo.json 当初始名册（13 个团的大样例），
                                                              # 顺带生成占位封面、几条留言和几条待审报名（--no-seed 不要）
 
-会写出 site.json（活动信息）、roster.json（示例名册）、auth.json（管理密码）。已经初始化过的目录不会被覆盖，
+会写出 site.json（活动信息）、roster.json（名册）、auth.json（管理密码）。已经初始化过的目录不会被覆盖，
 除非加 --force（只重写 site.json 和 auth.json，名册永远不覆盖）。"""
-import argparse,getpass,json,os,secrets,shutil,sys
+import argparse,getpass,json,os,secrets,sys
 ROOT=os.path.dirname(os.path.abspath(__file__));sys.path.insert(0,os.path.join(ROOT,'server'))
-import config
+import config,setup
 def ask(q,default='',yes=False):
   if yes:return default
   a=input(f'{q}' + (f' [{default}]' if default else '') + '：').strip()
@@ -22,17 +23,29 @@ def main(argv):
   ap.add_argument('--location');ap.add_argument('--contact',help='缺人看板上的联系方式，如 "微信 abc123"')
   ap.add_argument('--password',help='管理密码（不给就问；--yes 时随机生成）')
   ap.add_argument('--example',help='初始名册用 examples/roster.<名字>.json（multi / single / key-demo / key-single）；默认按 --mode')
+  ap.add_argument('--import',dest='imp',help='初始名册用这份名单（文本或 CSV，- 表示标准输入）')
+  ap.add_argument('--blank',action='store_true',help='不要示例名册，从一个空团开始')
   ap.add_argument('--no-seed',action='store_true',help='用 --example 时不生成占位封面、留言和待审报名')
   ap.add_argument('--yes',action='store_true',help='不提问，没给的都用默认值');ap.add_argument('--force',action='store_true')
   a=ap.parse_args(argv);C=config.use(a.instance);y=a.yes
   if a.example:
-    ex=os.path.join(ROOT,'examples',f'roster.{a.example}.json')
-    if not os.path.isfile(ex):print('没有这个样例：'+ex);return 1
+    ex=setup.example_path(a.example)
+    if not ex:print('没有这个样例：'+a.example);return 1
     if not a.mode:
       with open(ex,encoding='utf-8') as f:a.mode='single' if len(json.load(f)['groups'])==1 else 'multi'
   if os.path.exists(C.ROSTER) and not a.force:
     print(f'{C.INSTANCE} 已经初始化过了（有 roster.json）。要重设活动信息和密码，加 --force；名册不会被覆盖。');return 1
   print('castcall 初始化 → '+C.INSTANCE+'\n')
+  roster=None
+  if a.imp:
+    import importer
+    if a.imp=='-':text=sys.stdin.read()
+    else:
+      with open(a.imp,encoding='utf-8-sig') as f:text=f.read()
+    try:roster=importer.parse(text,a.title or '我们的团')
+    except ValueError as e:print(e);return 1
+    print('名单：'+importer.summary(roster))
+    a.mode=a.mode or ('single' if len(roster['groups'])==1 else 'multi')
   mode=a.mode or ('single' if ask('单团还是多团？输入 1 = 单团（一个团的团片），2 = 多团（多个团同时招募）','2',y)=='1' else 'multi')
   title=a.title or ask('活动名称','示例 cos 团建' if mode=='multi' else '示例团片',y)
   date=a.date if a.date is not None else ask('日期（页面上显示的文字，可留空）','',y)
@@ -40,11 +53,6 @@ def main(argv):
   loc=a.location if a.location is not None else ask('地点（可留空）','',y)
   contact=a.contact if a.contact is not None else ask('联系方式，显示在缺人看板底部（如「微信 abc123」，可留空）','',y)
   clabel=ask('报名表里要填的联系方式叫什么（微信 / QQ / 邮箱）','微信',y)
-  cl,_,cv=contact.partition(' ') if ' ' in contact else ('',None,contact)
-  site=json.load(open(os.path.join(ROOT,'examples','site.example.json'),encoding='utf-8'))
-  site['mode']='auto'
-  site['event'].update(title=title,date=date,startAt=start,endAt='',location=loc,organizer='',contact={'label':cl,'value':cv})
-  site['signup']['contactLabel']=clabel
   pw=a.password
   if not pw and not y:
     while True:
@@ -55,23 +63,14 @@ def main(argv):
       print('两次不一样，再来。')
   shown=None
   if not pw:pw=shown=secrets.token_urlsafe(12)
-  os.makedirs(C.INSTANCE,exist_ok=True)
-  for d in (C.UPLOADS,C.POSTER,C.BACKUPS,C.LOGS):os.makedirs(d,exist_ok=True)
-  with open(C.SITE,'w',encoding='utf-8') as f:json.dump(site,f,ensure_ascii=False,indent=1)
-  if not os.path.exists(C.ROSTER):
-    shutil.copy(os.path.join(ROOT,'examples',f'roster.{a.example}.json' if a.example else f'roster.{mode}.example.json'),C.ROSTER)
-    import roster
-    d=roster.load();roster.ensure_ids(d)
-    for g in d['groups']:g['count']=len(g['members'])
-    seeded=None
-    if a.example and not a.no_seed:
-      import demo;seeded=demo.seed(d)
-    with open(C.ROSTER,'w',encoding='utf-8') as f:json.dump(d,f,ensure_ascii=False,indent=1)
-    if seeded:print(f'样例：{seeded["covers"]} 张占位封面、{seeded["notes"]} 条留言、{seeded["signups"]} 条待审报名（后台「审核」里能看到）')
-  import server
-  server.set_password(pw,C.AUTH)
-  print(f'\n完成。名册是示例数据，登录后台（右下角的锁）就能改。')
+  example=None if roster is not None or a.blank else (a.example or f'{mode}.example')
+  try:C,seeded=setup.create(C.INSTANCE,title=title,password=pw,date=date,start=start,location=loc,contact=contact,
+                            contact_label=clabel,roster=roster,example=example,seed=bool(a.example) and not a.no_seed,force=a.force)
+  except ValueError as e:print(e);return 1
+  if seeded:print(f'样例：{seeded["covers"]} 张占位封面、{seeded["notes"]} 条留言、{seeded["signups"]} 条待审报名（后台「审核」里能看到）')
+  print(f'\n完成。登录后台（右下角的锁）就能改名册。')
   if shown:print(f'\n  管理密码：{shown}\n  只显示这一次，请现在记下来。忘了就再跑一次 python3 init.py --force。')
+  site=config.C.site
   default=os.path.abspath(os.path.join(ROOT,'instance'))==C.INSTANCE
   env='' if default else f'CASTCALL_INSTANCE={os.path.relpath(C.INSTANCE) if C.INSTANCE.startswith(os.getcwd()) else C.INSTANCE} '
   print(f'\n启动：{env}python3 server/server.py\n然后打开 http://127.0.0.1:{site["server"]["port"]}/'+('' if default else '（同时开多个实例时，再加 CASTCALL_PORT=其他端口）'))
