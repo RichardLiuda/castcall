@@ -1,0 +1,684 @@
+{
+ "groups": [
+  {
+   "name": "CLANNAD",
+   "color": "#5fa84a",
+   "members": [
+    {
+     "character": "春原阳平",
+     "member": "橘丸"
+    },
+    {
+     "character": "冈崎朋也",
+     "member": "白花枝"
+    },
+    {
+     "character": "古河渚",
+     "member": "云果"
+    },
+    {
+     "character": "一之濑琴美",
+     "member": "栗咩"
+    },
+    {
+     "character": "春原芽衣",
+     "member": "熊宝团"
+    },
+    {
+     "character": "坂上智代",
+     "member": "小喵汪"
+    },
+    {
+     "character": "藤林杏",
+     "member": "糖球圆"
+    },
+    {
+     "character": "藤林椋",
+     "member": "糖枝"
+    },
+    {
+     "character": "伊吹风子",
+     "member": "风圆"
+    },
+    {
+     "character": "汐",
+     "member": "阿圆"
+    },
+    {
+     "character": "早苗",
+     "member": "团糖"
+    },
+    {
+     "character": "秋生",
+     "member": "猫叽"
+    },
+    {
+     "character": "相乐美佐枝",
+     "member": "白咩"
+    },
+    {
+     "character": "志麻贺津纪",
+     "member": "暖枝"
+    },
+    {
+     "character": "芳野祐介",
+     "member": "月球"
+    },
+    {
+     "character": "柊胜平",
+     "member": "糖汪"
+    },
+    {
+     "character": "伊吹公子",
+     "member": "熊球"
+    },
+    {
+     "character": "宫泽有纪宁",
+     "member": "小花糕"
+    },
+    {
+     "character": "冈崎直幸",
+     "member": "栗卷"
+    },
+    {
+     "character": "幸村俊夫",
+     "member": "狐咩仔"
+    }
+   ]
+  },
+  {
+   "name": "Kanon",
+   "color": "#5b8fd0",
+   "members": [
+    {
+     "character": "亚由",
+     "member": "大圆"
+    },
+    {
+     "character": "祐一",
+     "member": "秋汪"
+    },
+    {
+     "character": "真琴",
+     "member": "团花"
+    },
+    {
+     "character": "名雪",
+     "member": "暖酱果"
+    },
+    {
+     "character": "川澄舞",
+     "member": "冬花"
+    },
+    {
+     "character": "美坂栞",
+     "member": "冬喵"
+    },
+    {
+     "character": "仓田佐佑理",
+     "member": "狐叽酱"
+    },
+    {
+     "character": "水濑秋子",
+     "member": "芋叶"
+    },
+    {
+     "character": "美坂香里",
+     "member": "鹿糕"
+    },
+    {
+     "character": "北川润",
+     "member": "柚糯"
+    }
+   ]
+  },
+  {
+   "name": "AIR",
+   "color": "#3fb2c8",
+   "members": [
+    {
+     "character": "国崎往人",
+     "member": "鲸芽"
+    },
+    {
+     "character": "观铃",
+     "member": "茶糯"
+    },
+    {
+     "character": "小满",
+     "member": "橘枝"
+    },
+    {
+     "character": "雾岛佳乃",
+     "member": "狐花"
+    },
+    {
+     "character": "远野美凪",
+     "member": "青团"
+    },
+    {
+     "character": "神尾晴子",
+     "member": "夏桃卷"
+    },
+    {
+     "character": "柳也",
+     "member": "月卷子"
+    },
+    {
+     "character": "神奈备命",
+     "member": "豆桃卷"
+    },
+    {
+     "character": "雾岛圣",
+     "member": ""
+    },
+    {
+     "character": "里叶",
+     "member": ""
+    }
+   ]
+  },
+  {
+   "name": "Little Busters!",
+   "color": "#e08a2c",
+   "members": [
+    {
+     "character": "理树",
+     "member": "猫团"
+    },
+    {
+     "character": "枣铃",
+     "member": "雨叽"
+    },
+    {
+     "character": "库特",
+     "member": "猫球"
+    },
+    {
+     "character": "小毬",
+     "member": "栗宝"
+    },
+    {
+     "character": "美鱼",
+     "member": "阿汪酱"
+    },
+    {
+     "character": "恭介",
+     "member": "豆酱花"
+    },
+    {
+     "character": "真人",
+     "member": "猫宝球"
+    },
+    {
+     "character": "谦吾",
+     "member": "柠枝"
+    },
+    {
+     "character": "叶留佳",
+     "member": "夏丸"
+    },
+    {
+     "character": "来谷",
+     "member": "芋饼饼"
+    },
+    {
+     "character": "佳奈多",
+     "member": "冬团"
+    },
+    {
+     "character": "沙耶",
+     "member": "小圆糕"
+    },
+    {
+     "character": "佐佐美",
+     "member": "白球"
+    }
+   ]
+  },
+  {
+   "name": "Rewrite",
+   "color": "#9a6cc4",
+   "members": [
+    {
+     "character": "瑚太郎",
+     "member": "芋喵球"
+    },
+    {
+     "character": "中津静流",
+     "member": "夏汪"
+    },
+    {
+     "character": "小鸟",
+     "member": "阿果"
+    },
+    {
+     "character": "凤千早",
+     "member": "大糯"
+    },
+    {
+     "character": "此花露西亚",
+     "member": "大圆喵"
+    },
+    {
+     "character": "篝",
+     "member": "糖咩"
+    },
+    {
+     "character": "凤咲夜",
+     "member": "阿团圆"
+    },
+    {
+     "character": "千里朱音",
+     "member": "鲸宝"
+    },
+    {
+     "character": "吉野",
+     "member": "秋糕"
+    },
+    {
+     "character": "御堂",
+     "member": "猫枝"
+    },
+    {
+     "character": "亚斯茗",
+     "member": "夏团"
+    },
+    {
+     "character": "江坂",
+     "member": "芋花"
+    },
+    {
+     "character": "灯花",
+     "member": ""
+    },
+    {
+     "character": "井上",
+     "member": ""
+    },
+    {
+     "character": "志麻子",
+     "member": ""
+    },
+    {
+     "character": "今宫",
+     "member": ""
+    }
+   ]
+  },
+  {
+   "name": "Angel Beats!",
+   "color": "#2f5597",
+   "members": [
+    {
+     "character": "音无结弦",
+     "member": "桃叶"
+    },
+    {
+     "character": "立华奏",
+     "member": "阿仔"
+    },
+    {
+     "character": "日向秀树",
+     "member": "暖桃"
+    },
+    {
+     "character": "由依",
+     "member": "团桃"
+    },
+    {
+     "character": "岩泽雅美",
+     "member": "茶酱"
+    },
+    {
+     "character": "T.K",
+     "member": "大枝圆"
+    },
+    {
+     "character": "仲村由理",
+     "member": "白汪"
+    },
+    {
+     "character": "高松",
+     "member": "柠桃"
+    },
+    {
+     "character": "野田",
+     "member": "暖酱泡"
+    },
+    {
+     "character": "藤卷",
+     "member": "栗叶"
+    },
+    {
+     "character": "松下五段",
+     "member": "秋仔"
+    },
+    {
+     "character": "大山",
+     "member": "暖圆"
+    },
+    {
+     "character": "竹山",
+     "member": "豆糖"
+    },
+    {
+     "character": "直井文人",
+     "member": "团卷"
+    },
+    {
+     "character": "入江美雪",
+     "member": "米泡"
+    },
+    {
+     "character": "久子",
+     "member": "桃咩喵"
+    },
+    {
+     "character": "关根",
+     "member": "猫仔"
+    },
+    {
+     "character": "椎名",
+     "member": ""
+    },
+    {
+     "character": "游佐",
+     "member": ""
+    }
+   ]
+  },
+  {
+   "name": "Charlotte",
+   "color": "#c94a4a",
+   "members": [
+    {
+     "character": "乙坂有宇",
+     "member": "栗酥"
+    },
+    {
+     "character": "高成丈士郎",
+     "member": "大叽"
+    },
+    {
+     "character": "西森柚咲",
+     "member": "柠圆"
+    },
+    {
+     "character": "友利奈绪",
+     "member": "云酱酥"
+    },
+    {
+     "character": "黑羽美砂",
+     "member": "米丸"
+    },
+    {
+     "character": "乙坂步未",
+     "member": "鹿叽酥"
+    },
+    {
+     "character": "熊耳",
+     "member": "柚酥"
+    },
+    {
+     "character": "乙坂隼翼",
+     "member": "兔泡"
+    },
+    {
+     "character": "勇气少女",
+     "member": "芋酱"
+    }
+   ]
+  },
+  {
+   "name": "夏日口袋",
+   "color": "#1fa39a",
+   "members": [
+    {
+     "character": "羽依里",
+     "member": "白饼"
+    },
+    {
+     "character": "白羽",
+     "member": "糖叶"
+    },
+    {
+     "character": "羽未",
+     "member": "夏球"
+    },
+    {
+     "character": "苍",
+     "member": "小花"
+    },
+    {
+     "character": "鸥",
+     "member": "米宝"
+    },
+    {
+     "character": "紬",
+     "member": "茶花"
+    },
+    {
+     "character": "良一",
+     "member": "狐果"
+    },
+    {
+     "character": "天善",
+     "member": "团叽"
+    },
+    {
+     "character": "识",
+     "member": "雪子"
+    },
+    {
+     "character": "静久",
+     "member": "猫圆花"
+    },
+    {
+     "character": "野村美希",
+     "member": ""
+    }
+   ]
+  },
+  {
+   "name": "炽焰天穹",
+   "color": "#e0603a",
+   "members": [
+    {
+     "character": "茅森月歌",
+     "member": "猫饼果"
+    },
+    {
+     "character": "和泉由希",
+     "member": "茶泡"
+    },
+    {
+     "character": "东城司",
+     "member": "风汪"
+    },
+    {
+     "character": "朝仓可怜",
+     "member": "芋糯"
+    },
+    {
+     "character": "国见玉",
+     "member": "兔果"
+    },
+    {
+     "character": "逢川惠",
+     "member": "风团叶"
+    },
+    {
+     "character": "苍井绘里香",
+     "member": "晴糕宝"
+    },
+    {
+     "character": "麻里",
+     "member": "星卷糖"
+    },
+    {
+     "character": "柳美音",
+     "member": "桃糖"
+    },
+    {
+     "character": "奏多",
+     "member": "猫丸"
+    }
+   ]
+  },
+  {
+   "name": "Anemoi",
+   "color": "#b08fd0",
+   "members": [
+    {
+     "character": "辻仓朱比华",
+     "member": "青糕酥"
+    },
+    {
+     "character": "速川麦",
+     "member": "月芽"
+    },
+    {
+     "character": "速川六花",
+     "member": "雨圆"
+    },
+    {
+     "character": "淡雪阳彩",
+     "member": "柚花"
+    },
+    {
+     "character": "河濑千春",
+     "member": "雪仔"
+    },
+    {
+     "character": "小森键",
+     "member": "月叽"
+    },
+    {
+     "character": "镇长",
+     "member": "橘泡"
+    },
+    {
+     "character": "穗乃夏",
+     "member": "兔枝"
+    },
+    {
+     "character": "爱乃",
+     "member": "糖团糯"
+    },
+    {
+     "character": "小咏",
+     "member": ""
+    },
+    {
+     "character": "尾道文弥",
+     "member": ""
+    },
+    {
+     "character": "玖琉未",
+     "member": ""
+    },
+    {
+     "character": "巴隆",
+     "member": ""
+    }
+   ]
+  },
+  {
+   "name": "星之终途",
+   "color": "#22386e",
+   "members": [
+    {
+     "character": "菲莉娅",
+     "member": "星芽"
+    },
+    {
+     "character": "裘德",
+     "member": "阿汪"
+    }
+   ]
+  },
+  {
+   "name": "星之梦",
+   "color": "#7d84b8",
+   "members": [
+    {
+     "character": "星野梦美",
+     "member": "猫子"
+    },
+    {
+     "character": "星之人",
+     "member": "茶宝"
+    }
+   ]
+  },
+  {
+   "name": "摄影组",
+   "color": "#555555",
+   "members": [
+    {
+     "character": "LB摄影",
+     "member": "芋酥"
+    },
+    {
+     "character": "KANON摄影",
+     "member": "夏叽"
+    },
+    {
+     "character": "CL摄影",
+     "member": "晴酥"
+    },
+    {
+     "character": "CL摄影",
+     "member": "猫喵"
+    },
+    {
+     "character": "夏洛特摄影",
+     "member": "冬子"
+    },
+    {
+     "character": "AB摄影",
+     "member": "柠喵"
+    },
+    {
+     "character": "AB摄影",
+     "member": "豆叽"
+    },
+    {
+     "character": "罚抄摄影",
+     "member": "夏饼"
+    },
+    {
+     "character": "Anemoi摄影",
+     "member": "豆枝"
+    },
+    {
+     "character": "Air摄影",
+     "member": "桃球泡"
+    },
+    {
+     "character": "SP摄影",
+     "member": "晴叶"
+    },
+    {
+     "character": "星之梦星之终途摄影",
+     "member": "夏枝花"
+    },
+    {
+     "character": "红烧摄影",
+     "member": "芋糕"
+    },
+    {
+     "character": "自由摄影",
+     "member": "豆叶花"
+    },
+    {
+     "character": "游场拍视频",
+     "member": "橘团"
+    }
+   ],
+   "kind": "crew",
+   "note": "拍摄、修图、后勤。"
+  }
+ ]
+}

@@ -3,6 +3,7 @@
 
   python3 init.py                    # 一问一答
   python3 init.py --mode single --title "XX 团片" --yes      # 不问，其余用默认值，密码随机生成并打印一次
+  python3 init.py --example key-demo --yes                   # 用 examples/roster.key-demo.json 当初始名册（13 个团的大样例）
 
 会写出 site.json（活动信息）、roster.json（示例名册）、auth.json（管理密码）。已经初始化过的目录不会被覆盖，
 除非加 --force（只重写 site.json 和 auth.json，名册永远不覆盖）。"""
@@ -19,8 +20,14 @@ def main(argv):
   ap.add_argument('--mode',choices=('single','multi'));ap.add_argument('--title');ap.add_argument('--date');ap.add_argument('--start')
   ap.add_argument('--location');ap.add_argument('--contact',help='缺人看板上的联系方式，如 "微信 abc123"')
   ap.add_argument('--password',help='管理密码（不给就问；--yes 时随机生成）')
+  ap.add_argument('--example',help='初始名册用 examples/roster.<名字>.json（multi / single / key-demo / key-single）；默认按 --mode')
   ap.add_argument('--yes',action='store_true',help='不提问，没给的都用默认值');ap.add_argument('--force',action='store_true')
   a=ap.parse_args(argv);C=config.use(a.instance);y=a.yes
+  if a.example:
+    ex=os.path.join(ROOT,'examples',f'roster.{a.example}.json')
+    if not os.path.isfile(ex):print('没有这个样例：'+ex);return 1
+    if not a.mode:
+      with open(ex,encoding='utf-8') as f:a.mode='single' if len(json.load(f)['groups'])==1 else 'multi'
   if os.path.exists(C.ROSTER) and not a.force:
     print(f'{C.INSTANCE} 已经初始化过了（有 roster.json）。要重设活动信息和密码，加 --force；名册不会被覆盖。');return 1
   print('castcall 初始化 → '+C.INSTANCE+'\n')
@@ -50,7 +57,7 @@ def main(argv):
   for d in (C.UPLOADS,C.POSTER,C.BACKUPS,C.LOGS):os.makedirs(d,exist_ok=True)
   with open(C.SITE,'w',encoding='utf-8') as f:json.dump(site,f,ensure_ascii=False,indent=1)
   if not os.path.exists(C.ROSTER):
-    shutil.copy(os.path.join(ROOT,'examples',f'roster.{mode}.example.json'),C.ROSTER)
+    shutil.copy(os.path.join(ROOT,'examples',f'roster.{a.example}.json' if a.example else f'roster.{mode}.example.json'),C.ROSTER)
     import roster
     d=roster.load();roster.ensure_ids(d)
     for g in d['groups']:g['count']=len(g['members'])

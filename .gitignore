@@ -8,3 +8,4 @@ poster/cache/
 .claude/
 .e2e-out/
 .venv*/
+instance-*/

@@ -15,6 +15,15 @@ python3 server/server.py
 4. **报名表要填的联系方式**：微信、QQ 还是邮箱。
 5. **管理密码**：至少 8 位。直接回车会随机生成一个，**只显示一次**。
 
+想先看看名册多的时候长什么样，可以用大样例初始化。下面两份样例照搬了一次真实团建的作品、角色和空缺分布，CN 全是随机生成的假名：
+
+```bash
+python3 init.py --example key-demo      # 13 个团、150 个席位（多团）
+python3 init.py --example key-single    # 其中一个团、20 个席位（单团）
+```
+
+同时开着两个实例对比：`python3 init.py --instance instance-single --example key-single`，再用 `CASTCALL_INSTANCE=instance-single CASTCALL_PORT=5511 python3 server/server.py` 启动第二个。
+
 生成的东西都在 `instance/` 里：
 
 | 文件 | 是什么 |

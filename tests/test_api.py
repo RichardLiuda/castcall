@@ -162,4 +162,15 @@ class Poster(Base):
     r=s.c.get('/poster/master.html');s.assertEqual(r.status,200);s.assertIn('kr-poster-chrome',r.text);s.assertIn('data-slug="castcall"',r.text)
     s.assertIn('posterlink-hdr',s.c.get('/').text)
 
+class Examples(unittest.TestCase):
+  def test_every_example_roster_is_valid(s):
+    import glob,roster
+    from helpers import ROOT,rj
+    fs=glob.glob(os.path.join(ROOT,'examples','roster.*.json'));s.assertGreaterEqual(len(fs),4)
+    for f in fs:
+      d=rj(f)
+      with s.subTest(f=os.path.basename(f)):
+        roster.validate(d)
+        s.assertTrue(all(not m.get('id') for g in d['groups'] for m in g['members']),'examples carry no ids')
+
 if __name__=='__main__':unittest.main()
