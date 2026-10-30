@@ -325,6 +325,14 @@ class H(SimpleHTTPRequestHandler):
     if p=='/api/admin/guestbook':return s.js(200,{'items':store.notes(limit=1000)})
     if p=='/api/admin/counts':return s.js(200,store.counts())
     if p=='/api/admin/poster':return s.js(200,poster_status())
+    if p=='/api/admin/art/search':
+      import artsearch
+      q=urllib.parse.parse_qs(urllib.parse.urlparse(s.path).query);Q=lambda k:(q.get(k) or [''])[0]
+      res,err=artsearch.search('cover' if Q('kind')=='cover' else 'portrait',Q('q'),Q('group'))
+      return s.js(200 if res or not err else 502,{'items':res[:12],'error':err})
+    if p=='/api/admin/art/auto':
+      import artsearch
+      return s.js(200,artsearch.auto_status())
     return s.js(404,{'error':'not found'})
   def do_POST(s):
     p=s.path.split('?')[0]
@@ -426,6 +434,21 @@ class H(SimpleHTTPRequestHandler):
       if not g or not c:return s.js(400,{'error':'要带 group 和 character'})
       with LOCK:set_portrait(g,c,path or None)
       return s.js(200,{'ok':True})
+    if p=='/api/admin/art/pick':
+      import artsearch
+      try:b=s.body(8192)
+      except Exception:return s.js(400,{'error':'bad request'})
+      kind,url,g,c=str(b.get('kind') or ''),str(b.get('url') or ''),str(b.get('group') or ''),str(b.get('character') or '')
+      try:
+        if kind=='cover':name=artsearch.save_cover(g,url,LOCK)
+        else:
+          if not g or not c:return s.js(400,{'error':'立绘要带 group 和 character'})
+          with LOCK:name=artsearch.save_portrait(g,c,url)
+      except ValueError as e:return s.js(400,{'error':str(e)})
+      log('art pick',kind,g,c,name);return s.js(200,{'ok':True,'file':name})
+    if p=='/api/admin/art/auto':
+      import artsearch
+      return s.js(202,{'ok':True,'started':artsearch.auto_bg(LOCK),**artsearch.auto_status()})
     if p=='/api/admin/poster':
       if not config.C.site['poster']['enabled']:return s.js(404,{'error':'一图流没开（site.json poster.enabled）'})
       if not poster_available():return s.js(501,{'error':'一图流是可选功能，服务器上还没装：pip install -r requirements-poster.txt && playwright install chromium'})

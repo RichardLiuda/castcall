@@ -9,23 +9,14 @@
 只要 .env 里有 NOTION_TOKEN 和对应的 NOTION_*_DB，服务器就会自动启用；三个库各自独立，可以只接一个。
 库 ID 直接复制 Notion 链接里那串 32 位字符就行：新版 API（2025-09-03）会自动换算成 data source，
 老的 workspace 回落到 2022-06-28 的 database 接口。教程见 docs/notion.md。"""
-import json,os,re,sys,threading,time,urllib.error,urllib.request
+import json,os,re,sys,threading,time
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-import config,roster,store,review
+import config,net,roster,store,review
 API='https://api.notion.com/v1/'
 NEW,OLD='2025-09-03','2022-06-28'
 def call(path,body=None,method='GET',version=NEW,timeout=20):
   """→ (json, None) or (None, 'HTTP 404 object_not_found: …'). Never raises."""
-  data=json.dumps(body,ensure_ascii=False).encode() if body is not None else None
-  req=urllib.request.Request(API+path,data=data,method=method)
-  req.add_header('Authorization','Bearer '+config.C.notion_token());req.add_header('Content-Type','application/json');req.add_header('Notion-Version',version)
-  try:
-    with urllib.request.urlopen(req,timeout=timeout) as r:return json.loads(r.read().decode('utf-8','replace') or '{}'),None
-  except urllib.error.HTTPError as e:
-    try:d=json.loads(e.read().decode('utf-8','replace'))
-    except Exception:d={}
-    return None,f"HTTP {e.code} {d.get('code','')}: {str(d.get('message',''))[:160]}"
-  except Exception as e:return None,repr(e)[:160]
+  return net.request(API+path,body,method,{'Authorization':'Bearer '+config.C.notion_token(),'Notion-Version':version},timeout)
 UUID=re.compile(r'[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}')
 def dash(x):
   """A bare id, a dashed id, or a whole Notion link → dashed id. The ?v= part of a link is a view, not the database."""
