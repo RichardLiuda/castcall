@@ -21,6 +21,8 @@
 
 **现在会怎样** `server/artsearch.py` 在 Bangumi 失败时会退到 AniList，所以不会再 0 张：一次实测配到 1 张封面 + 3 张立绘。但 AniList 只有日文 / 罗马字名，中文角色名大多对不上，会显示「没有可靠的匹配」。
 
+AniList 本身也会抖：同一条命令第一次跑可能封面 `TimeoutError`、第二次就配上了。结果不稳的时候重跑一遍比调参数有用。
+
 **怎么办**
 
 - 能直连就别给 `api.bgm.tv` 挂代理；挂了也通不了的话，接受 AniList 的结果，剩下的在后台「找立绘」手选。
@@ -93,6 +95,21 @@ CASTCALL_INSTANCE=instance-kanon CASTCALL_PORT=5511 python3 server/server.py
 - **AniList 的横幅是超宽图**（约 1900×400）：以前铺满整屏 banner（`background-size: cover`）时会被放大成中间一条糊掉的局部。现在一键配图在 AniList 上优先拿竖版封面；后台手选了横幅（宽:高 > 2）时，单团页拆成两层：页顶一条清晰带（到团名下沿，不超过原图高，不放大），往下是同一张图的模糊铺底，照旧一路铺到留言区。桌面上基本是完整构图；手机竖屏只能看到横幅中间一段，手机为主的站还是换竖版或方图。
 - **一键配图是串行的**：每个角色至少一次请求 + 0.35 秒间隔，一百多个角色要跑几分钟。后台跑的时候没有进度条（接口只回 `running: true`），不要以为卡死；跑完 `GET /api/admin/art/auto` 能拿到 `report`。
 - 配图只下载 Bangumi / AniList 图床上的图，别处的 URL 会被拒绝（不是通用下载器）。
+
+### 用接口手换封面要两步
+
+`POST /api/admin/upload?kind=cover&group=Kanon` 只把文件存进 `uploads/covers/`，返回 `{"ok":true,"file":"xxxx.png"}`，**不会**改名册里的 `cover`。后台是上传完再 `PUT /api/data` 把文件名写回去。只有 `kind=portrait` 会顺带把这一席指到新图（内部调 `set_portrait`）。
+
+所以脚本换封面得：
+
+```bash
+curl -b cookie -X POST -H 'Content-Type: image/png' --data-binary @cover.png \
+  'http://127.0.0.1:5510/api/admin/upload?kind=cover&group=Kanon'
+# → file: xxxx.png
+curl -b cookie http://127.0.0.1:5510/api/data > d.json   # 改 cover 后 PUT 回去
+```
+
+只传第一步的话，页面上看不到任何变化，容易以为上传失败。
 
 ---
 
