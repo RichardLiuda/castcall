@@ -18,6 +18,12 @@ python3 server/server.py     # 终端里会打印一个带口令的链接，在�
 第一次启动时网页会进入**开团向导**：选单团 / 多团，填活动信息，**把群公告或表格里的角色名单直接粘贴进去**，设管理密码，完成。
 喜欢命令行的话也可以先跑 `python3 init.py`（一问一答），名单之后用 `python3 tools/import.py 名单.txt` 导入。
 
+**用 AI 助手（Claude Code、Cursor 等）的话**：把名单（文本、表格、截图都行）扔给它，说「用 castcall 帮我搭招募页」。
+仓库里的 [AGENTS.md](AGENTS.md) 和 [skills/castcall-setup](skills/castcall-setup/SKILL.md) 会告诉它怎么初始化、导入名单、自动配图。
+
+**配图**：后台工具条「一键配图」会从 Bangumi / AniList 给缺图的团找封面、给角色找立绘（只配有把握的）；
+单个角色可以在编辑框里点「找立绘」自己挑。命令行：`python3 server/artsearch.py auto`。
+
 右下角的锁是后台入口。示例名册登录后就能改：加团、加角色、上传封面和立绘、审核报名。
 
 需要 Python 3.9 以上，macOS / Linux / Windows 都行。
