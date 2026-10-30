@@ -45,19 +45,38 @@ function pill(gi,i,q){const g=R.groups[gi],m=g.members[i];const P=v=>v||'（待�
 function soloHTML(gi){const g=R.groups[gi],seats=g.members.map((m,i)=>[m,i]);
  const set=seats.filter(([m])=>hasCN(m)),open=seats.filter(([m])=>!hasCN(m)&&(m.character||'').trim()),on=signupOn(g);
  const stat=(n,t,k)=>`<span class="solo-st${k?' '+k:''}"><b>${n}</b>${t}</span>`;
- const seat=([m,i])=>`<button type="button" class="seat-open" data-g="${gi}" data-i="${i}"><i class="ni">${esc([...(m.character||'?')][0])}</i><span class="a">${esc(m.character)}</span><span class="go">${on?'报名 →':'暂停报名'}</span></button>`;
+ const seat=(m,i,gj,can)=>`<button type="button" class="seat-open" data-g="${gj}" data-i="${i}"><i class="ni">${esc([...(m.character||'?')][0])}</i><span class="a">${esc(m.character)}</span><span class="go">${can?'报名 →':'暂停报名'}</span></button>`;
+ /* 工作组（摄影 / 后勤 / 妆娘…）不是「另一个团」，但人得在页面上：已定的进胶囊，缺的留报名入口。
+    放在已定阵容之后，一个 crew 组一段。 */
+ const crewBlock=R.groups.map((c,j)=>[c,j]).filter(([c,j])=>j!==gi&&crew(c)).map(([c,j])=>{
+  const cs=c.members.map((m,i)=>[m,i]),cset=cs.filter(([m])=>hasCN(m)),
+   copen=cs.filter(([m])=>!hasCN(m)&&(m.character||'').trim()),con=signupOn(c);
+  if(!cset.length&&!copen.length)return '';
+  return `<h3 class="solo-h">${esc(c.name)}<b>${cset.length}</b></h3>`+
+   (cset.length?`<div class="pills">${cset.map(([m,i])=>pill(j,i,'')).join('')}</div>`:'')+
+   (copen.length?`<div class="solo-open">${copen.map(([m,i])=>seat(m,i,j,con)).join('')}</div>`:'');
+ }).join('');
  return `<section id="solo" style="--c:${g.color}"><header class="solo-hero"><div class="solo-tx">`+
   `<p class="solo-k">CAST CALL${crew(g)?'':' · '+g.members.length+' 个角色'}</p><h2>${esc(g.name)}</h2>`+
   `<p class="solo-sts">${stat(set.length,'已定')}${open.length?stat(open.length,'招募中','hot'):stat('✓','全员已定')}</p></div></header>`+
   `<div class="solo-body"><div class="solo-tools"></div>${gmeta(g)}`+
-  (open.length?`<h3 class="solo-h">招募中<b>${open.length}</b>${on?'':'<small>暂停报名</small>'}</h3><div class="solo-open">${open.map(seat).join('')}</div>`:'')+
+  (open.length?`<h3 class="solo-h">招募中<b>${open.length}</b>${on?'':'<small>暂停报名</small>'}</h3><div class="solo-open">${open.map(([m,i])=>seat(m,i,gi,on)).join('')}</div>`:'')+
   `<h3 class="solo-h">${crew(g)?'成员':'已定阵容'}<b>${set.length}</b></h3>`+
-  (set.length?`<div class="pills">${set.map(([m,i])=>pill(gi,i,'')).join('')}</div>`:`<p class="empty">还没有人，等你来。</p>`)+`</div></section>`}
-function renderSolo(){const cv=$('#cv');if(!cv)return;cv.innerHTML=soloHTML(0);
+  (set.length?`<div class="pills">${set.map(([m,i])=>pill(gi,i,'')).join('')}</div>`:`<p class="empty">还没有人，等你来。</p>`)+
+  crewBlock+`</div></section>`}
+function renderSolo(){const cv=$('#cv');if(!cv)return;
+ // 主团 = 第一个非 crew 组；全是 crew 时就退回第一个
+ const gi=Math.max(0,R.groups.findIndex(x=>!crew(x)));cv.innerHTML=soloHTML(gi);
  /* 封面不再放在卡片里：整页背景用它（cast.css body.single::before），没封面就用团的主题色渐变 */
- const g=R.groups[0],bs=document.body.style;bs.setProperty('--solo-c',g.color);bs.setProperty('--solo-img',g.cover?img('covers/'+g.cover):'none');
+ const g=R.groups[gi],bs=document.body.style;bs.setProperty('--solo-c',g.color);bs.setProperty('--solo-img',g.cover?img('covers/'+g.cover):'none');
+ /* 宽横幅不能 cover 撑满整屏（cast.css body.single.wide-cover）：量一下图片比例和原图高 */
+ document.body.classList.remove('wide-cover');renderSolo._w=null;
+ if(g.cover){const im=new Image();im.onload=()=>{const r=im.naturalWidth/im.naturalHeight;if(R.groups[gi]!==g||!(r>2))return;
+  renderSolo._w={r,nh:im.naturalHeight};document.body.classList.add('wide-cover');fit()};im.src='covers/'+g.cover}
   /* 横幅从页顶铺到留言区，但最多到团名下 620px（--solo-h；手机页面很长，再高封面会被放大得只剩局部）；--solo-e 是团名徽章下沿，深色压层到这里为止，之后慢慢淡出 */
- const fit=()=>{const h=$('.solo-hero'),gb=$('#guestbook');if(!h)return;const e=Math.ceil(h.getBoundingClientRect().bottom+scrollY+24);bs.setProperty('--solo-e',e+'px');const g=gb&&gb.offsetParent?Math.ceil(gb.getBoundingClientRect().top+scrollY):e+600;bs.setProperty('--solo-h',Math.max(e+240,Math.min(g,e+620))+'px')};
+ const fit=()=>{const h=$('.solo-hero'),gb=$('#guestbook');if(!h)return;const e=Math.ceil(h.getBoundingClientRect().bottom+scrollY+24);bs.setProperty('--solo-e',e+'px');const g=gb&&gb.offsetParent?Math.ceil(gb.getBoundingClientRect().top+scrollY):e+600;bs.setProperty('--solo-h',Math.max(e+240,Math.min(g,e+620))+'px');
+  /* 宽横幅的清晰带：铺到团名下沿，但不超过原图高；屏幕比原图还宽时只能按页宽来 */
+  const w=renderSolo._w;if(w)bs.setProperty('--solo-bh',Math.round(Math.max(innerWidth/w.r,Math.min(e,w.nh)))+'px')};
  fit();if(!renderSolo._on){renderSolo._on=1;addEventListener('resize',fit);addEventListener('load',fit);document.fonts&&document.fonts.ready.then(fit)}const s=$('#solo');ciLoad(s);fitAll(s)}
 const match=(m,q)=>!q||(m.character+'\u0001'+m.member).toLowerCase().includes(q);
 let cur=null;

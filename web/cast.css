@@ -319,6 +319,17 @@ body.single::before{content:"";position:absolute;left:0;right:0;top:0;height:var
  /* 团名以上不透明；往下先快后慢地淡，一直拖到留言区才完全消失 */
  -webkit-mask-image:linear-gradient(180deg,#000 calc(var(--solo-e,520px) - 80px),rgba(0,0,0,.6) calc(var(--solo-e,520px) + 90px),rgba(0,0,0,.32) calc(var(--solo-e,520px) + 280px),rgba(0,0,0,.14) calc(100% - 160px),transparent 100%);
  mask-image:linear-gradient(180deg,#000 calc(var(--solo-e,520px) - 80px),rgba(0,0,0,.6) calc(var(--solo-e,520px) + 90px),rgba(0,0,0,.32) calc(var(--solo-e,520px) + 280px),rgba(0,0,0,.14) calc(100% - 160px),transparent 100%)}
+/* 封面太宽（AniList 横幅之类，宽:高 > 2，原图通常只有 400px 高）：照常 cover 铺到留言区会放大好几倍，糊成一条局部。
+   拆两层：::before 是清晰带，铺到团名下沿（--solo-bh，renderSolo 算，不超过原图高，不放大），底边渐隐；
+   ::after 是同一张图的模糊铺底，高度、渐隐和普通封面一样，背景照旧一路铺下来 */
+body.single.wide-cover{--solo-dim:linear-gradient(180deg,rgba(12,10,8,.62) 0,rgba(12,10,8,.30) calc(var(--solo-e,520px)*.42),rgba(12,10,8,.42) var(--solo-e,520px),rgba(12,10,8,0) calc(var(--solo-e,520px) + 220px))}
+body.single.wide-cover::before{height:var(--solo-bh,300px);background:var(--solo-dim),var(--solo-img,none) center top/auto 100% no-repeat;
+ -webkit-mask-image:linear-gradient(180deg,#000 72%,transparent);mask-image:linear-gradient(180deg,#000 72%,transparent)}
+body.single.wide-cover::after{content:"";position:absolute;left:0;right:0;top:0;height:var(--solo-h,900px);z-index:-2;pointer-events:none;
+ background:var(--solo-dim),var(--solo-img,none) center 28%/cover no-repeat,linear-gradient(135deg,var(--solo-c,#e6b35a),color-mix(in srgb,var(--solo-c,#e6b35a) 55%,#000));
+ filter:blur(22px) saturate(1.15);
+ -webkit-mask-image:linear-gradient(180deg,#000 calc(var(--solo-e,520px) - 80px),rgba(0,0,0,.6) calc(var(--solo-e,520px) + 90px),rgba(0,0,0,.32) calc(var(--solo-e,520px) + 280px),rgba(0,0,0,.14) calc(100% - 160px),transparent 100%);
+ mask-image:linear-gradient(180deg,#000 calc(var(--solo-e,520px) - 80px),rgba(0,0,0,.6) calc(var(--solo-e,520px) + 90px),rgba(0,0,0,.32) calc(var(--solo-e,520px) + 280px),rgba(0,0,0,.14) calc(100% - 160px),transparent 100%)}
 body.single .hdr{background:transparent;border-bottom-color:transparent}
 body.single .hdr h1{color:#fff;text-shadow:0 2px 8px #000a}
 body.single .hdr .d,body.single .hdr .dd{color:#fffc}

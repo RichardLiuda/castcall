@@ -74,8 +74,10 @@ def etag(b):return '"'+hashlib.sha1(b).hexdigest()[:16]+'"'
 def mode(d=None):
   m=config.C.site.get('mode') or 'auto'
   if m in ('single','multi'):return m
-  try:n=len((d or roster.load())['groups'])
-  except Exception:n=0
+  # 工作组（摄影 / 后勤 / 妆娘…）不是「另一个团」：一部作品 + 若干 crew 组仍然是单团。
+  try:gs=(d or roster.load())['groups']
+  except Exception:gs=[]
+  n=sum(1 for g in gs if (g.get('kind') or 'cast')!='crew')
   return 'single' if n==1 else 'multi'
 def poster_ready():return os.path.isfile(os.path.join(config.C.POSTER,'master.html'))
 def sitejs():
@@ -108,6 +110,7 @@ def index_html():
        '{{location}}':E(e.get('location')),'{{poster}}':poster,'{{mode}}':mode(d),'{{head}}':style,
        '{{favicon}}':'/brand/'+E(s['brand'].get('favicon')) if s['brand'].get('favicon') else '/favicon.svg'}
   for k,v in rep.items():h=h.replace(k,v)
+  if not date and not loc:h=h.replace('<span class=dd>· <b id=tot>','<span class=dd><b id=tot>')   # 没日期没地点时，人数前面不要孤零零一个「·」
   if not s['guestbook']['enabled']:h=re.sub(r'<section id=guestbook.*?</section>','',h,flags=re.S)
   G={p:gen_js(p) for p in GEN}
   def v(m):
@@ -309,8 +312,8 @@ class H(SimpleHTTPRequestHandler):
         setup.create(SETUP['instance'],title=str(b.get('title') or ''),password=str(b.get('password') or ''),date=str(b.get('date') or ''),
           start=str(b.get('start') or ''),location=str(b.get('location') or ''),contact=str(b.get('contact') or ''),contact_label=str(b.get('contactLabel') or '微信'),
           roster=parsed,example=str(b.get('example') or '') or None if src=='example' else None,seed=src=='example')
-        if b.get('mode')=='multi' and src!='example':
-          j=jload(config.C.SITE,{});j['mode']='multi';tmp=config.C.SITE+'.tmp'
+        if b.get('mode') in ('single','multi') and src!='example':
+          j=jload(config.C.SITE,{});j['mode']=b['mode'];tmp=config.C.SITE+'.tmp'
           with open(tmp,'w',encoding='utf-8') as f:json.dump(j,f,ensure_ascii=False,indent=1)
           os.replace(tmp,config.C.SITE)
         SETUP['token']=None

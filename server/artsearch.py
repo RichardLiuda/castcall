@@ -33,7 +33,11 @@ def _img(images,*keys):
 # ── search ────────────────────────────────────────────────────────────────
 def subjects(q,limit=6):
   d,e=_bgm(f'search/subjects?limit={limit}',{'keyword':q})
-  if d is None:return [],e
+  if d is None:
+    # Bangumi 不通（代理 / 限流 / 被墙）时退到 AniList：标题是日文或罗马字，但封面和横幅够用
+    a,e2=anilist_media(q,limit)
+    if a:return a,None
+    return [],e2        # AniList 答了但没这部作品 = 没找到，不是错；AniList 也失败才算错
   out=[]
   for s in d.get('data') or []:
     u=_img(s.get('images'),'large','common')
@@ -46,7 +50,10 @@ def subject_chars(sid):
   return {c.get('id') for c in (d or []) if isinstance(c,dict)},e
 def characters(q,limit=8):
   d,e=_bgm(f'search/characters?limit={limit}',{'keyword':q})
-  if d is None:return [],e
+  if d is None:
+    a,e2=anilist_characters(q,limit)
+    if a:return a,None
+    return [],e2
   out=[]
   for c in d.get('data') or []:
     u=_img(c.get('images'),'large','medium')
@@ -71,7 +78,8 @@ def anilist_media(q,limit=6):
   if d is None:return [],e
   out=[]
   for m in ((d.get('data') or {}).get('Page') or {}).get('media') or []:
-    for u,t in ((m.get('bannerImage'),'横幅'),((m.get('coverImage') or {}).get('extraLarge'),'封面')):
+    # 竖版封面在前：一键配图拿第一张，横幅（约 5:1）铺满整屏会被放大成一条糊掉的局部
+    for u,t in (((m.get('coverImage') or {}).get('extraLarge'),'封面'),(m.get('bannerImage'),'横幅')):
       if u:out.append({'source':'AniList','id':m.get('id'),'title':(m.get('title') or {}).get('native') or (m.get('title') or {}).get('romaji'),'sub':t,'url':u,'thumb':u,'exact':False})
   return out,None
 def search(kind,q,group=''):
@@ -82,12 +90,13 @@ def search(kind,q,group=''):
   if kind=='cover':
     a,e=subjects(q);errs+=[e] if e else []
     b,e=anilist_media(q);errs+=[e] if e else []
-    a.sort(key=lambda x:(not x['exact'],x['type'] not in (2,4)));res=a+b
+    a.sort(key=lambda x:(not x['exact'],x.get('type') not in (2,4)));res=a+b
   else:
     a,e=characters(q);errs+=[e] if e else []
     if group and a:
       ss,_=subjects(group,3);ids=set()
       for s in ss[:2]:
+        if s.get('source')!='Bangumi':continue
         got,_=subject_chars(s['id']);ids|=got
       for x in a:x['inwork']=x['id'] in ids
       a.sort(key=lambda x:(not x.get('inwork'),not x['exact']))
@@ -121,6 +130,7 @@ def best_portrait(group,character,work_ids):
   cs,e=characters(character);time.sleep(PAUSE)
   if e:return None,e
   inwork=[c for c in cs if c['id'] in work_ids]
+  # 有作品 id 时只认本作品里的角色（不同作品的同名角色不乱配）；bangumi 不通、拿不到 id 时才退到全局同名
   pick=next((c for c in inwork if c['exact']),None) or (inwork[0] if inwork else None) or (next((c for c in cs if c['exact']),None) if not work_ids else None)
   if not pick and not cs:
     a,_=anilist_characters(character);pick=next((c for c in a if c['exact']),None)
@@ -131,8 +141,8 @@ def auto(lock=None,dry=False,redo=False,covers=True,portraits=True,log=print):
   lock=lock or threading.Lock();d=roster.load();m=server.jload(config.C.MAP,{})
   rep={'covers':0,'portraits':0,'skipped':[],'errors':[]}
   for g in d['groups']:
-    work,_=subjects(g['name'],4);time.sleep(PAUSE)
-    work.sort(key=lambda x:(not x['exact'],x['type'] not in (2,4)))
+    work,werr=subjects(g['name'],4);time.sleep(PAUSE)
+    work.sort(key=lambda x:(not x['exact'],x.get('type') not in (2,4)))
     top=work[0] if work else None
     if covers and (redo or not g.get('cover')):
       if top:
@@ -141,10 +151,12 @@ def auto(lock=None,dry=False,redo=False,covers=True,portraits=True,log=print):
         else:
           try:save_cover(g['name'],top['url'],lock);rep['covers']+=1
           except Exception as e:rep['errors'].append(f"{g['name']} 封面：{e}")
-      else:rep['skipped'].append(f"{g['name']} 封面：没找到这部作品")
+      else:rep['skipped'].append(f"{g['name']} 封面："+('搜索失败（'+str(werr)+'）' if werr else '没找到这部作品'))
     if not portraits or (g.get('kind') or 'cast')=='crew':continue
     ids=set()
+    # 只有 Bangumi 的作品 id 能拿去查角色表；退到 AniList 时别把 anilist id 发给 bgm.tv
     for s in work[:2]:
+      if s.get('source')!='Bangumi':continue
       got,_=subject_chars(s['id']);ids|=got;time.sleep(PAUSE)
     for mb in g['members']:
       ch=(mb.get('character') or '').strip()

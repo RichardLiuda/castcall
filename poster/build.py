@@ -222,7 +222,9 @@ def main(argv):
   bad=[v for v in a.variants if v not in ('master','wide','social')]
   if bad:ap.error('版式只能是 master / wide / social：'+' '.join(bad))
   b=Build(a.instance,a.chrome)
-  v=a.variants or (['master','social'] if len(b.D['groups'])==1 else ['master','wide'])
+  # 和 server.mode() 一致：工作组不算「另一个团」
+  casts=sum(1 for g in b.D['groups'] if (g.get('kind') or 'cast')!='crew')
+  v=a.variants or (['master','social'] if casts==1 else ['master','wide'])
   for x in v:
     if x=='social':b.social(a.group)
     else:getattr(b,x)()
