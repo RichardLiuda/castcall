@@ -36,10 +36,16 @@ function sheetArt(card,gi,i,u,from){if(!u){card.style.setProperty('--ci','none')
   painted=1;paint(0)};
  im.onload=go;if(cached)go()}
 // thumbs are attached lazily (card open / press / search) so a closed roster does not download all of them
-function ciLoad(r){if(!r)return;(r.matches&&r.matches('.pill[data-ci]')?[r]:r.querySelectorAll('.pill[data-ci]')).forEach(p=>{p.style.setProperty('--ci',img(p.dataset.ci));p.removeAttribute('data-ci')})}
+function ciLoad(r){if(!r)return;(r.matches&&r.matches('.pill[data-ci]')?[r]:r.querySelectorAll('.pill[data-ci]')).forEach(p=>{p.style.setProperty('--ci',img(p.dataset.ci));p.removeAttribute('data-ci');
+  const v=p.querySelector('.pv[data-pv]');if(v){v.style.setProperty('--pv',img(v.dataset.pv));v.removeAttribute('data-pv')}})}
 function ci(gi,i){const g=R.groups[gi],m=g.members[i],c=(window.CHARS||{})[g.name+'|'+m.character];return c||''}
+/* 成员本人照片（site.json photos.enabled，审核通过的）：按席位 id 存，服务器已经筛掉换了人的 */
+function photoOf(gi,i){const m=R.groups[gi].members[i];return (m&&m.id&&(window.PHOTOS||{})[m.id])||''}
 function pill(gi,i,q){const g=R.groups[gi],m=g.members[i];const P=v=>v||'（待定）';const[x,y]=memberFirst?[P(m.member),P(m.character)]:[P(m.character),P(m.member)];
- const u0=ci(gi,i),u=u0.startsWith('chars/')?u0.replace('chars/','chars/thumb/'):u0;return `<button class="pill" style="--c:${g.color};--k:${Math.min(i,24)}"${u?` data-ci="${esc(u)}"`:''} data-g="${gi}" data-i="${i}">${u?'<i class="ci"></i>'+(crew(g)?'<i class="ni cam">'+icon('camera',13)+'</i>':''):`<i class="ni">${crew(g)?icon('camera',16):esc([...(m.character||m.member||'?')][0])}</i>`}<span class="a">${hl(x,q)}</span><span class="b">${hl(y,q)}</span></button>`}
+ const u0=ci(gi,i),ua=u0.startsWith('chars/')?u0.replace('chars/','chars/thumb/'):u0,ph=photoOf(gi,i),u=ph||ua;
+ /* 有本人照片时它是卡片主图；角色立绘缩成右下角的小圆徽（只有单团的大卡显示，多团胶囊太小） */
+ const pv=ph&&ua?`<i class="pv" data-pv="${esc(ua)}"></i>`:'';
+ return `<button class="pill${ph?' ph':''}" style="--c:${g.color};--k:${Math.min(i,24)}"${u?` data-ci="${esc(u)}"`:''} data-g="${gi}" data-i="${i}">${u?'<i class="ci">'+pv+'</i>'+(crew(g)?'<i class="ni cam">'+icon('camera',13)+'</i>':''):`<i class="ni">${crew(g)?icon('camera',16):esc([...(m.character||m.member||'?')][0])}</i>`}<span class="a">${hl(x,q)}</span><span class="b">${hl(y,q)}</span></button>`}
 /* 单团页：一个团就是整个活动，不需要「点开/收起」。顶部是团的封面和人数，然后是团长、咨询、说明，
    招募中的角色排在最前、直接点「报名」；已定的阵容放后面。多个团时 index.html 走封面卡墙，不用这里。 */
 function soloHTML(gi){const g=R.groups[gi],seats=g.members.map((m,i)=>[m,i]);
@@ -86,9 +92,11 @@ function openSheet(gi,i,dir,from){const g=R.groups[gi],n=g.members.length;if(!n)
  cur=[gi,i];const m=g.members[i];
  const seats=g.members.map((_,j)=>j).filter(j=>hasCN(g.members[j]));const at=seats.indexOf(i);
  const tag=at>=0?`${at+1}/${seats.length}`:'空缺';
- const sh=$('#sheet'),card=$('#sheet .card');sh.style.setProperty('--c',g.color);const u=ci(gi,i);card.style.setProperty('--cp',(window.CHARPOS||{})[g.name+'|'+m.character]||'50% 20%');card.style.setProperty('--dir',dir||0);
+ const sh=$('#sheet'),card=$('#sheet .card');sh.style.setProperty('--c',g.color);const ua=ci(gi,i),ph=photoOf(gi,i),u=ph||ua;card.style.setProperty('--cp',(window.CHARPOS||{})[g.name+'|'+m.character]||'50% 20%');card.style.setProperty('--dir',dir||0);
  const join=castKind(g.name,m)==='vacant'&&signupOn(g)?`<button type="button" class="cast-join" data-signup>${icon('users',16)}报名</button>`:'';
- card.innerHTML=`<div class="hero${dir?' sl':''}"></div><div class="in${dir?' sl':''}"><span class="tag">${esc(g.name)} · ${tag}</span><h2 id="sm" data-ph="（待定）">${esc(m.member)}</h2><p class="as">${crew(g)?'负责':'出演角色'}</p><h3 id="sc" data-ph="（无角色）">${esc(m.character)}</h3>${join}<div class="nav"><button class="btn" data-d="-1">${icon('left',18)}上一位</button><button class="btn x" style="--c:#ffe08a;background:#ffe08a">关闭</button><button class="btn" data-d="1">下一位${icon('right',18)}</button></div></div>`;
+ const sw=ph&&ua?`<div class="ph-sw" role="group" aria-label="大图"><button type="button" class="on" data-ph="${esc(ph)}">本人</button><button type="button" data-ph="${esc(ua)}">角色</button></div>`:'';
+ const up=SITE.photos&&SITE.photos.enabled&&hasCN(m)?`<button type="button" class="ph-up" data-photo>${icon('camera',15)}${ph?'换一张我的照片':'上传我的照片'}</button>`:'';
+ card.innerHTML=`<div class="hero${dir?' sl':''}">${sw}</div><div class="in${dir?' sl':''}"><span class="tag">${esc(g.name)} · ${tag}</span><h2 id="sm" data-ph="（待定）">${esc(m.member)}</h2><p class="as">${crew(g)?'负责':'出演角色'}</p><h3 id="sc" data-ph="（无角色）">${esc(m.character)}</h3>${join}${up}<div class="nav"><button class="btn" data-d="-1">${icon('left',18)}上一位</button><button class="btn x" style="--c:#ffe08a;background:#ffe08a">关闭</button><button class="btn" data-d="1">下一位${icon('right',18)}</button></div></div>`;
  // Morph offsets after final card layout (hero+body), not previous empty/old card
  if(from&&!sh.classList.contains('open')){const r=from.getBoundingClientRect();card.style.transition='none';sh.classList.remove('open');const c=card.getBoundingClientRect();card.style.setProperty('--fx',(r.left+r.width/2-(c.left+c.width/2))+'px');card.style.setProperty('--fy',(r.top+r.height/2-(c.top+c.height/2))+'px');card.offsetWidth;card.style.transition=''}
  sheetArt(card,gi,i,u,from);
@@ -98,6 +106,8 @@ document.addEventListener('pointerdown',e=>{const p=e.target.closest('.pill');if
 document.addEventListener('click',e=>{const p=e.target.closest('.pill');if(p)return openSheet(+p.dataset.g,+p.dataset.i,0,p);
  const so=e.target.closest('.seat-open');if(so){const g=R.groups[+so.dataset.g];if(g&&signupOn(g)&&!document.body.classList.contains('editing'))return openSignup(+so.dataset.g,+so.dataset.i);return openSheet(+so.dataset.g,+so.dataset.i,0,so)}
  if(e.target.closest('#sheet [data-signup]')){if(cur)openSignup(cur[0],cur[1]);return}
+ if(e.target.closest('#sheet [data-photo]')){if(cur)openPhoto(cur[0],cur[1]);return}
+ const sw=e.target.closest('#sheet .ph-sw button');if(sw){if(sw.classList.contains('on')||!cur)return;sw.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===sw));sheetArt($('#sheet .card'),cur[0],cur[1],sw.dataset.ph);return}
  if(e.target.id=='sheet'||e.target.closest('#sheet .x'))return $('#sheet').classList.remove('open');
  const d=e.target.closest('#sheet [data-d]');if(d)openSheet(cur[0],cur[1]+ +d.dataset.d,+d.dataset.d)});
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(gbOpen()){e.preventDefault();closeGuestbook();return}if(signupOpen()){e.preventDefault();closeSignup();return}if($('#sheet').classList.contains('open'))return $('#sheet').classList.remove('open');if(document.body.classList.contains('casting'))setCast(false)});
@@ -226,7 +236,8 @@ function signupKick(){if(signupKickOn)return;signupKickOn=true;const t0=performa
 function openSignup(gi,i){const g=R.groups[gi],m=g&&g.members[i];if(!m||castKind(g.name,m)!=='vacant'||!signupOn(g))return;const CL=esc(SITE.signup.contactLabel||'联系方式');const root=signupRoot();root.style.setProperty('--c',castHex(g.color));
  const role=(m.character||'').trim()||'空席',card=root.querySelector('.signup-card');
  card.innerHTML=`<form novalidate><div class="signup-ctx"><p class="signup-kicker">${icon('users',14)}<span>空缺报名</span></p><h2 id="signup-title">${esc(role)}</h2><p class="signup-work">${esc(g.name)}</p></div><label class="signup-fld signup-cn"><span>${icon('user',14)}CN</span><input name="name" maxlength="40" autocomplete="name" enterkeyhint="next" required></label><label class="signup-fld signup-wx"><span>${icon('message',14)}${CL}</span><input name="contact" maxlength="60" autocomplete="off" enterkeyhint="done" required></label><div class="signup-foot"><p class="signup-err" role="alert"></p><div class="signup-actions"><button type="button" class="signup-btn" data-signup-close>取消</button><button type="submit" class="signup-btn go">${icon('arrow',16)}提交报名</button></div>${SITE.signup.note?`<p class="signup-fine">${esc(SITE.signup.note)}</p>`:''}</div></form>`;
- card.dataset.id=m.id||'';card.dataset.work=g.name;card.dataset.character=(m.character||'').trim();card.scrollTop=0;
+ card.dataset.id=m.id||'';card.dataset.work=g.name;card.dataset.character=(m.character||'').trim();signupShow(root,card)}
+function signupShow(root,card){card.scrollTop=0;
  if(signupY==null)signupY=window.scrollY||0;
  if(!signupBaseH)signupBaseH=window.innerHeight;
  signupMeta(true);
@@ -234,7 +245,29 @@ function openSignup(gi,i){const g=R.groups[gi],m=g&&g.members[i];if(!m||castKind
  signupPin();
  const input=card.querySelector('[name=name]');if(input)input.focus({preventScroll:true});
  signupKick()}
-async function onSignupSubmit(e){e.preventDefault();const form=e.target,card=form.closest('.signup-card'),err=form.querySelector('.signup-err'),btn=form.querySelector('[type=submit]');
+/* 本人照片：已定席位的成员自己传。借用报名表的弹层（手机键盘那套定位都现成）。
+   CN 要和席位上的一致——不是身份验证，只防传错席位；真正的把关是后台审核（photos.moderation） */
+function openPhoto(gi,i){const g=R.groups[gi],m=g&&g.members[i];if(!m||!hasCN(m)||!(SITE.photos&&SITE.photos.enabled))return;const root=signupRoot();root.style.setProperty('--c',castHex(g.color));
+ const card=root.querySelector('.signup-card'),pre=SITE.photos.moderation!=='post';
+ card.innerHTML=`<form novalidate data-kind="photo"><div class="signup-ctx"><p class="signup-kicker">${icon('camera',14)}<span>本人照片</span></p><h2 id="signup-title">${esc((m.character||'').trim()||g.name)}</h2><p class="signup-work">${esc(g.name)}</p></div><label class="signup-fld signup-cn"><span>${icon('user',14)}你的 CN</span><input name="name" maxlength="40" autocomplete="name" enterkeyhint="done" required></label><label class="signup-fld signup-wx ph-pick"><span>${icon('camera',14)}照片</span><input name="file" type="file" accept="image/jpeg,image/png,image/webp" required><i class="ph-prev" hidden></i></label><div class="signup-foot"><p class="signup-err" role="alert"></p><div class="signup-actions"><button type="button" class="signup-btn" data-signup-close>取消</button><button type="submit" class="signup-btn go">${icon('arrow',16)}上传</button></div><p class="signup-fine">${pre?'提交后等审核，通过后显示在你的角色卡上。':'提交后直接显示在你的角色卡上；不合适的会被撤下。'}</p></div></form>`;
+ card.dataset.id=m.id||'';const f=card.querySelector('[name=file]'),pv=card.querySelector('.ph-prev');
+ f.addEventListener('change',()=>{const x=f.files[0];if(pv._u)URL.revokeObjectURL(pv._u);pv.hidden=!x;if(x){pv._u=URL.createObjectURL(x);pv.style.backgroundImage=`url(${pv._u})`}});
+ signupShow(root,card)}
+/* 手机原图动辄 5～10 MB 还带定位：浏览器里先缩到长边 1600、转 JPEG（顺带去掉 EXIF）；做不到就原样传 */
+async function shrinkPhoto(file){try{const b=await createImageBitmap(file),k=Math.min(1,1600/Math.max(b.width,b.height)),c=document.createElement('canvas');
+ c.width=Math.round(b.width*k);c.height=Math.round(b.height*k);c.getContext('2d').drawImage(b,0,0,c.width,c.height);b.close&&b.close();
+ const out=await new Promise(r=>c.toBlob(r,'image/jpeg',.86));return out&&out.size<file.size*1.2?out:file}catch(_){return file}}
+async function onPhotoSubmit(e){e.preventDefault();const form=e.target,card=form.closest('.signup-card'),err=form.querySelector('.signup-err'),btn=form.querySelector('[type=submit]');
+ const nameEl=form.querySelector('[name=name]'),name=(nameEl.value||'').trim(),file=form.querySelector('[name=file]').files[0];
+ if(!name){err.textContent='请填写你的 CN';nameEl.focus();return}
+ if(!file){err.textContent='先选一张照片';return}
+ if(form.dataset.busy==='1')return;form.dataset.busy='1';btn.disabled=true;err.textContent='上传中…';
+ try{const body=await shrinkPhoto(file);if(body.size>6e6)throw new Error('照片要小于 6 MB');
+  const r=await fetch('/api/photo?'+new URLSearchParams({seat:card.dataset.id,name}),{method:'POST',body});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'上传失败，请稍后再试');
+  closeSignup();if(j.pending)castToast('已提交，等审核');else{castToast('照片已换上');setTimeout(()=>location.reload(),900)}}
+ catch(ex){err.textContent=ex.message||'上传失败，请稍后再试';form.dataset.busy='';btn.disabled=false}}
+async function onSignupSubmit(e){if(e.target.dataset.kind==='photo')return onPhotoSubmit(e);e.preventDefault();const form=e.target,card=form.closest('.signup-card'),err=form.querySelector('.signup-err'),btn=form.querySelector('[type=submit]');
  const nameEl=form.querySelector('[name=name]'),wxEl=form.querySelector('[name=contact]'),CL=SITE.signup.contactLabel||'联系方式';
  const name=(nameEl.value||'').trim(),contact=(wxEl.value||'').trim();
  if(!name){err.textContent='请填写CN';nameEl.focus();return}

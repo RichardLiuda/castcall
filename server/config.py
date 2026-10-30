@@ -38,6 +38,10 @@ DEFAULTS={
     'enabled':True,
     'moderation':'post',    # post：先显示，后台可隐藏；pre：后台通过后才显示
   },
+  'photos':{                # 成员（coser）上传自己的照片，显示在角色卡和详情里
+    'enabled':False,
+    'moderation':'pre',     # pre：后台通过后才显示；post：先显示，后台可撤下
+  },
   'poster':{
     'enabled':True,
     'slug':'castcall',      # 导出图片的文件名前缀
@@ -55,7 +59,7 @@ DEFAULTS={
     'sessionDays':7,
   },
   'limits':{                # 每个 IP 每 windowSec 秒最多几次
-    'windowSec':600,'login':5,'signup':8,'guestbook':8,
+    'windowSec':600,'login':5,'signup':8,'guestbook':8,'photo':6,
   },
   'notion':{                # 只有列名映射放这里；token 和库 ID 放 .env（见 docs/notion.md）
     'syncEvery':20,         # 秒：拉审核结果、补推失败的报名和留言
@@ -104,7 +108,8 @@ class Config:
     t=s.site;return {'mode':t['mode'],'event':t['event'],'brand':t['brand'],
       'signup':{k:t['signup'][k] for k in ('enabled','opensAt','closesAt','contactLabel','contactPattern','note')},
       'guestbook':{'enabled':t['guestbook']['enabled'],'moderation':t['guestbook']['moderation']},
-      'poster':{'enabled':t['poster']['enabled'],'slug':t['poster']['slug']}}
+      'poster':{'enabled':t['poster']['enabled'],'slug':t['poster']['slug']},
+      'photos':{'enabled':bool(t['photos']['enabled']),'moderation':t['photos']['moderation']}}
 def merge(base,over):
   for k,v in (over or {}).items():
     if isinstance(v,dict) and isinstance(base.get(k),dict):merge(base[k],v)

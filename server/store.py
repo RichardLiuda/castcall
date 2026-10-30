@@ -5,6 +5,7 @@ Tables
   guestbook  留言：approved（显示）/ hidden / pending（先审后发时）
   outbox     名册变更队列：网页保存和报名落座各记一条，推 Notion 用 acked 标记
   notion     本地记录 → Notion page id（名册行、报名、留言共用，按 kind 区分）
+  photos     成员上传的本人照片：pending → approved / rejected；同一席位新照片通过后旧的变 replaced
 
 A fresh connection per call with a busy timeout: the server is threaded and sqlite serialises writers itself,
 so no file lock (the keyroster version used fcntl and did not run on Windows)."""
@@ -25,6 +26,11 @@ create table if not exists guestbook(
 create table if not exists outbox(
   seq integer primary key autoincrement,
   ts text not null, op text not null, rid text not null, rec text not null, acked integer not null default 0);
+create table if not exists photos(
+  id integer primary key autoincrement,
+  seat text not null, grp text not null, character text not null default '', member text not null,
+  file text not null, status text not null default 'pending', created text not null, decided text not null default '');
+create index if not exists photos_seat on photos(seat,status);
 create table if not exists notion(
   kind text not null, local text not null, page text not null, primary key(kind,local));
 '''
@@ -72,7 +78,8 @@ def counts():
   try:
     s={r['status']:r['n'] for r in c.execute('select status,count(*) n from signups group by status')}
     g={r['status']:r['n'] for r in c.execute('select status,count(*) n from guestbook group by status')}
-    return {'signups':s,'guestbook':g}
+    p={r['status']:r['n'] for r in c.execute('select status,count(*) n from photos group by status')}
+    return {'signups':s,'guestbook':g,'photos':p}
   finally:c.close()
 
 # ── guestbook ──────────────────────────────────────────────────────────────
@@ -91,6 +98,44 @@ def notes(status=None,limit=200):
 def set_note(i,status,source='后台'):
   c=db()
   try:c.execute('update guestbook set status=?,source=? where id=?',(status,source,int(i)))
+  finally:c.close()
+
+# ── photos ─────────────────────────────────────────────────────────────────
+def add_photo(seat,grp,character,member,file,status):
+  c=db()
+  try:
+    c.execute('begin immediate')
+    cur=c.execute('insert into photos(seat,grp,character,member,file,status,created) values(?,?,?,?,?,?,?)',(seat,grp,character,member,file,status,now()))
+    if status=='approved':c.execute("update photos set status='replaced' where seat=? and status='approved' and id<>?",(seat,cur.lastrowid))
+    r=dict(c.execute('select * from photos where id=?',(cur.lastrowid,)).fetchone());c.execute('commit');return r
+  except Exception:
+    try:c.execute('rollback')
+    except Exception:pass
+    raise
+  finally:c.close()
+def photos(limit=500):
+  c=db()
+  try:return rows(c,'select * from photos order by id desc limit ?',limit)
+  finally:c.close()
+def set_photo(i,status):
+  """approve 时同一席位已通过的旧照片退成 replaced：每个席位最多一张在显示。"""
+  c=db()
+  try:
+    c.execute('begin immediate')
+    r=c.execute('select * from photos where id=?',(int(i),)).fetchone()
+    if not r:c.execute('commit');return None
+    if status=='approved':c.execute("update photos set status='replaced' where seat=? and status='approved' and id<>?",(r['seat'],r['id']))
+    c.execute('update photos set status=?,decided=? where id=?',(status,now(),r['id']))
+    r=dict(c.execute('select * from photos where id=?',(r['id'],)).fetchone());c.execute('commit');return r
+  except Exception:
+    try:c.execute('rollback')
+    except Exception:pass
+    raise
+  finally:c.close()
+def shown_photos():
+  """{seat: (member, file)}：每个席位当前显示的那张。"""
+  c=db()
+  try:return {r['seat']:(r['member'],r['file']) for r in c.execute("select * from photos where status='approved' order by id")}
   finally:c.close()
 
 # ── roster outbox ──────────────────────────────────────────────────────────

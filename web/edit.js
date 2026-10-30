@@ -15,7 +15,7 @@ function login(){const pw=inp('','','password'),er=h('div',{class:'err'});const 
  pw.addEventListener('keydown',e=>e.key=='Enter'&&go());modal('编辑需要密码',[fld('密码',pw),er,h('div',{class:'mrow'},h('button',{class:'btn',onclick:close},'取消'),h('button',{class:'btn pri',onclick:go},'进入编辑'))])}
 let editing=false;
 function setEdit(on){editing=on;document.body.classList.toggle('editing',on);$('#fab').replaceChildren(iconEl(on?'unlock':'lock',22));$('#fab').setAttribute('aria-label',on?'编辑中':'进入编辑');
- const tb=$('#etb');tb.innerHTML='';if(on){tb.append(h('button',{class:'btn pri',id:'newrole',onclick:()=>{const c=$('.cv.open');const gi=c?+c.id.slice(1):+(SS.getItem('kr_open_last')||0);entryForm(Math.min(gi,D.groups.length-1),-1,1)}},iconEl('plus'),'新角色'),h('button',{class:'btn',onclick:()=>review('signups')},iconEl('users'),'审核',h('b',{id:'rvn',hidden:''})),h('button',{class:'btn',onclick:()=>links('all')},iconEl('links'),'连线视图'),h('button',{class:'btn',onclick:()=>groupForm(-1)},iconEl('plus'),SITE.mode==='single'?'加一个团':'新团'),h('button',{class:'btn',onclick:artAuto},iconEl('palette'),'一键配图'),...(SITE.poster.enabled?[h('button',{class:'btn',onclick:posterBuild},iconEl('palette'),'生成一图流')]:[]),h('button',{class:'btn',onclick:async()=>{await api('POST','/api/logout');SS.removeItem('kr_edit');setEdit(false);toast('已退出编辑')}},iconEl('logout'),'退出'))}
+ const tb=$('#etb');tb.innerHTML='';if(on){tb.append(h('button',{class:'btn pri',id:'newrole',onclick:()=>{const c=$('.cv.open');const gi=c?+c.id.slice(1):+(SS.getItem('kr_open_last')||0);entryForm(Math.min(gi,D.groups.length-1),-1,1)}},iconEl('plus'),'新角色'),h('button',{class:'btn',onclick:()=>review('signups')},iconEl('users'),'审核',h('b',{id:'rvn',hidden:''})),h('button',{class:'btn',onclick:()=>links('all')},iconEl('links'),'连线视图'),h('button',{class:'btn',onclick:()=>groupForm(-1)},iconEl('plus'),SITE.mode==='single'?'加一个团':'新团'),h('button',{class:'btn',onclick:artAuto},iconEl('palette'),'一键配图'),h('button',{class:'btn',onclick:brandPanel},iconEl('camera'),'站点素材'),...(SITE.poster.enabled?[h('button',{class:'btn',onclick:posterBuild},iconEl('palette'),'生成一图流')]:[]),h('button',{class:'btn',onclick:async()=>{await api('POST','/api/logout');SS.removeItem('kr_edit');setEdit(false);toast('已退出编辑')}},iconEl('logout'),'退出'))}
  soloTools();
  $$('.cv').forEach((c,gi)=>{let t=c.querySelector('.gtools');if(!t){t=h('div',{class:'gtools'},h('button',{class:'btn',onclick:()=>entryForm(gi,-1)},iconEl('plus'),'添加'),h('button',{class:'btn',onclick:()=>groupForm(gi)},iconEl('pencil'),SITE.mode==='single'?'活动 / 团信息':'团信息'),h('button',{class:'btn',onclick:()=>links(gi)},iconEl('links'),'连线'));c.querySelector('.body').prepend(t)}});
  if(on)reviewCount()}
@@ -70,22 +70,26 @@ async function upload(kind,file,q){const u=new URLSearchParams(Object.assign({ki
 async function movePortrait(g0,c0,g1,c1){const p=(window.CHARS||{})[g0+'|'+c0];if(!p||(g0===g1&&c0===c1))return;
  await api('POST','/api/admin/portrait',{group:g1,character:c1,path:p.split('?')[0]});await api('POST','/api/admin/portrait',{group:g0,character:c0})}
 /* ---------- review: signups + guestbook ---------- */
-const RV_ST={pending:'待审',approved:'已通过',rejected:'已拒绝',hidden:'已隐藏'};
-async function reviewCount(){try{const c=await api('GET','/api/admin/counts');const n=(c.signups.pending||0)+(c.guestbook.pending||0),b=$('#rvn');if(b){b.textContent=n;b.hidden=!n}}catch(e){}}
+const RV_ST={pending:'待审',approved:'已通过',rejected:'已拒绝',hidden:'已隐藏',replaced:'已换新'};
+async function reviewCount(){try{const c=await api('GET','/api/admin/counts');const n=(c.signups.pending||0)+(c.guestbook.pending||0)+((c.photos||{}).pending||0),b=$('#rvn');if(b){b.textContent=n;b.hidden=!n}}catch(e){}}
 function review(tab){let dirty=false;const box=h('div',{class:'rv'}),tabs=h('div',{class:'chips rv-tabs'});
  const when=t=>{const d=new Date(t);return isNaN(d)?'':`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
  const act=async(url,action,okMsg)=>{try{const r=await api('POST',url,{action});if(r.data){R.groups=r.data.groups;dirty=true}toast(r.message||okMsg);draw()}catch(e){toast((e.j&&(e.j.message||e.j.error))||e.message,3200);draw()}};
- const draw=async()=>{tabs.replaceChildren(...[['signups','报名'],['guestbook','留言']].map(([k,t])=>h('button',{class:'chip'+(tab===k?' on':''),style:'--c:#333',onclick:()=>{tab=k;draw()}},t)));
+ const draw=async()=>{tabs.replaceChildren(...[['signups','报名'],['guestbook','留言'],...(SITE.photos&&SITE.photos.enabled||tab==='photos'?[['photos','照片']]:[])].map(([k,t])=>h('button',{class:'chip'+(tab===k?' on':''),style:'--c:#333',onclick:()=>{tab=k;draw()}},t)));
   box.replaceChildren(h('p',{class:'rv-empty'},'加载中…'));let items;
   try{items=(await api('GET','/api/admin/'+tab)).items}catch(e){box.replaceChildren(h('p',{class:'rv-empty'},'读不到：'+e.message));return}
-  if(!items.length){box.replaceChildren(h('p',{class:'rv-empty'},tab==='signups'?'还没有人报名':'还没有留言'));return}
-  const order={pending:0,approved:1,hidden:2,rejected:3};items.sort((a,b)=>(order[a.status]-order[b.status])||b.id-a.id);
+  if(!items.length){box.replaceChildren(h('p',{class:'rv-empty'},({signups:'还没有人报名',guestbook:'还没有留言',photos:'还没有人传照片'})[tab]));return}
+  const order={pending:0,approved:1,hidden:2,replaced:3,rejected:4};items.sort((a,b)=>(order[a.status]-order[b.status])||b.id-a.id);
   box.replaceChildren(...items.map(it=>{const st=h('span',{class:'rv-st '+it.status},RV_ST[it.status]||it.status);
    if(tab==='signups'){const U='/api/admin/signups/'+it.id,B=[];
     if(it.status!=='approved')B.push(h('button',{class:'btn pri',onclick:()=>act(U,'approve','已落座')},'通过'));
     if(it.status==='pending'||it.status==='approved')B.push(h('button',{class:'btn dan',onclick:()=>{if(it.status!=='approved'||confirm(`撤回 ${it.name}？名册上这个席位会空出来。`))act(U,'reject','已拒绝')}},it.status==='approved'?'撤回':'拒绝'));
     if(it.status==='rejected')B.push(h('button',{class:'btn',onclick:()=>act(U,'reopen','已退回待审')},'退回待审'));
     return h('div',{class:'rv-it'},h('div',{class:'rv-tx'},h('b',{},it.name),h('span',{},`${SITE.signup.contactLabel||'联系方式'} ${it.contact}`),h('small',{},`${it.grp} · ${it.character||'（无角色）'} · ${when(it.created)}${it.source&&it.status!=='pending'?' · '+it.source:''}`),...(it.note?[h('small',{class:'rv-note'},it.note)]:[])),st,h('div',{class:'rv-b'},...B))}
+   if(tab==='photos'){const U='/api/admin/photos/'+it.id,B=[];
+    if(it.status!=='approved')B.push(h('button',{class:'btn pri',onclick:()=>{dirty=true;act(U,'approve','已通过，旧照片退下')}},'通过'));
+    if(it.status==='pending'||it.status==='approved')B.push(h('button',{class:'btn dan',onclick:()=>{dirty=dirty||it.status==='approved';act(U,'reject',it.status==='approved'?'已撤下':'已拒绝')}},it.status==='approved'?'撤下':'拒绝'));
+    return h('div',{class:'rv-it rv-ph'},h('a',{class:'rv-img',href:'/photos/'+it.file,target:'_blank',rel:'noopener'},h('img',{src:'/photos/'+it.file,alt:'',loading:'lazy'})),h('div',{class:'rv-tx'},h('b',{},it.member),h('small',{},`${it.grp} · ${it.character||'（无角色）'} · ${when(it.created)}`)),st,h('div',{class:'rv-b'},...B))}
    const U='/api/admin/guestbook/'+it.id;
    return h('div',{class:'rv-it'},h('div',{class:'rv-tx'},h('b',{},it.name),h('p',{},it.body),h('small',{},when(it.created))),st,h('div',{class:'rv-b'},it.status==='approved'?h('button',{class:'btn dan',onclick:()=>act(U,'hide','已隐藏')},'隐藏'):h('button',{class:'btn pri',onclick:()=>act(U,'show','已显示')},it.status==='pending'?'通过':'显示')))}))};
  modal('审核',[tabs,box,h('div',{class:'mrow'},h('button',{class:'btn',onclick:close},'关闭'))]);
@@ -107,6 +111,26 @@ async function artAuto(){if(!confirm('给缺封面的团找封面、缺立绘的
   const msg=`配好 ${r.covers||0} 张封面、${r.portraits||0} 张立绘`+((r.skipped||[]).length?`，${r.skipped.length} 个没把握跳过`:'')+((r.errors||[]).length?`，${r.errors.length} 个出错`:'');
   if((r.covers||0)+(r.portraits||0)){SS.setItem('kr_edit','1');toastAct(msg,'刷新',()=>location.reload(),10000)}else toast(msg+((r.errors||[])[0]?'：'+r.errors[0]:''),8000)}catch(e){clearInterval(t)}},2500)}
 /* ---------- poster ---------- */
+/* 站点素材：logo / 标签页图标 / 一图流大图，选了就上传并写进 site.json，关掉面板后刷新页面生效 */
+const BRAND=[['logo','标题前的 logo','透明底 PNG 最好，方形或横向都行'],['favicon','浏览器标签页图标','方形 PNG，64×64 以上；留空用内置图标'],['hero','一图流大图','铺在海报标题和底部；换完要重新生成一图流']];
+async function brandPanel(){let st;try{st=await api('GET','/api/admin/brand')}catch(e){return toast('读不到站点素材：'+e.message,3000)}
+ let dirty=false;const er=h('div',{class:'err'}),list=h('div',{class:'brand'});
+ const send=async(slot,file)=>{er.textContent='';if(file&&file.size>8e6){er.textContent='图片要小于 8 MB';return}
+  try{const r=await fetch('/api/admin/brand?'+new URLSearchParams(file?{slot}:{slot,clear:'1'}),{method:'POST',credentials:'same-origin',body:file||''});const j=await r.json().catch(()=>({}));
+   if(!r.ok)throw new Error(j.error||r.status);st.slots=j.slots;dirty=true;draw();toast(file?'已换上':'已恢复默认')}catch(e){er.textContent=e.message}};
+ const draw=()=>{list.innerHTML='';for(const [k,t,hint] of BRAND){if(k==='hero'&&!st.poster)continue;const v=st.slots[k];
+  const f=h('input',{type:'file',accept:'image/png,image/jpeg,image/webp,image/gif',hidden:''});f.addEventListener('change',()=>f.files[0]&&send(k,f.files[0]));
+  list.append(h('div',{class:'brand-row'+(k==='hero'?' wide':'')},h('div',{class:'brand-th'},v.url?h('img',{src:v.url,alt:''}):h('span',{},k==='favicon'?'内置':'未设置')),
+   h('div',{class:'brand-tx'},h('b',{},t),h('small',{},hint),h('div',{class:'brand-act'},h('button',{class:'btn',type:'button',onclick:()=>f.click()},v.url?'换一张':'上传'),
+    ...(v.url?[h('button',{class:'btn ghost',type:'button',onclick:()=>confirm('恢复默认？图片文件会留在服务器上。')&&send(k)},'恢复默认')]:[]),f))))}};
+ /* 成员照片开关：开了以后已定成员能在自己的角色卡里传本人照片 */
+ let pc;try{pc=(await api('GET','/api/admin/photos')).config}catch(e){pc={enabled:false,moderation:'pre'}}
+ const on=h('input',{type:'checkbox'}),mo=h('select',{},h('option',{value:'pre'},'先审后显示'),h('option',{value:'post'},'先显示，可撤下'));on.checked=!!pc.enabled;mo.value=pc.moderation||'pre';mo.disabled=!on.checked;
+ const setPc=async()=>{er.textContent='';try{pc=(await api('POST','/api/admin/photos/config',{enabled:on.checked,moderation:mo.value})).config;mo.disabled=!pc.enabled;dirty=true;toast(pc.enabled?'成员照片已开启':'成员照片已关闭')}catch(e){er.textContent=e.message;on.checked=!!pc.enabled}};
+ on.addEventListener('change',setPc);mo.addEventListener('change',setPc);
+ const photos=h('div',{class:'brand-row brand-sw'},h('div',{class:'brand-tx'},h('label',{class:'chk'},on,h('b',{},'成员本人照片')),h('small',{},'开了以后，已定的成员能在自己的角色卡里上传照片，显示在卡片和详情里；在「审核 → 照片」里管理。'),h('div',{class:'fld'},mo,h('label',{},'审核方式'))));
+ draw();close.after=()=>{if(dirty){SS.setItem('kr_edit','1');location.reload()}};
+ modal('站点素材',[list,photos,er,h('div',{class:'mrow'},h('button',{class:'btn pri',onclick:close},'完成'))])}
 async function posterBuild(){try{await api('POST','/api/admin/poster');toast('一图流生成中，大概要一两分钟…',4000)}catch(e){return toast((e.j&&e.j.error)||e.message,6000)}
  const t=setInterval(async()=>{try{const s=await api('GET','/api/admin/poster');if(s.running)return;clearInterval(t);
   if(s.rc===0)toastAct('一图流已更新','打开',()=>open('/poster/','_blank'),8000);else toast('一图流生成失败，日志在 instance/logs/poster.log',6000)}catch(e){clearInterval(t)}},2500)}

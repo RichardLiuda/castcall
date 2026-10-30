@@ -25,7 +25,7 @@ def check_pw(p):
 from setup import set_password   # re-exported: tests and older scripts call server.set_password
 
 # ── uploads (covers, portraits, logo) ─────────────────────────────────────
-UP_DIRS=('covers','portraits','brand')
+UP_DIRS=('covers','portraits','brand','photos')
 def jload(p,d):
   try:
     with open(p,encoding='utf-8') as f:return json.load(f)
@@ -45,7 +45,16 @@ def imgv():
 def charsjs():
   m=jload(config.C.MAP,{});I=imgv()
   m2={k:v+'?v='+str(I[v][0]) if v in I else v for k,v in m.items()}
-  return 'window.CHARS='+json.dumps(m2,ensure_ascii=False)+';window.CHARPOS={};window.IMGV='+json.dumps(I,ensure_ascii=False,separators=(',',':'))+';'
+  return 'window.CHARS='+json.dumps(m2,ensure_ascii=False)+';window.CHARPOS={};window.IMGV='+json.dumps(I,ensure_ascii=False,separators=(',',':'))+';window.PHOTOS='+json.dumps(photos_shown(I),ensure_ascii=False)+';'
+def photos_shown(I=None):
+  """{seat id: 'photos/x.jpg?v=..'}：开关开着、照片已通过、而且席位上还是上传的那个人（换人后旧照片不挂到新人头上）。"""
+  if not config.C.site['photos']['enabled']:return {}
+  I=I or imgv();cur={m.get('id'):(m.get('member') or '').strip() for g in roster.load()['groups'] for m in g['members']}
+  out={}
+  for seat,(member,f) in store.shown_photos().items():
+    p='photos/'+f
+    if cur.get(seat)==member and p in I:out[seat]=p+'?v='+str(I[p][0])
+  return out
 def sniff(b):
   if b[:3]==b'\xff\xd8\xff':return 'jpg'
   if b[:8]==b'\x89PNG\r\n\x1a\n':return 'png'
@@ -68,6 +77,23 @@ def set_portrait(group,character,path):
   os.makedirs(config.C.UPLOADS,exist_ok=True);tmp=config.C.MAP+'.tmp'
   with open(tmp,'w',encoding='utf-8') as f:json.dump(m,f,ensure_ascii=False,indent=1)
   os.replace(tmp,config.C.MAP)
+
+# 站点素材：后台「站点素材」面板换的三张图，文件放 uploads/brand/，文件名写回 site.json（按 mtime 热加载，不用重启）
+BRAND_SLOTS={'logo':('brand','logo'),'favicon':('brand','favicon'),'hero':('poster','hero')}
+def brand_state():
+  out={}
+  for k,(sec,key) in BRAND_SLOTS.items():
+    f=config.C.site[sec].get(key) or '';fp=os.path.join(config.C.UPLOADS,'brand',f)
+    ok=bool(f) and re.fullmatch(r'[\w.-]+',f) and os.path.isfile(fp)
+    out[k]={'file':f,'url':f'/brand/{f}?v={int(os.path.getmtime(fp))}'} if ok else {'file':'','url':''}
+  return out
+def set_brand(slot,name):site_set(*BRAND_SLOTS[slot],name)   # name '' = back to the default
+def site_set(sec,key,val):
+  """Write one field into site.json (the raw file, not the merged view)."""
+  j=jload(config.C.SITE,{})
+  j.setdefault(sec,{})[key]=val;tmp=config.C.SITE+'.tmp'
+  with open(tmp,'w',encoding='utf-8') as f:json.dump(j,f,ensure_ascii=False,indent=1)
+  os.replace(tmp,config.C.SITE)
 
 # ── page rendering ────────────────────────────────────────────────────────
 def etag(b):return '"'+hashlib.sha1(b).hexdigest()[:16]+'"'
@@ -204,8 +230,10 @@ class H(SimpleHTTPRequestHandler):
     """/covers/ /portraits/ /brand/ come from instance/uploads, /poster/ from instance/poster, the rest from web/."""
     p=urllib.parse.unquote(path.split('?',1)[0].split('#',1)[0])
     for pre,base in (('/covers/',os.path.join(config.C.UPLOADS,'covers')),('/portraits/',os.path.join(config.C.UPLOADS,'portraits')),
-                     ('/brand/',os.path.join(config.C.UPLOADS,'brand')),('/poster/',config.C.POSTER)):
+                     ('/brand/',os.path.join(config.C.UPLOADS,'brand')),('/photos/',os.path.join(config.C.UPLOADS,'photos')),('/poster/',config.C.POSTER)):
       if p.startswith(pre):
+        # 成员照片只公开正在显示的那张；待审 / 被拒的只有登录后（审核时）能看
+        if pre=='/photos/' and not s.tok() and 'photos/'+p[len(pre):] not in {v.split('?')[0] for v in photos_shown().values()}:return os.path.join(base,'__nope__')
         rel=os.path.normpath(p[len(pre):]).lstrip(os.sep)
         if rel.startswith('..'):return os.path.join(base,'__nope__')
         return os.path.join(base,rel)
@@ -328,6 +356,8 @@ class H(SimpleHTTPRequestHandler):
     if p=='/api/admin/guestbook':return s.js(200,{'items':store.notes(limit=1000)})
     if p=='/api/admin/counts':return s.js(200,store.counts())
     if p=='/api/admin/poster':return s.js(200,poster_status())
+    if p=='/api/admin/photos':return s.js(200,{'items':store.photos(),'config':config.C.site['photos']})
+    if p=='/api/admin/brand':return s.js(200,{'slots':brand_state(),'poster':bool(config.C.site['poster']['enabled'])})
     if p=='/api/admin/art/search':
       import artsearch
       q=urllib.parse.parse_qs(urllib.parse.urlparse(s.path).query);Q=lambda k:(q.get(k) or [''])[0]
@@ -354,6 +384,7 @@ class H(SimpleHTTPRequestHandler):
     if p=='/api/logout':
       SESS.pop(s.tok(),None);return s.js(200,{'ok':True},'cc_s=; Path=/; Max-Age=0')
     if p=='/api/cast-signup':return s.cast_signup()
+    if p=='/api/photo':return s.photo_post()
     if p=='/api/guestbook':return s.guestbook_post()
     if p.startswith('/api/admin/'):
       if not s.tok():return s.js(401,{'error':'需要登录'})
@@ -375,6 +406,26 @@ class H(SimpleHTTPRequestHandler):
     log('signup',row['id'],'dup' if dup else 'new',rec['grp'],rec['seat'])
     if not dup and config.C.notion_on('signup'):bg(lambda:notion().push_signup(row))
     return s.js(200,{'ok':True,'duplicate':dup})
+  def photo_post(s):
+    """Public: a seated member uploads their own photo. ?seat=<id>&name=<CN on that seat>, body = the image."""
+    P=config.C.site['photos'];n=int(s.headers.get('Content-Length',0) or 0)
+    if not P['enabled']:s.close_connection=True;return s.js(404,{'error':'照片上传没开'})
+    hits,cap,now=s.limited('photo')
+    if len(hits)>=cap:s.close_connection=True;return s.js(429,{'error':'上传太频繁，请稍后再试'})
+    if n<16 or n>6_000_000:s.close_connection=True;return s.js(400,{'error':'照片要小于 6 MB'})
+    q=urllib.parse.parse_qs(urllib.parse.urlparse(s.path).query);seat=(q.get('seat') or [''])[0];name=(q.get('name') or [''])[0].strip()
+    g,m=roster.seat(roster.load(),seat)
+    member=(m or {}).get('member','').strip()
+    if not m or not member:s.close_connection=True;return s.js(400,{'error':'这个席位还没人，不能传照片'})
+    # 不是身份验证（成员名本来就公开），只挡住手滑传错席位；真正的把关是审核
+    if name!=member:s.close_connection=True;return s.js(403,{'error':'CN 和这个席位上的不一样'})
+    hits.append(now)
+    try:f=save_upload('photos',s.rfile.read(n))
+    except ValueError as e:return s.js(400,{'error':str(e)})
+    st='approved' if P.get('moderation')=='post' else 'pending'
+    r=store.add_photo(seat,g['name'],m.get('character') or '',member,f,st)
+    log('photo',r['id'],st,g['name'],seat)
+    return s.js(200,{'ok':True,'pending':st=='pending'})
   def guestbook_post(s):
     G=config.C.site['guestbook']
     if not G['enabled']:return s.js(404,{'error':'留言区没开'})
@@ -427,6 +478,35 @@ class H(SimpleHTTPRequestHandler):
         if not g or not c:return s.js(400,{'error':'立绘要带 group 和 character'})
         with LOCK:set_portrait(g,c,'portraits/'+name)
       log('upload',kind,name);return s.js(200,{'ok':True,'file':name})
+    m=re.fullmatch(r'/api/admin/photos/(\d+)',p)
+    if m:
+      try:act=str(s.body(4096).get('action',''))
+      except Exception:return s.js(400,{'error':'bad request'})
+      st={'approve':'approved','reject':'rejected','reopen':'pending'}.get(act)
+      if not st:return s.js(400,{'error':'action 只能是 approve / reject / reopen'})
+      r=store.set_photo(int(m.group(1)),st)
+      if not r:return s.js(404,{'error':'没有这张照片'})
+      return s.js(200,{'ok':True,'item':r})
+    if p=='/api/admin/photos/config':
+      try:b=s.body(4096)
+      except Exception:return s.js(400,{'error':'bad request'})
+      with LOCK:
+        if 'enabled' in b:site_set('photos','enabled',bool(b['enabled']))
+        if b.get('moderation') in ('pre','post'):site_set('photos','moderation',b['moderation'])
+      return s.js(200,{'ok':True,'config':config.C.site['photos']})
+    if p=='/api/admin/brand':
+      slot=Q('slot')
+      if slot not in BRAND_SLOTS:return s.js(400,{'error':'slot 只能是 logo / favicon / hero'})
+      n=int(s.headers.get('Content-Length',0) or 0)
+      if Q('clear')=='1':
+        if n:s.rfile.read(min(n,65536))
+        with LOCK:set_brand(slot,'')
+        log('brand clear',slot);return s.js(200,{'ok':True,'slots':brand_state()})
+      if n<16 or n>8_000_000:s.close_connection=True;return s.js(400,{'error':'图片要小于 8 MB'})
+      try:name=save_upload('brand',s.rfile.read(n))
+      except ValueError as e:return s.js(400,{'error':str(e)})
+      with LOCK:set_brand(slot,name)
+      log('brand',slot,name);return s.js(200,{'ok':True,'file':name,'slots':brand_state()})
     if p=='/api/admin/portrait':
       try:b=s.body(4096)
       except Exception:return s.js(400,{'error':'bad request'})

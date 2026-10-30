@@ -1,4 +1,4 @@
-import json,os,sys,unittest
+import json,os,sys,unittest,urllib.parse
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 from helpers import Base,Client,PW,edit_site
 import config,store
@@ -143,6 +143,22 @@ class Uploads(Base):
     r=s.c.req('POST','/api/admin/upload?kind=portrait&group=%E7%A4%BA%E4%BE%8B%E4%BD%9C%E5%93%81%20A&character=%E4%B8%BB%E8%A7%92',raw=s.PNG);s.assertEqual(r.status,200)
     chars=s.c.get('/chars.js').text;s.assertIn('示例作品 A|主角',chars)
     s.assertEqual(s.c.req('POST','/api/admin/upload?kind=cover',raw=b'<svg onload=alert(1)>'+b' '*40).status,400)
+  def test_brand_slots(s):
+    s.assertEqual(s.c.get('/api/admin/brand').status,401)
+    s.assertEqual(s.c.req('POST','/api/admin/brand?slot=logo',raw=s.PNG).status,401)
+    s.c.login()
+    st=s.c.get('/api/admin/brand').json()['slots'];s.assertEqual(st['logo']['url'],'')
+    r=s.c.req('POST','/api/admin/brand?slot=logo',raw=s.PNG);s.assertEqual(r.status,200,r.text);f=r.json()['file']
+    s.assertEqual(r.json()['slots']['logo']['file'],f);s.assertEqual(s.c.get('/brand/'+f).status,200)
+    s.assertIn(f'/brand/{f}',s.c.get('/').text)                    # site.json 热加载，页面立刻带上 logo
+    s.assertEqual(s.c.req('POST','/api/admin/brand?slot=favicon',raw=s.PNG).status,200)
+    s.assertIn(f'rel=icon href="/brand/{f}"',s.c.get('/').text)
+    s.assertEqual(s.c.req('POST','/api/admin/brand?slot=hero',raw=s.PNG).status,200)
+    s.assertEqual(config.C.site['poster']['hero'],f)
+    s.assertEqual(s.c.req('POST','/api/admin/brand?slot=logo&clear=1',raw=b'').status,200)
+    s.assertNotIn('class=brandlogo',s.c.get('/').text)
+    s.assertEqual(s.c.req('POST','/api/admin/brand?slot=accent',raw=s.PNG).status,400)
+    s.assertEqual(s.c.req('POST','/api/admin/brand?slot=logo',raw=b'<svg onload=alert(1)>'+b' '*40).status,400)
   def test_upload_requires_login(s):
     s.assertEqual(s.c.req('POST','/api/admin/upload?kind=cover',raw=s.PNG).status,401)
 
@@ -251,3 +267,49 @@ class ImportCLI(Base):
     s.assertEqual([g['name'] for g in s.roster()['groups']],['新团'])
 
 if __name__=='__main__':unittest.main()
+
+class Photos(Base):
+  PNG=b'\x89PNG\r\n\x1a\n'+b'\x00'*64
+  def seated(s):
+    import roster
+    for g in roster.load()['groups']:
+      for m in g['members']:
+        if (m.get('member') or '').strip():return g,m
+  def up(s,m,name=None,raw=None):
+    q=urllib.parse.urlencode({'seat':m['id'],'name':m['member'] if name is None else name})
+    return s.c.req('POST','/api/photo?'+q,raw=raw or s.PNG)
+  def test_photos_flow(s):
+    g,m=s.seated()
+    s.assertEqual(s.up(m).status,404)                                  # 默认关
+    edit_site(lambda j:j.setdefault('photos',{}).update(enabled=True))
+    s.assertEqual(s.up(m,name='别人').status,403)
+    s.assertEqual(s.up(m,raw=b'<svg onload=alert(1)>'+b' '*40).status,400)
+    r=s.up(m);s.assertEqual(r.status,200,r.text);s.assertTrue(r.json()['pending'])
+    s.assertNotIn(m['id'],s.c.get('/chars.js').text.split('window.PHOTOS=')[1])   # 待审不显示
+    f=store.photos()[0]['file'];s.assertEqual(s.c.get('/photos/'+f).status,404)    # 待审的文件也不公开
+    s.c.login();i=store.photos()[0]['id']
+    s.assertEqual(s.c.get('/photos/'+f).status,200)                               # 审核时能看
+    s.assertEqual(s.c.post(f'/api/admin/photos/{i}',{'action':'approve'}).status,200)
+    s.assertEqual(s.c.get('/api/admin/counts').json()['photos'],{'approved':1})
+    s.c.post('/api/logout',{})
+    s.assertIn(f'"{m["id"]}": "photos/{f}?v=',s.c.get('/chars.js').text)
+    s.assertEqual(s.c.get('/photos/'+f).status,200)
+    # 第二张通过后，第一张退成 replaced
+    edit_site(lambda j:j['photos'].update(moderation='post'))
+    s.assertFalse(s.up(m,raw=s.PNG+b'\x01').json()['pending'])
+    st=[p['status'] for p in store.photos()];s.assertEqual(st,['approved','replaced'])
+    # 席位换了人：旧照片不挂到新人头上
+    import roster
+    d=roster.load();roster.seat(d,m['id'])[1]['member']='新来的';import json as J
+    with open(config.C.ROSTER,'w',encoding='utf-8') as fh:J.dump(d,fh,ensure_ascii=False)
+    s.assertNotIn(m['id'],s.c.get('/chars.js').text.split('window.PHOTOS=')[1])
+  def test_vacant_seat_and_config(s):
+    import roster
+    edit_site(lambda j:j.setdefault('photos',{}).update(enabled=True))
+    v=next(m for g in roster.load()['groups'] for m in g['members'] if not (m.get('member') or '').strip())
+    s.assertEqual(s.c.req('POST','/api/photo?'+urllib.parse.urlencode({'seat':v['id'],'name':''}),raw=s.PNG).status,400)
+    s.assertEqual(s.c.post('/api/admin/photos/config',{'enabled':False}).status,401)
+    s.c.login()
+    r=s.c.post('/api/admin/photos/config',{'enabled':False,'moderation':'post'});s.assertEqual(r.status,200)
+    s.assertEqual(r.json()['config'],{'enabled':False,'moderation':'post'})
+    s.assertIn('"photos": {"enabled": false',s.c.get('/site.js').text)

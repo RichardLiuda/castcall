@@ -162,3 +162,15 @@
 .ap-it.wide img{aspect-ratio:16/10;object-position:center}
 .ap-it b{font-size:13px;line-height:1.3;overflow-wrap:anywhere}.ap-it small{font-size:11px;color:var(--ink-soft)}
 .ap-note{margin:8px 0 0;font-size:12px;color:var(--ink-soft)}
+/* 站点素材面板（edit.js brandPanel） */
+.brand{display:grid;gap:12px;margin:4px 0 8px}
+.brand-row{display:flex;gap:12px;align-items:center;border:2px solid var(--ink);border-radius:14px;padding:10px}
+.brand-th{flex:none;width:64px;height:64px;border-radius:10px;display:grid;place-items:center;overflow:hidden;font-size:12px;color:var(--ink-soft);
+ background:repeating-conic-gradient(color-mix(in srgb,var(--ink) 8%,transparent) 0 25%,transparent 0 50%) 0 0/12px 12px}
+.brand-row.wide .brand-th{width:96px}
+.brand-th img{max-width:100%;max-height:100%;object-fit:contain}.brand-row.wide .brand-th img{width:100%;height:100%;object-fit:cover}
+.brand-tx{min-width:0;display:flex;flex-direction:column;gap:2px}.brand-tx small{color:var(--ink-soft);font-size:12px;line-height:1.4}
+.brand-act{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.brand-act .btn{padding:6px 12px;font-size:13px}
+.brand-sw{display:block}.brand-sw .chk{display:flex;align-items:center;gap:8px;cursor:pointer}.brand-sw .fld{margin:10px 0 0}
+.rv-ph{grid-template-columns:56px 1fr auto;align-items:center}.rv-ph .rv-img{grid-row:span 2}.rv-img{flex:none;width:56px;aspect-ratio:4/5;border:2px solid var(--ink);border-radius:8px;overflow:hidden;display:block}.rv-img img{width:100%;height:100%;object-fit:cover;display:block}
+.rv-ph .rv-b{grid-column:2/-1}
