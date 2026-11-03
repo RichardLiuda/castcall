@@ -7,7 +7,8 @@
   python3 init.py --example key-demo --yes                   # 用 examples/roster.key-demo.json 当初始名册（13 个团的大样例），
                                                              # 顺带生成占位封面、几条留言和几条待审报名（--no-seed 不要）
 
-会写出 site.json（活动信息）、roster.json（名册）、auth.json（管理密码）。已经初始化过的目录不会被覆盖，
+会写出 site.json（活动信息）、roster.json（名册）、auth.json（管理密码），然后自动配图（导入了名单时）、生成一图流
+（缺依赖就跳过并提示；--no-art / --no-poster 关掉）。已经初始化过的目录不会被覆盖，
 除非加 --force（只重写 site.json 和 auth.json，名册永远不覆盖）。"""
 import argparse,getpass,json,os,secrets,sys
 ROOT=os.path.dirname(os.path.abspath(__file__));sys.path.insert(0,os.path.join(ROOT,'server'))
@@ -26,6 +27,8 @@ def main(argv):
   ap.add_argument('--import',dest='imp',help='初始名册用这份名单（文本或 CSV，- 表示标准输入）')
   ap.add_argument('--blank',action='store_true',help='不要示例名册，从一个空团开始')
   ap.add_argument('--no-seed',action='store_true',help='用 --example 时不生成占位封面、留言和待审报名')
+  ap.add_argument('--no-art',action='store_true',help='建完不自动配图（默认：导入了名单就从 Bangumi / AniList 找封面和立绘）')
+  ap.add_argument('--no-poster',action='store_true',help='建完不生成一图流（默认生成；缺依赖时会跳过并提示怎么装）')
   ap.add_argument('--yes',action='store_true',help='不提问，没给的都用默认值');ap.add_argument('--force',action='store_true')
   a=ap.parse_args(argv);C=config.use(a.instance);y=a.yes
   if a.example:
@@ -68,6 +71,10 @@ def main(argv):
                             contact_label=clabel,roster=roster,example=example,seed=bool(a.example) and not a.no_seed,force=a.force)
   except ValueError as e:print(e);return 1
   if seeded:print(f'样例：{seeded["covers"]} 张占位封面、{seeded["notes"]} 条留言、{seeded["signups"]} 条待审报名（后台「审核」里能看到）')
+  # 首次收尾：导入的名单先自动配图，再生成一图流。两步失败都不影响建站，只打印补救办法
+  import firstrun
+  done=firstrun.run(do_art=roster is not None and not a.no_art,do_poster=not a.no_poster)
+  if done:print('\n'+'\n'.join('  '+x for x in done))
   print(f'\n完成。登录后台（右下角的锁）就能改名册。')
   if shown:print(f'\n  管理密码：{shown}\n  只显示这一次，请现在记下来。忘了就再跑一次 python3 init.py --force。')
   site=config.C.site

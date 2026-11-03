@@ -5,10 +5,11 @@
   python3 server/artsearch.py auto --dry       # 只看会配哪张，不下载
   python3 server/artsearch.py auto --redo      # 已有的也重新找
   python3 server/artsearch.py search 古河渚    # 列出候选
+  python3 server/artsearch.py roster CLANNAD Kanon   # 按作品的角色表生成一份名单（全部空缺），格式就是 init.py --import 要的
 后台也能用：编辑角色 → 「找立绘」，编辑团 → 「找封面」，工具条「一键配图」。
 
 匹配方式：先用团名在 Bangumi 找作品，再用角色名搜角色；同一个角色也出现在这部作品的角色表里，才算可靠，
-否则退回「简体中文名完全相同」的那个；都没有就跳过（不乱配）。工作组（kind: crew）不找立绘。"""
+否则退回「简体中文名完全相同」的那个；都没有就跳过（不乱配）。工作组（kind: crew）封面、立绘都不找。"""
 import json,os,re,sys,threading,time,urllib.parse
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 import config,net
@@ -103,6 +104,46 @@ def search(kind,q,group=''):
     b,e=anilist_characters(q);errs+=[e] if e else []
     res=a+b
   return res,('；'.join(errs) if errs and not res else None)
+# ── roster from a work's character list ───────────────────────────────────
+RELATION={'主角':0,'配角':1}     # 客串不进招募名单
+def work_roster(q,limit=20,main_only=False,log=lambda *a:None):
+  """作品名 → (显示的作品名, [角色名...], 来源说明)。Bangumi：作品角色表按 主角 → 配角 排，逐个取简体中文名；
+  Bangumi 不通时退到 AniList（只有日文 / 罗马字名）。找不到作品返回 (q, [], 原因)。"""
+  d,e=_bgm('search/subjects?limit=6',{'keyword':q})
+  if d is not None:
+    ss=[s for s in d.get('data') or [] if s.get('type') in (2,4)] or (d.get('data') or [])
+    ss.sort(key=lambda s:_norm(q) not in (_norm(s.get('name')),_norm(s.get('name_cn'))))
+    if not ss:return q,[],'Bangumi 没找到这部作品'
+    s=ss[0];title=s.get('name_cn') or s.get('name') or q;time.sleep(PAUSE)
+    cs,e=_bgm(f"subjects/{int(s['id'])}/characters")
+    if cs is None:return title,[],f'Bangumi 角色表读不到（{e}）'
+    cs=[c for c in cs if isinstance(c,dict) and c.get('relation') in RELATION and (not main_only or c.get('relation')=='主角')]
+    cs.sort(key=lambda c:RELATION[c['relation']]);out=[]
+    for c in cs[:limit]:
+      time.sleep(PAUSE);full,_=_bgm(f"characters/{int(c['id'])}")
+      name=(_cn(full)[0] if full and _cn(full) else '') or c.get('name') or ''
+      log(f"  {c['relation']} {name}")
+      if name and name not in out:out.append(name)
+    return title,out,f"Bangumi #{s['id']}（{s.get('name')}）"
+  r,e2=net.request(ANI,{'query':'query($s:String,$n:Int){Media(search:$s){id title{native romaji} characters(sort:[ROLE,RELEVANCE],perPage:$n){edges{role node{name{native full}}}}}}',
+                        'variables':{'s':q,'n':limit}},timeout=15)
+  m=((r or {}).get('data') or {}).get('Media')
+  if not m:return q,[],f'Bangumi 连不上（{e}），AniList '+('也没找到' if r is not None else f'也连不上（{e2}）')
+  es=[x for x in ((m.get('characters') or {}).get('edges') or []) if not main_only or x.get('role')=='MAIN']
+  out=[]
+  for x in es:
+    n=((x.get('node') or {}).get('name') or {});n=n.get('native') or n.get('full') or ''
+    if n and n not in out:out.append(n)
+  t=(m.get('title') or {});return t.get('native') or t.get('romaji') or q,out,f"AniList #{m['id']}（Bangumi 连不上，名字是日文 / 罗马字，请改成中文再导入）"
+def roster_text(works,limit=20,main_only=False,log=print):
+  """几部作品 → importer 格式的文本（每部一个 ## 团，角色全部空缺）+ 每部的来源说明"""
+  lines,notes=[],[]
+  for q in works:
+    log(f'查 {q}…');title,names,src=work_roster(q,limit,main_only,log=log)
+    notes.append(f'{q} → {title}：{len(names)} 个角色，来源 {src}')
+    if names:lines+=[f'## {title}',*names,'']
+  return '\n'.join(lines).strip()+'\n' if lines else '',notes
+
 # ── pick / download ───────────────────────────────────────────────────────
 def allowed(url):
   try:h=urllib.parse.urlparse(url).hostname or ''
@@ -141,6 +182,8 @@ def auto(lock=None,dry=False,redo=False,covers=True,portraits=True,log=print):
   lock=lock or threading.Lock();d=roster.load();m=server.jload(config.C.MAP,{})
   rep={'covers':0,'portraits':0,'skipped':[],'errors':[]}
   for g in d['groups']:
+    # 工作组（摄影 / 后勤…）不是作品：拿组名去搜只会配上同名的无关作品（实测「摄影 / 后勤」配到了《摄影师的复仇》）
+    if (g.get('kind') or 'cast')=='crew':continue
     work,werr=subjects(g['name'],4);time.sleep(PAUSE)
     work.sort(key=lambda x:(not x['exact'],x.get('type') not in (2,4)))
     top=work[0] if work else None
@@ -152,7 +195,7 @@ def auto(lock=None,dry=False,redo=False,covers=True,portraits=True,log=print):
           try:save_cover(g['name'],top['url'],lock);rep['covers']+=1
           except Exception as e:rep['errors'].append(f"{g['name']} 封面：{e}")
       else:rep['skipped'].append(f"{g['name']} 封面："+('搜索失败（'+str(werr)+'）' if werr else '没找到这部作品'))
-    if not portraits or (g.get('kind') or 'cast')=='crew':continue
+    if not portraits:continue
     ids=set()
     # 只有 Bangumi 的作品 id 能拿去查角色表；退到 AniList 时别把 anilist id 发给 bgm.tv
     for s in work[:2]:
@@ -184,11 +227,24 @@ def auto_status():
   t=AUTO['thread'];return {'running':bool(t and t.is_alive()),'report':AUTO['rep'],'startedAt':AUTO['at']}
 def main(a):
   import argparse
-  ap=argparse.ArgumentParser(description='找立绘和封面');ap.add_argument('cmd',choices=('auto','search'));ap.add_argument('q',nargs='?')
+  ap=argparse.ArgumentParser(description='找立绘和封面');ap.add_argument('cmd',choices=('auto','search','roster'));ap.add_argument('q',nargs='*')
   ap.add_argument('--instance',default=os.environ.get('CASTCALL_INSTANCE') or os.path.join(config.ROOT,'instance'))
   ap.add_argument('--dry',action='store_true');ap.add_argument('--redo',action='store_true')
   ap.add_argument('--covers-only',action='store_true');ap.add_argument('--portraits-only',action='store_true');ap.add_argument('--group',default='')
-  o=ap.parse_args(a);config.use(o.instance)
+  ap.add_argument('--limit',type=int,default=20,help='roster：每部作品最多几个角色（主角在前）');ap.add_argument('--main',action='store_true',help='roster：只要主角')
+  ap.add_argument('-o','--out',help='roster：名单写进这个文件（默认打印）')
+  o=ap.parse_args(a);o.q=' '.join(o.q) if o.cmd=='search' else o.q
+  if o.cmd=='roster':
+    if not o.q:ap.error('roster 后面跟作品名，几部就写几个：roster CLANNAD Kanon')
+    text,notes=roster_text(o.q,o.limit,o.main,log=lambda *x:print(*x,file=sys.stderr))
+    for n in notes:print(n,file=sys.stderr)
+    if not text:return 1
+    if o.out:
+      with open(o.out,'w',encoding='utf-8') as f:f.write(text)
+      print(f'名单写进了 {o.out}：角色全部空缺。给用户过目、补上 CN / 摄影后勤后，再 init.py --import',file=sys.stderr)
+    else:print(text,end='')
+    return 0
+  config.use(o.instance)
   if o.cmd=='search':
     res,e=search('cover' if o.covers_only else 'portrait',o.q or '',o.group)
     for r in res:print(f"[{r['source']}] {r['title']} / {r['sub']}{' ✓作品内' if r.get('inwork') else ''}\n    {r['url']}")

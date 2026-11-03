@@ -24,9 +24,12 @@ python3 -m venv .venv-poster
 CASTCALL_POSTER_PYTHON=/path/to/castcall/.venv-poster/bin/python
 ```
 
+按上面的命令把 venv 建在仓库根目录的 `.venv-poster/` 时，这一行可以不写，会自动使用。
+
 ## 生成
 
-- **后台**：工具条点「生成一图流」，一两分钟后提示完成。抬头会出现「一图流」入口。
+- **建站时**：`init.py` 和网页向导建完站、配完图会自动生成一次（`init.py --no-poster` 关掉）。
+- **后台**：工具条点「生成一图流」，一两分钟后提示完成。抬头会出现「一图流」入口。名册或图片改过之后要再点一次。
 - **命令行**：
 
 ```bash

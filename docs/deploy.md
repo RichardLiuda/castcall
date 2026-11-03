@@ -8,8 +8,10 @@
 sudo useradd --system --create-home --home-dir /srv/castcall castcall
 sudo -u castcall git clone https://github.com/RichardLiuda/castcall.git /srv/castcall/app
 cd /srv/castcall/app
-sudo -u castcall python3 init.py
+sudo -u castcall python3 init.py --title "活动名" --import 名单.txt --yes   # 标准流程见 quickstart.md 第 1 节
 ```
+
+`init.py` 建完会自动配图、生成一图流。服务器上没装一图流依赖时这步会跳过，见下面第 6 节。
 
 ## 2. systemd
 

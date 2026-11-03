@@ -148,7 +148,10 @@ def index_html():
 
 # ── poster ────────────────────────────────────────────────────────────────
 POSTER={'proc':None,'rc':None,'at':0.0,'ok':None}
-def poster_python():return config.C.getenv('CASTCALL_POSTER_PYTHON') or sys.executable
+def poster_python():
+  """CASTCALL_POSTER_PYTHON，没设就用仓库里按 docs/poster.md 建的 .venv-poster，再没有就用当前 Python。"""
+  v=os.path.join(ROOT,'.venv-poster','Scripts' if os.name=='nt' else 'bin','python.exe' if os.name=='nt' else 'python')
+  return config.C.getenv('CASTCALL_POSTER_PYTHON') or (v if os.path.isfile(v) else sys.executable)
 def poster_available():
   """Cached: can the poster interpreter import Pillow and Playwright? (They are optional, see requirements-poster.txt.)"""
   if POSTER['ok'] is None:
@@ -160,12 +163,16 @@ def poster_build():
   if p and p.poll() is None:return False
   os.makedirs(config.C.LOGS,exist_ok=True)
   out=open(os.path.join(config.C.LOGS,'poster.log'),'w',encoding='utf-8')
+  args,env=poster_cmd()
+  with out:POSTER.update(proc=subprocess.Popen(args,stdout=out,stderr=subprocess.STDOUT,start_new_session=True,env=env),at=time.time(),rc=None)
+  return True
+def poster_cmd():
+  """(argv, env) for poster/build.py on this instance. Shared with firstrun.py (init.py runs it in the foreground)."""
   args=[poster_python(),os.path.join(ROOT,'poster','build.py'),'--instance',config.C.INSTANCE]
   args+=['master','social'] if mode()=='single' else ['master','wide']
   env=dict(os.environ,CASTCALL_INSTANCE=config.C.INSTANCE)
   if config.C.getenv('CASTCALL_CHROME'):env['CASTCALL_CHROME']=config.C.getenv('CASTCALL_CHROME')   # .env values are not in os.environ
-  with out:POSTER.update(proc=subprocess.Popen(args,stdout=out,stderr=subprocess.STDOUT,start_new_session=True,env=env),at=time.time(),rc=None)
-  return True
+  return args,env
 def poster_status():
   p=POSTER['proc'];run=bool(p and p.poll() is None)
   if p and not run:POSTER['rc']=p.returncode
@@ -345,6 +352,8 @@ class H(SimpleHTTPRequestHandler):
           with open(tmp,'w',encoding='utf-8') as f:json.dump(j,f,ensure_ascii=False,indent=1)
           os.replace(tmp,config.C.SITE)
         SETUP['token']=None
+      # 首次收尾：粘贴的名单先自动配图，再生成一图流（样例 / 空名册没什么可配的，只生成一图流）
+      import firstrun;firstrun.run_bg(LOCK,do_art=src=='paste')
     except ValueError as e:return s.js(400,{'error':str(e)})
     except Exception as e:log('setup err',repr(e));return s.js(500,{'error':'初始化失败：'+str(e)[:120]})
     log('setup done',config.C.INSTANCE)

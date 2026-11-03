@@ -5,6 +5,12 @@ where binding a socket is not allowed (sandboxes, some CI)."""
 import json,os,shutil,socket,sys,tempfile,threading,unittest
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)));sys.path.insert(0,os.path.join(ROOT,'server'))
 import config
+# 首次收尾（init.py / 网页向导建完站后的自动配图 + 一图流）在测试里不联网、不开 Chrome：只记下被调用过
+import firstrun
+FIRSTRUN=[]
+REAL_POSTER=firstrun.poster
+firstrun.art=lambda lock=None,log=print:(FIRSTRUN.append('art'),{'covers':0,'portraits':0,'skipped':[],'errors':[]})[1]
+firstrun.poster=lambda wait=True,log=print:(FIRSTRUN.append(('poster',wait)),(False,'stub'))[1]
 PW='test-password-1'
 def rj(p):
   with open(p,encoding='utf-8') as f:return json.load(f)

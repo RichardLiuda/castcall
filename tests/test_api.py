@@ -313,3 +313,45 @@ class Photos(Base):
     r=s.c.post('/api/admin/photos/config',{'enabled':False,'moderation':'post'});s.assertEqual(r.status,200)
     s.assertEqual(r.json()['config'],{'enabled':False,'moderation':'post'})
     s.assertIn('"photos": {"enabled": false',s.c.get('/site.js').text)
+
+class FirstRun(unittest.TestCase):
+  """建站后默认：导入的名单先自动配图，再生成一图流；样例 / 空名册只生成一图流。"""
+  def setUp(s):
+    import tempfile,helpers;s.d=tempfile.mkdtemp(prefix='castcall-fr-');helpers.FIRSTRUN.clear();s.calls=helpers.FIRSTRUN
+  def tearDown(s):
+    import shutil;shutil.rmtree(s.d,ignore_errors=True)
+  def init(s,*extra):
+    import contextlib,io
+    from helpers import ROOT
+    sys.path.insert(0,ROOT);import init
+    with contextlib.redirect_stdout(io.StringIO()) as out:rc=init.main(['--instance',s.d,'--password','x'*10,'--yes',*extra])
+    return rc,out.getvalue()
+  def names(s):
+    p=os.path.join(s.d,'名单.txt');os.makedirs(s.d,exist_ok=True)
+    with open(p,'w',encoding='utf-8') as f:f.write('## Kanon\n月宫亚由 小满\n川澄舞\n')
+    return p
+  def test_import_runs_art_then_poster(s):
+    rc,out=s.init('--import',s.names(),'--title','Kanon 团片');s.assertEqual(rc,0,out)
+    s.assertEqual(s.calls,['art',('poster',True)]);s.assertIn('配图：封面 0 张',out)
+  def test_opt_out(s):
+    rc,out=s.init('--import',s.names(),'--title','x','--no-art','--no-poster');s.assertEqual(rc,0,out);s.assertEqual(s.calls,[])
+  def test_example_skips_art(s):
+    rc,_=s.init('--example','key-single');s.assertEqual(rc,0);s.assertEqual(s.calls,[('poster',True)])
+  def test_poster_fallbacks(s):
+    import server,firstrun,helpers
+    config.use(s.d);s.init('--no-poster')
+    old=server.POSTER['ok']
+    try:
+      server.POSTER['ok']=False
+      ok,msg=helpers.REAL_POSTER();s.assertFalse(ok);s.assertIn('requirements-poster.txt',msg)
+      from helpers import edit_site;edit_site(lambda j:j['poster'].update(enabled=False))
+      ok,msg=helpers.REAL_POSTER();s.assertFalse(ok);s.assertIn('关掉',msg)
+    finally:server.POSTER['ok']=old
+  def test_wizard_paste_runs_in_background(s):
+    import server,firstrun
+    config.use(s.d);server.HITS.clear();server.SESS.clear();s.assertFalse(server.preflight())
+    c=Client();b={'token':server.SETUP['token'],'mode':'single','title':'t','source':'paste','names':'古河渚 云果','password':'pw-12345678'}
+    try:
+      s.assertEqual(c.post('/api/setup',b).status,200);firstrun.STATE['thread'].join(10)
+      s.assertEqual(s.calls,['art',('poster',False)])
+    finally:server.SETUP.update(token=None,instance=None)

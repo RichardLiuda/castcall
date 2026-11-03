@@ -13,7 +13,8 @@ class Fake:
     if raw:return (PNG,None) if 'lain.bgm.tv' in url or 'anilist.co' in url else (None,'nope')
     if 'search/subjects' in url:
       return {'data':[{'id':500,'name':body['keyword'],'name_cn':body['keyword'],'type':4,'images':{'large':'https://lain.bgm.tv/pic/cover/l/500.jpg','medium':'https://lain.bgm.tv/pic/cover/m/500.jpg'}}]},None
-    if url.endswith('/subjects/500/characters'):return [{'id':1},{'id':2}],None
+    if url.endswith('/subjects/500/characters'):return [{'id':2,'relation':'配角','name':'おさななじみ'},{'id':1,'relation':'主角','name':'しゅじんこう'},{'id':7,'relation':'客串','name':'ゲスト'}],None
+    if '/v0/characters/' in url:return next((c for v in CHARS.values() for c in v if url.endswith('/characters/'+str(c['id']))),None),None
     if 'search/characters' in url:return {'data':CHARS.get(body['keyword'],[])},None
     if 'graphql.anilist.co' in url:return {'data':{'Page':{'characters':[],'media':[]}}},None
     return None,'HTTP 404'
@@ -29,12 +30,22 @@ class Art(Base):
     s.assertIn(f'{g}|主角',m);s.assertIn(f'{g}|青梅竹马',m)
     s.assertNotIn(f'{g}|学生会长',m,'a same-named character from another work is not used')
     s.assertTrue(any('学生会长' in x for x in rep['skipped']))
-    s.assertTrue(all(gg.get('cover') for gg in s.roster()['groups']))
+    gs=s.roster()['groups']
+    s.assertTrue(all(gg.get('cover') for gg in gs if gg.get('kind')!='crew'))
+    s.assertTrue(any(gg.get('kind')=='crew' for gg in gs))
+    s.assertFalse(any(gg.get('cover') for gg in gs if gg.get('kind')=='crew'),'crew groups get no cover (their name is not a work)')
     s.assertFalse(any('摄影' in k for k in m),'crew groups get no portraits')
+    s.assertFalse(any('摄影' in u for u in s.fake.calls),'crew group names are never searched')
   def test_dry_writes_nothing(s):
     import server
     rep=artsearch.auto(dry=True,log=lambda *a:None);s.assertGreater(rep['portraits'],0)
     s.assertEqual(server.jload(config.C.MAP,{}),{});s.assertFalse(any(g.get('cover') for g in s.roster()['groups']))
+  def test_roster_from_work(s):
+    text,notes=artsearch.roster_text(['作品甲'],log=lambda *a:None)
+    s.assertEqual(text,'## 作品甲\n主角\n青梅竹马\n','main roles first, Chinese names, no cameos')
+    import importer;d=importer.parse(text,'t');s.assertEqual([m['member'] for m in d['groups'][0]['members']],['',''])
+    s.assertIn('Bangumi #500',notes[0])
+    text,_=artsearch.roster_text(['作品甲'],main_only=True,log=lambda *a:None);s.assertEqual(text,'## 作品甲\n主角\n')
   def test_only_image_hosts(s):
     s.assertTrue(artsearch.allowed('https://lain.bgm.tv/pic/x.jpg'));s.assertTrue(artsearch.allowed('https://s4.anilist.co/file/x.png'))
     for u in ('http://lain.bgm.tv/x.jpg','https://evil.example/x.jpg','https://lain.bgm.tv.evil.example/x','file:///etc/passwd','https://127.0.0.1/x'):s.assertFalse(artsearch.allowed(u),u)

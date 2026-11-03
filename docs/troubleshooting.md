@@ -129,18 +129,22 @@ curl -b cookie http://127.0.0.1:5510/api/data > d.json   # 改 cover 后 PUT 回
 从零到能发链接，按这个顺序走一遍，每步都有可观察的结果：
 
 ```bash
-# 1 建站（不给 --password 就会随机生成并打印一次，务必抄下来）
+# 0 没有名单时，按作品角色表出一版（全部空缺），改好再用
+python3 server/artsearch.py roster Kanon -o 名单.txt
+
+# 1 建站 + 自动配图 + 生成一图流（不给 --password 就会随机生成并打印一次，务必抄下来）
 python3 init.py --instance instance-kanon --title "Kanon 团建" \
   --import 名单.txt --yes
-# 期望：打印「N 个团、M 个席位（X 已定、Y 空缺)」+ 管理密码
+# 期望：「N 个团、M 个席位（X 已定、Y 空缺)」→ 一行行「封面 / 立绘 … ← …」→
+#       「配图：封面 a 张、立绘 b 张」+「一图流：已生成」（没装依赖则是「跳过」和安装命令）+ 管理密码
 
-# 2 配图（先预览）
+# 2 补配图（可选，比如断网后重试）
 CASTCALL_INSTANCE=instance-kanon python3 server/artsearch.py auto --dry
 CASTCALL_INSTANCE=instance-kanon python3 server/artsearch.py auto
 
 # 3 单测
 python3 -m unittest discover -s tests
-# 期望：Ran 67 tests ... OK
+# 期望：Ran 76 tests ... OK
 
 # 4 起服务
 CASTCALL_INSTANCE=instance-kanon python3 server/server.py
@@ -153,5 +157,7 @@ CASTCALL_INSTANCE=instance-kanon python3 server/server.py
 2. 招募中的角色有「报名 →」，点进去是报名表（提交后提示「等审核」，不会直接占位）。
 3. 页面拉到下方有「已定阵容」和「摄影 / 后勤」，工作组的空缺也能报名。
 4. 右下角的锁 → 输密码 → 工具条出现「审核」，能通过刚才那条报名。
+5. 抬头有「一图流」入口，打开是海报（第 1 步说跳过的话没有：装好依赖后在后台点「生成一图流」）。
+6. 摄影 / 后勤这类工作组没有被配上莫名其妙的封面（以前会拿组名去搜作品，配到《摄影师的复仇》这种）。
 
 对外的最后一步见 `docs/deploy.md`（systemd + nginx）。

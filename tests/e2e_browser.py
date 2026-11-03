@@ -16,7 +16,7 @@ def instance(mode):
   # multi gets every optional field, single gets none (no date / place / countdown / contact): both page variants must work
   full=['--date','2026-12-12','--start','2030-12-12T11:00:00+08:00','--location','某某公园','--contact','微信 example_id'] if mode=='multi' else []
   subprocess.run([sys.executable,os.path.join(ROOT,'init.py'),'--instance',d,'--mode',mode,'--title','示例 cos 团建' if mode=='multi' else '示例团片',
-    *full,'--password',PW,'--yes'],check=True,capture_output=True)
+    *full,'--password',PW,'--yes','--no-poster'],check=True,capture_output=True)
   return d
 def serve(d,port):
   env=dict(os.environ,CASTCALL_INSTANCE=d,CASTCALL_PORT=str(port))

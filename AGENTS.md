@@ -3,36 +3,60 @@
 用户多半是 cos 团建 / 团片的组织者，不一定会写代码。典型的请求是「这是我们的名单，帮我把招募页搭起来」。
 **优先调现成的命令，不要手改 JSON。**
 
-## 快速路线
+## 标准部署流程（和 docs/quickstart.md 第 1 节一一对应，按顺序做，别跳步）
+
+**第 0 步：环境。** `python3 --version` ≥ 3.9。一图流默认会生成，依赖没装时先问用户要不要装：
 
 ```bash
-# 1. 初始化（不交互）。名单可以是文本或 CSV，格式见下
-python3 init.py --title "活动名" --import 名单.txt --date 2026-12-12 --start 2026-12-12T11:00:00+08:00 \
-  --location "地点" --contact "微信 abc123" --password "至少8位的密码" --yes
-# 2. 自动配图（Bangumi / AniList；只配有把握的，其余跳过）
-python3 server/artsearch.py auto
-# 3. 启动
-python3 server/server.py          # http://127.0.0.1:5510/ ，右下角的锁是后台
+python3 -m venv .venv-poster && .venv-poster/bin/pip install -r requirements-poster.txt && .venv-poster/bin/playwright install chromium
 ```
 
-- 已经初始化过（存在 `instance/roster.json`）时，`init.py` 会拒绝执行；改名单用 `python3 tools/import.py 名单.txt`
-  （合并，不会覆盖已有的 CN）或加 `--replace`（整份替换，会先备份）。先加 `--dry` 看会改什么。
-- 不知道密码就别编：问用户，或者不传 `--password`、去掉 `--yes`，让 `init.py` 随机生成并打印一次，原样转告用户。
-- 只想看效果：`python3 init.py --example key-demo --password ... --yes`（13 个团的大样例，带占位封面、留言和待审报名）。
+（仓库里有 `.venv-poster/` 会被自动使用。用户不想装就跳过，建站照常，一图流那步会提示。）
+
+**第 1 步：名单来源——先问用户，别自己决定。** 用户没直接给名单时，原话问：
+
+> 名单你来提供（文字、表格、截图都行），还是我按作品的角色表先整理一版？我整理的那版只有角色、全部空缺，CN 需要你补。
+
+- 用户给：整理成下面的格式（截图逐行识别，看不清的 CN 留空，别猜）。
+- 用户让你整理：`python3 server/artsearch.py roster 作品A 作品B -o 名单.txt`（Bangumi 主角 + 配角，简体中文名；
+  `--main` 只要主角，`--limit` 控制人数）。Bangumi 连不上时会退到 AniList，名字是日文，要改成中文。
+  摄影 / 后勤这类工作组不会自动生成，问用户要不要加。
+- **两种都要把整理好的名单给用户过目、确认后再导入。**
+
+**第 2 步：建站。** 问清活动名称；日期、开场时间、地点、联系方式有就填。密码不要编：用户给就用，不给就不传 `--password`，
+让 `init.py` 随机生成并把打印的密码原样转告用户。
+
+```bash
+python3 init.py --title "活动名" --import 名单.txt --date 2026-12-12 --start 2026-12-12T11:00:00+08:00 \
+  --location "地点" --contact "微信 abc123" [--password "至少8位"] --yes
+```
+
+`init.py` 建完会**自动配图，再生成一图流**，最后打印两行总结（配了几张、跳过几个；一图流成功 / 跳过的原因）。原样转告用户。
+已经初始化过（存在 `instance/roster.json`）时它会拒绝执行：改名单走 `python3 tools/import.py 名单.txt --dry`，看过再去掉 `--dry`。
+
+**第 3 步：启动并验收。** `python3 server/server.py`，打开 `http://127.0.0.1:5510/` 核对：团 / 角色 / CN 和名单一致，
+封面立绘配上了，抬头有「一图流」，空缺能点「报名 →」，右下角的锁能用密码进后台。
+
+**第 4 步：补漏。** 被跳过的角色：`python3 server/artsearch.py search 角色名 --group 团名` 列候选给用户挑，或者让用户在后台点「找立绘」。
+图改过以后要重新生成一图流（后台「生成一图流」或 `POST /api/admin/poster`）。
+
+**第 5 步：交付。** 一两句话汇报：几个团、几个角色、几个空缺、配好几张图、哪些没配上、一图流有没有生成、后台密码。
+要让别人访问：`docs/deploy.md`。
+
+只想看效果：`python3 init.py --example key-demo --yes`（13 个团的大样例，不配图，只生成一图流）。
 
 ## 名单格式（server/importer.py）
 
 ```
-## 团名（通常是作品名）        ← 没有团名行就是单团
+## 团名（通常是作品名）        ← 只有一部作品也建议写上；没有团名行就用活动名当团名
 > 团的说明（可选）
 角色名 CN                      ← 空格 / Tab / 冒号 / 竖线分隔都行
 角色名                         ← 没有 CN = 空缺，可以报名
-## 摄影 / 后勤                 ← 团名带「摄影 / 后勤 / 妆娘 / staff」会设成工作组（不配立绘）
+## 摄影 / 后勤                 ← 团名带「摄影 / 后勤 / 妆娘 / staff」会设成工作组（不配封面和立绘）
 摄影 阿光
 ```
 
 CSV：表头里有 `团`（或 `作品` / `group`）、`角色`（`character` / `role`）、`CN`（`成员` / `member` / `coser`）就行。
-用户给的是图片或聊天截图：先把内容整理成上面的文本，再导入。
 
 ## 改配置
 
@@ -43,10 +67,10 @@ CSV：表头里有 `团`（或 `作品` / `group`）、`角色`（`character` / 
 
 ## 图片
 
-- 自动：`python3 server/artsearch.py auto`（`--dry` 预览，`--redo` 重找已有的，`--covers-only` / `--portraits-only`）。
+- 自动：`python3 server/artsearch.py auto`（`--dry` 预览，`--redo` 重找已有的，`--covers-only` / `--portraits-only`）。工作组不配。
 - 指定某张：`python3 server/artsearch.py search 角色名 --group 团名` 列出候选 URL；用户挑中后，
   在后台用「找立绘」/「在线找封面」点选，或者调接口 `POST /api/admin/art/pick`（需要登录）。
-- 用户自己的图：后台编辑角色 / 团时上传。
+- 用户自己的图：后台编辑角色 / 团时上传。logo、标签页图标、一图流大图：后台「站点素材」（或 `POST /api/admin/brand`）。
 - 立绘映射在 `instance/uploads/map.json`：`{"团名|角色名": "portraits/文件名"}`。改了团名、角色名要同步改这里（后台改名会自动搬）。
 
 ## 不要做
@@ -68,6 +92,8 @@ CSV：表头里有 `团`（或 `作品` / `group`）、`角色`（`character` / 
 | `GET /api/admin/art/search?kind=portrait|cover&q=&group=`，`POST /api/admin/art/pick` | 找图 / 选图 |
 | `POST /api/admin/art/auto` | 后台跑一键配图 |
 | `POST /api/admin/poster` | 生成一图流（需要 Pillow + Playwright） |
+| `GET /api/admin/brand`，`POST /api/admin/brand?slot=logo|favicon|hero[&clear=1]`（body 是图片） | 站点素材 |
+| `GET /api/admin/photos`，`POST /api/admin/photos/<id> {"action":"approve|reject|reopen"}`，`POST /api/admin/photos/config {"enabled","moderation"}` | 成员本人照片 |
 
 ## 改代码时
 
