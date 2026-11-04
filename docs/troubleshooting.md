@@ -50,6 +50,20 @@ playwright install chromium
 
 **怎么办** 单测是真依赖最小的验证：`python3 -m unittest discover -s tests`（67 个，约 25 秒）。想看真实渲染就用系统 Chrome 手动过一遍，或者装好 playwright 后 `python3 tests/e2e_browser.py --chrome "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`。
 
+### 1.4 让 AI 助手部署时，服务器在向导填到一半时被杀
+
+**看到** AI 发了向导链接，你还没填完，页面就打不开了；`instance/` 里只有日志。
+
+**为什么** 不少 AI 助手的环境在一轮对话结束时会杀掉它启动的后台进程（服务器收到 SIGTERM）。
+
+**现在会怎样**
+
+- AGENTS.md / skill 要求 AI 发完链接就用提问框（比如 Claude Code 的 `AskUserQuestion`）把这一轮卡住，等你在网页上填完、点「建好了」再往下走。
+- 没有提问框的 AI 用 `server.py --prefill 名单.txt --exit-after-setup` 前台运行：建完、配完图、生成完一图流自己退出。
+- 真被杀了：用同一条命令重启。**向导链接不变**（口令存在 `instance/.setup-token`），已经打开的页面直接接着提交；建站后配图 / 一图流没跑完，重启时自动补跑（`instance/firstrun.pending`）。
+
+**怎么办** 让 AI 重启服务器，或者自己在终端里运行它打印过的那条命令。建好后想一直开着：自己的终端里 `python3 server/server.py`，或按 `docs/deploy.md` 部署。
+
 ---
 
 ## 2. 多个实例：最容易配错对象的地方
@@ -147,7 +161,7 @@ CASTCALL_INSTANCE=instance-kanon python3 server/artsearch.py auto
 
 # 3 单测
 python3 -m unittest discover -s tests
-# 期望：Ran 88 tests ... OK
+# 期望：Ran 92 tests ... OK
 
 # 4 起服务
 CASTCALL_INSTANCE=instance-kanon python3 server/server.py

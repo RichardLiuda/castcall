@@ -465,3 +465,67 @@ class WizardPrefill(unittest.TestCase):
     import firstrun;firstrun.STATE['thread'].join(10)
     j=s.c.get('/api/admin/firstrun').json();s.assertEqual(j['stage'],'done');s.assertTrue(j['started']);s.assertIn('poster',j)
     s.assertEqual(Client().get('/api/admin/firstrun').status,401)
+
+class SurvivesKill(unittest.TestCase):
+  """AI 助手的环境会在一轮对话结束时杀掉后台进程：口令要跨重启不变，收尾没跑完要能补上，--exit-after-setup 建完自己退出。"""
+  def setUp(s):
+    import tempfile,server,helpers,firstrun
+    s.d=tempfile.mkdtemp(prefix='castcall-kill-');config.use(s.d);server.HITS.clear();server.SESS.clear();helpers.FIRSTRUN.clear()
+    firstrun.STATE.update(thread=None,lines=[],stage='',finished=False)
+  def tearDown(s):
+    import shutil,server
+    server.SETUP.update(token=None,instance=None,prefill=None);shutil.rmtree(s.d,ignore_errors=True)
+  def test_token_survives_restart_and_is_removed_after_setup(s):
+    import server
+    s.assertFalse(server.preflight());t=server.SETUP['token']
+    server.SETUP['token']=None;s.assertFalse(server.preflight());s.assertEqual(server.SETUP['token'],t,'same link after a restart')
+    p=os.path.join(s.d,'.setup-token');s.assertEqual(oct(os.stat(p).st_mode&0o777),'0o600')
+    b={'token':t,'mode':'single','title':'t','source':'blank','password':'pw-12345678'}
+    s.assertEqual(Client().post('/api/setup',b).status,200);s.assertFalse(os.path.exists(p))
+  def test_interrupted_firstrun_resumes(s):
+    import server,firstrun,helpers
+    s.assertFalse(server.preflight())
+    b={'token':server.SETUP['token'],'mode':'single','title':'t','source':'paste','names':'古河渚 云果','password':'pw-12345678'}
+    s.assertEqual(Client().post('/api/setup',b).status,200);firstrun.STATE['thread'].join(10)
+    s.assertIsNone(firstrun.pending(),'marker removed once finished')
+    # 模拟被杀：标记还在
+    with open(firstrun.pending_path(),'w') as f:f.write('{"art":true,"poster":true}')
+    helpers.FIRSTRUN.clear();firstrun.STATE.update(thread=None,finished=False)
+    import contextlib,io
+    old=server.make_server
+    class Fake:
+      server_address=('127.0.0.1',1)
+      def serve_forever(self):pass
+      def server_close(self):pass
+    server.make_server=lambda *a,**k:Fake()
+    try:
+      with contextlib.redirect_stdout(io.StringIO()) as out:s.assertEqual(server.main([]),0)
+    finally:server.make_server=old
+    s.assertIn('没跑完，现在补上',out.getvalue());firstrun.STATE['thread'].join(10)
+    s.assertEqual(helpers.FIRSTRUN,['art',('poster',False)]);s.assertIsNone(firstrun.pending())
+  def test_exit_after_setup_on_built_instance(s):
+    import contextlib,io,server,firstrun
+    s.assertFalse(server.preflight())
+    b={'token':server.SETUP['token'],'mode':'single','title':'t','source':'blank','password':'pw-12345678'}
+    s.assertEqual(Client().post('/api/setup',b).status,200);firstrun.STATE['thread'].join(10)
+    firstrun.STATE.update(thread=None)
+    old=server.make_server
+    class Fake:
+      server_address=('127.0.0.1',1)
+      def server_close(self):pass
+    server.make_server=lambda *a,**k:Fake()
+    try:
+      with contextlib.redirect_stdout(io.StringIO()) as out:rc=server.main(['--exit-after-setup'])
+    finally:server.make_server=old
+    s.assertEqual(rc,0);s.assertIn('已经建好了',out.getvalue())
+  def test_exit_when_built_waits_for_firstrun(s):
+    import server,firstrun,threading,time as T
+    calls=[];srv=type('S',(),{'shutdown':lambda self:calls.append('shutdown')})()
+    firstrun.STATE['finished']=False
+    real=T.sleep;T.sleep=lambda x:real(min(x,0.05))
+    try:
+      t=threading.Thread(target=server.exit_when_built,args=(srv,));t.start();real(0.3)
+      s.assertEqual(calls,[],'still waiting while first-run work is going')
+      firstrun.STATE['finished']=True;t.join(5)
+    finally:T.sleep=real
+    s.assertEqual(calls,['shutdown'])

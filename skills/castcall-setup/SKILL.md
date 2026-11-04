@@ -19,7 +19,8 @@ description: Deploy or update a castcall cos 团建 / 团片 recruiting site —
 3. **建站——走网页向导**：`python3 server/server.py --prefill 名单.txt --title "活动名"` 放后台跑，
    把它打印的 `http://127.0.0.1:5510/setup?t=…` 完整链接给用户（话术见 `AGENTS.md` 第 2 步）。
    单团 / 多团、日期地点、**报名要填的信息**（身高 / 年龄 / 性别 / 样片 / 自定义题，选填或必填）、密码，都让用户在网页上选，不要在对话里逐项问。
-   等用户说建好了再往下。用户明确不要网页、或者没有浏览器时，才用 `init.py --import … --fields … --yes`。
+   **发完链接立刻用 `AskUserQuestion` 卡住这一轮**（「向导填好、完成页都亮了吗？」）：环境会在一轮结束时杀掉后台的服务器，
+   必须在同一轮里等用户回答、再做验收。服务器万一被杀，用同一条命令重启，链接不变、没跑完的配图会自动补跑。详见 `AGENTS.md` 第 2 步。用户明确不要网页、或者没有浏览器时，才用 `init.py --import … --fields … --yes`。
    已经初始化过的实例改用 `python3 tools/import.py 名单.txt --dry` → 去掉 `--dry`。
 
 4. **验收**：服务器已经在跑，按 `AGENTS.md` 第 3 步逐项核对。

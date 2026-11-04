@@ -360,6 +360,8 @@ class H(SimpleHTTPRequestHandler):
           with open(tmp,'w',encoding='utf-8') as f:json.dump(j,f,ensure_ascii=False,indent=1)
           os.replace(tmp,config.C.SITE)
         SETUP['token']=None
+        try:os.remove(os.path.join(config.C.INSTANCE,'.setup-token'))
+        except OSError:pass
       # 首次收尾：粘贴的名单先自动配图，再生成一图流（样例 / 空名册没什么可配的，只生成一图流）
       import firstrun;firstrun.run_bg(LOCK,do_art=src=='paste')
     except ValueError as e:return s.js(400,{'error':str(e)})
@@ -598,9 +600,22 @@ def preflight():
   roster): /setup, guarded by a one-time token that only the person who started the server sees in the console."""
   C=config.C
   if not setup.initialized(C):
-    SETUP.update(token=secrets.token_urlsafe(9),instance=C.INSTANCE);return False
+    SETUP.update(token=setup_token(C),instance=C.INSTANCE);return False
   roster.validate(roster.load());config.C.site;store.db().close()
   return True
+def setup_token(C):
+  """向导口令存在实例目录里（.setup-token，只有本机用户能读）：服务器中途被杀、重启后链接不变，已经打开的向导页还能接着提交。
+  建站成功后删掉。"""
+  p=os.path.join(C.INSTANCE,'.setup-token')
+  try:
+    with open(p,encoding='utf-8') as f:t=f.read().strip()
+    if re.fullmatch(r'[\w-]{12,64}',t):return t
+  except OSError:pass
+  t=secrets.token_urlsafe(9);os.makedirs(C.INSTANCE,exist_ok=True)
+  with open(p,'w',encoding='utf-8') as f:f.write(t)
+  try:os.chmod(p,0o600)
+  except OSError:pass
+  return t
 def make_server(host=None,port=None):
   return ThreadingHTTPServer((host or config.C.host(),config.C.port() if port is None else port),H)
 def prefill(path,title=''):
@@ -617,6 +632,7 @@ def main(argv=None):
   ap=argparse.ArgumentParser(description='castcall 服务器。还没初始化时进入网页开团向导。')
   ap.add_argument('--prefill',metavar='名单.txt',help='向导里预先填好这份名单（格式见 docs/quickstart.md），团长打开链接核对、选项、设密码就能建站')
   ap.add_argument('--title',default='',help='和 --prefill 一起用：预填活动名称')
+  ap.add_argument('--exit-after-setup',action='store_true',help='向导完成、自动配图和一图流都跑完后自己退出（给 AI 助手 / 脚本用：前台跑它就能等到建站结束）')
   a=ap.parse_args(sys.argv[1:] if argv is None else argv)
   ready=preflight()
   if a.prefill:
@@ -630,6 +646,12 @@ def main(argv=None):
       print(f'端口 {config.C.port()} 已被占用：可能另一个 castcall 还开着。先停掉它，或者换个端口：CASTCALL_PORT=5512 python3 server/server.py',file=sys.stderr);return 1
     raise
   host,port=srv.server_address[:2]
+  import firstrun
+  if ready and firstrun.pending():
+    pd=firstrun.pending();print('上次建站后的自动配图 / 一图流没跑完，现在补上…',flush=True);firstrun.run_bg(LOCK,do_art=pd['art'],do_poster=pd['poster'])
+  if a.exit_after_setup:
+    if ready and not firstrun.STATE['thread']:print('已经建好了，没有要等的。正式运行：python3 server/server.py');srv.server_close();return 0
+    threading.Thread(target=lambda:exit_when_built(srv),daemon=True).start()
   threading.Thread(target=lambda:notion().loop(LOCK),daemon=True).start()
   log('start',host,port,'notion' if config.C.notion_on() else 'local-only')
   shown='127.0.0.1' if host in ('0.0.0.0','::','') else host
@@ -639,5 +661,12 @@ def main(argv=None):
     print(f'castcall 还没初始化。{pre}在浏览器里打开下面这个链接完成设置（链接里的口令只在这里出现，别发给别人）：\n\n  http://{shown}:{port}/setup?t={SETUP["token"]}\n\n（也可以停掉服务器，用 python3 init.py 在命令行里初始化）',flush=True)
   try:srv.serve_forever()
   except KeyboardInterrupt:pass
+  if a.exit_after_setup and firstrun.STATE.get('finished'):
+    print('\n建好了：'+config.C.INSTANCE+'\n'+'\n'.join('  '+x for x in firstrun.STATE['lines'])+'\n正式运行：python3 server/server.py',flush=True)
   return 0
+def exit_when_built(srv):
+  """--exit-after-setup：等向导提交 → 首次收尾（配图 + 一图流子进程）跑完，留几秒让完成页拿到最后的进度，然后关服务器。"""
+  import firstrun
+  while not firstrun.STATE.get('finished'):time.sleep(1)
+  time.sleep(5);srv.shutdown()
 if __name__=='__main__':sys.exit(main())
