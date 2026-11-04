@@ -33,6 +33,7 @@ DEFAULTS={
     'contactLabel':'微信',   # 报名表第二个输入框的名字（微信 / QQ / 邮箱）
     'contactPattern':'',    # 可选，JS/Python 都能用的正则，比如 QQ 号 ^[1-9][0-9]{4,11}$
     'note':'提交后等审核，不会直接占上这个席位。',
+    'fields':[],            # 额外要填的：身高 / 年龄 / 性别 / 样片…，见 server/fields.py 和 docs/config.md
   },
   'guestbook':{
     'enabled':True,
@@ -59,14 +60,14 @@ DEFAULTS={
     'sessionDays':7,
   },
   'limits':{                # 每个 IP 每 windowSec 秒最多几次
-    'windowSec':600,'login':5,'signup':8,'guestbook':8,'photo':6,
+    'windowSec':600,'login':5,'signup':8,'guestbook':8,'photo':6,'sample':10,
   },
   'notion':{                # 只有列名映射放这里；token 和库 ID 放 .env（见 docs/notion.md）
     'syncEvery':20,         # 秒：拉审核结果、补推失败的报名和留言
     'rosterEvery':900,      # 秒：把名册改动推到 Notion
     'columns':{
       'roster':{'character':'角色','member':'成员','group':'团','order':'排序','status':'状态','id':'记录ID'},
-      'signup':{'name':'CN','contact':'联系方式','group':'团','character':'角色','id':'记录ID','status':'状态'},
+      'signup':{'name':'CN','contact':'联系方式','group':'团','character':'角色','id':'记录ID','status':'状态','extra':'补充信息'},
       'guestbook':{'name':'CN','text':'内容','status':'状态','time':'时刻'},
     },
     'status':{'pending':'待审','approved':'已通过','rejected':'已拒绝','hidden':'已隐藏'},
@@ -106,7 +107,7 @@ class Config:
   def public(s):
     """The part of site.json the browser may see (/site.js). Never put secrets in site.json."""
     t=s.site;return {'mode':t['mode'],'event':t['event'],'brand':t['brand'],
-      'signup':{k:t['signup'][k] for k in ('enabled','opensAt','closesAt','contactLabel','contactPattern','note')},
+      'signup':{**{k:t['signup'][k] for k in ('enabled','opensAt','closesAt','contactLabel','contactPattern','note')},'fields':__import__('fields').normalize(t['signup'].get('fields'))},
       'guestbook':{'enabled':t['guestbook']['enabled'],'moderation':t['guestbook']['moderation']},
       'poster':{'enabled':t['poster']['enabled'],'slug':t['poster']['slug']},
       'photos':{'enabled':bool(t['photos']['enabled']),'moderation':t['photos']['moderation']}}

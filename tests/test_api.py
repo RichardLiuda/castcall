@@ -355,3 +355,113 @@ class FirstRun(unittest.TestCase):
       s.assertEqual(c.post('/api/setup',b).status,200);firstrun.STATE['thread'].join(10)
       s.assertEqual(s.calls,['art',('poster',False)])
     finally:server.SETUP.update(token=None,instance=None)
+
+class SignupFields(Base):
+  """团长选的报名额外字段：身高 / 年龄 / 性别 / 样片 / 自定义题，可选填可必填。"""
+  PNG=b'\x89PNG\r\n\x1a\n'+b'\x00'*64
+  def setfields(s,spec):
+    import fields;edit_site(lambda j:j['signup'].update(fields=fields.parse_spec(spec)))
+  def test_parse_and_validate(s):
+    import fields as F
+    fs=F.parse_spec('身高,样片*，年龄、性别,想出的妆面*')
+    s.assertEqual([f['key'] for f in fs],['height','sample','age','gender','q1'])
+    n=F.normalize(fs);s.assertEqual([f['required'] for f in n],[False,True,False,False,True]);s.assertEqual(n[4]['label'],'想出的妆面')
+    ok=lambda f:True
+    s.assertEqual(F.validate(fs,{'sample':'0123456789ab.png','q1':'淡妆','height':165},ok),{'sample':'0123456789ab.png','q1':'淡妆','height':'165'})
+    for bad,msg in (({'q1':'x'},'请上传样片'),({'sample':'0123456789ab.png'},'请填写想出的妆面'),
+                    ({'sample':'0123456789ab.png','q1':'x','height':'abc'},'身高要填数字'),({'sample':'0123456789ab.png','q1':'x','height':'400'},'身高不太对'),
+                    ({'sample':'0123456789ab.png','q1':'x','gender':'不知道'},'性别选项不对'),({'sample':'../etc/passwd','q1':'x'},'样片没传上来')):
+      with s.assertRaises(ValueError) as c:F.validate(fs,bad,ok)
+      s.assertIn(msg,str(c.exception))
+    s.assertEqual(F.normalize([{'key':'nope'},{'key':'BAD KEY'},{'key':'q9'},'height']),[dict(F.PRESETS['height'],key='height',required=False)],'bad entries dropped')
+  def test_signup_with_extra_and_sample(s):
+    s.setfields('身高,样片*,性别')
+    s.assertIn('"fields": [{"label": "身高"',s.c.get('/site.js').text)
+    g,m=s.vacant()
+    s.assertEqual(s.c.post('/api/cast-signup',signup_body(g,m)).status,400,'required sample missing')
+    r=s.c.req('POST','/api/signup-sample',raw=s.PNG);s.assertEqual(r.status,200,r.text);f=r.json()['file']
+    s.assertEqual(s.c.get('/samples/'+f).status,404,'samples are not public')
+    b=dict(signup_body(g,m),extra={'sample':f,'height':'168','gender':'女'})
+    r=s.c.post('/api/cast-signup',b);s.assertEqual(r.status,200,r.text)
+    row=store.signups()[0];s.assertEqual(json.loads(row['extra']),{'height':'168','sample':f,'gender':'女'})
+    s.c.login();s.assertEqual(s.c.get('/samples/'+f).status,200)
+    j=s.c.get('/api/admin/signups').json();s.assertEqual([x['key'] for x in j['fields']],['height','sample','gender'])
+    import fields;s.assertEqual(fields.text(fields.parse_spec('身高,样片*,性别'),json.loads(row['extra'])),'身高 168cm · 样片 已上传 · 性别 女')
+  def test_sample_endpoint_off_without_image_field(s):
+    s.assertEqual(s.c.req('POST','/api/signup-sample',raw=s.PNG).status,404)
+    s.setfields('身高')
+    s.assertEqual(s.c.req('POST','/api/signup-sample',raw=s.PNG).status,404)
+  def test_no_fields_keeps_old_behaviour(s):
+    g,m=s.vacant();s.assertEqual(s.c.post('/api/cast-signup',signup_body(g,m)).status,200)
+    s.assertEqual(json.loads(store.signups()[0]['extra']),{})
+  def test_admin_edit_fields(s):
+    s.assertEqual(s.c.post('/api/admin/signup-fields',{'fields':[]}).status,401)
+    s.c.login()
+    j=s.c.get('/api/admin/signup-fields').json();s.assertIn('sample',[p['key'] for p in j['presets']]);s.assertEqual(j['fields'],[])
+    r=s.c.post('/api/admin/signup-fields',{'fields':[{'key':'age','required':True},{'key':'q3','label':'擅长','type':'text'}]})
+    s.assertEqual(r.status,200,r.text);s.assertEqual(config.C.site['signup']['fields'],[{'key':'age','required':True},{'key':'q3','label':'擅长','type':'text'}])
+    s.assertEqual(s.c.post('/api/admin/signup-fields',{'fields':[{'key':f'q{i}','label':'x'} for i in range(1,9)]}).status,400)
+  def test_old_db_gets_extra_column(s):
+    import sqlite3
+    c=sqlite3.connect(config.C.DB);c.execute('drop table if exists signups')
+    c.execute("create table signups(id integer primary key autoincrement,seat text not null,grp text not null,character text not null default '',name text not null,contact text not null,status text not null default 'pending',source text not null default '',created text not null,decided text not null default '',note text not null default '')")
+    c.commit();c.close();store.MIGRATED.clear()
+    g,m=s.vacant();s.assertEqual(s.c.post('/api/cast-signup',signup_body(g,m)).status,200)
+    s.assertEqual(store.signups()[0]['extra'],'{}')
+
+class SignupFieldsSetup(unittest.TestCase):
+  def test_init_fields_flag(s):
+    import contextlib,io,shutil,tempfile
+    from helpers import ROOT
+    sys.path.insert(0,ROOT);import init
+    d=tempfile.mkdtemp(prefix='castcall-fl-')
+    try:
+      with contextlib.redirect_stdout(io.StringIO()) as out:rc=init.main(['--instance',d,'--password','x'*10,'--yes','--no-poster','--fields','身高,样片*'])
+      s.assertEqual(rc,0);s.assertIn('报名表：CN、微信、身高、样片（必填）',out.getvalue())
+      s.assertEqual(config.C.site['signup']['fields'],[{'key':'height'},{'key':'sample','required':True}])
+    finally:shutil.rmtree(d,ignore_errors=True)
+  def test_wizard_fields(s):
+    import shutil,tempfile,server
+    d=tempfile.mkdtemp(prefix='castcall-flw-');config.use(d);server.HITS.clear();server.SESS.clear()
+    try:
+      s.assertFalse(server.preflight());c=Client()
+      s.assertIn('height',[p['key'] for p in c.get('/api/setup/fields').json()['presets']])
+      r=c.post('/api/setup',{'token':server.SETUP['token'],'mode':'single','title':'t','source':'blank','password':'pw-12345678','fields':[{'key':'gender'},{'key':'q1','label':'妆面','type':'text','required':True}]})
+      s.assertEqual(r.status,200,r.text)
+      s.assertEqual(config.C.site['signup']['fields'],[{'key':'gender'},{'key':'q1','required':True,'label':'妆面','type':'text'}])
+    finally:server.SETUP.update(token=None,instance=None);shutil.rmtree(d,ignore_errors=True)
+
+class WizardPrefill(unittest.TestCase):
+  """server.py --prefill 名单.txt：向导打开时名单已经填好（部署统一走网页向导）。"""
+  def setUp(s):
+    import tempfile,server
+    s.d=tempfile.mkdtemp(prefix='castcall-pf-');config.use(s.d);server.HITS.clear();server.SESS.clear()
+    s.assertFalse(server.preflight());s.c=Client()
+  def tearDown(s):
+    import shutil,server
+    server.SETUP.update(token=None,instance=None,prefill=None);shutil.rmtree(s.d,ignore_errors=True)
+  def write(s,text):
+    p=os.path.join(s.d,'名单.txt')
+    with open(p,'w',encoding='utf-8') as f:f.write(text)
+    return p
+  def test_prefill_needs_token_and_detects_mode(s):
+    import server
+    server.SETUP['prefill']=server.prefill(s.write('## Kanon\n月宫亚由 小满\n川澄舞\n## 摄影 / 后勤\n摄影 阿光\n'),'Kanon 团片')
+    s.assertEqual(s.c.get('/api/setup/prefill?t=wrong').status,403)
+    j=s.c.get('/api/setup/prefill?t='+server.SETUP['token']).json()
+    s.assertEqual((j['title'],j['mode'],j['file']),('Kanon 团片','single','名单.txt'),'one work + crew is a single-group site')
+    s.assertIn('川澄舞',j['names']);s.assertIn('3 个席位',j['summary'])
+    s.assertEqual(server.prefill(s.write('## A\n甲\n## B\n乙\n'))['mode'],'multi')
+  def test_bad_list_fails_at_startup(s):
+    import contextlib,io,server
+    p=s.write('')
+    with contextlib.redirect_stderr(io.StringIO()) as err:rc=server.main(['--prefill',p])
+    s.assertEqual(rc,1);s.assertIn('名单读不了',err.getvalue())
+  def test_firstrun_progress_needs_login(s):
+    import server,helpers
+    s.assertEqual(s.c.get('/api/admin/firstrun').status,302,'still in wizard mode')
+    b={'token':server.SETUP['token'],'mode':'single','title':'t','source':'paste','names':'古河渚 云果','password':'pw-12345678'}
+    s.assertEqual(s.c.post('/api/setup',b).status,200)
+    import firstrun;firstrun.STATE['thread'].join(10)
+    j=s.c.get('/api/admin/firstrun').json();s.assertEqual(j['stage'],'done');s.assertTrue(j['started']);s.assertIn('poster',j)
+    s.assertEqual(Client().get('/api/admin/firstrun').status,401)

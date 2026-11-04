@@ -27,6 +27,8 @@ def main(argv):
   ap.add_argument('--import',dest='imp',help='初始名册用这份名单（文本或 CSV，- 表示标准输入）')
   ap.add_argument('--blank',action='store_true',help='不要示例名册，从一个空团开始')
   ap.add_argument('--no-seed',action='store_true',help='用 --example 时不生成占位封面、留言和待审报名')
+  ap.add_argument('--fields',help='报名额外要填的，逗号分隔，* 结尾 = 必填，其余选填："身高,样片*,年龄,性别"；'
+                  '预设有 身高 / 年龄 / 性别 / 样片 / 所在城市 / 出过的角色 / 想说的话，别的字当作自定义文字题。不给 = 只填 CN 和联系方式')
   ap.add_argument('--no-art',action='store_true',help='建完不自动配图（默认：导入了名单就从 Bangumi / AniList 找封面和立绘）')
   ap.add_argument('--no-poster',action='store_true',help='建完不生成一图流（默认生成；缺依赖时会跳过并提示怎么装）')
   ap.add_argument('--yes',action='store_true',help='不提问，没给的都用默认值');ap.add_argument('--force',action='store_true')
@@ -56,6 +58,11 @@ def main(argv):
   loc=a.location if a.location is not None else ask('地点（可留空）','',y)
   contact=a.contact if a.contact is not None else ask('联系方式，显示在缺人看板底部（如「微信 abc123」，可留空）','',y)
   clabel=ask('报名表里要填的联系方式叫什么（微信 / QQ / 邮箱）','微信',y)
+  import fields as FL
+  spec=a.fields if a.fields is not None else ask('报名还要填什么？逗号分隔，* 结尾 = 必填，比如「身高,样片*,年龄,性别」（直接回车 = 只填 CN 和联系方式）','',y)
+  try:fl=FL.parse_spec(spec)
+  except ValueError as e:print(e);return 1
+  print('报名表：CN、'+clabel+('、'+FL.summary(fl) if fl else ''))
   pw=a.password
   if not pw and not y:
     while True:
@@ -68,7 +75,7 @@ def main(argv):
   if not pw:pw=shown=secrets.token_urlsafe(12)
   example=None if roster is not None or a.blank else (a.example or f'{mode}.example')
   try:C,seeded=setup.create(C.INSTANCE,title=title,password=pw,date=date,start=start,location=loc,contact=contact,
-                            contact_label=clabel,roster=roster,example=example,seed=bool(a.example) and not a.no_seed,force=a.force)
+                            contact_label=clabel,roster=roster,example=example,seed=bool(a.example) and not a.no_seed,force=a.force,fields=fl)
   except ValueError as e:print(e);return 1
   if seeded:print(f'样例：{seeded["covers"]} 张占位封面、{seeded["notes"]} 条留言、{seeded["signups"]} 条待审报名（后台「审核」里能看到）')
   # 首次收尾：导入的名单先自动配图，再生成一图流。两步失败都不影响建站，只打印补救办法

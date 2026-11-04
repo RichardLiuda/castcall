@@ -33,20 +33,21 @@ def run(*,do_art=True,do_poster=True,log=print):
   if do_art:log('\n自动配图…（每个角色一两次请求，几十个角色要一两分钟）');out.append(art_line(art(log=log)))
   if do_poster:out.append(poster(wait=True,log=log)[1])
   return out
-STATE={'thread':None,'lines':[]}
+STATE={'thread':None,'lines':[],'stage':''}   # stage：art → poster → done，向导完成页轮询它显示进度
 def run_bg(lock,*,do_art=True,do_poster=True):
   """后台：网页向导完成后调用，配完图再生成一图流（一图流要用到配好的图）。"""
   t=STATE['thread']
   if t and t.is_alive():return False
   def go():
     import artsearch,server
-    lines=[]
+    lines=[];STATE.update(lines=lines,stage='art' if do_art else 'poster')
     try:
       if do_art:
         # 占住「一键配图」的状态：跑的时候后台按钮不会再开一个，跑完能看到报告
         artsearch.AUTO.update(rep=None,at=time.time(),thread=threading.current_thread())
         rep=art(lock,log=lambda *a:None);artsearch.AUTO['rep']=rep;lines.append(art_line(rep))
+      STATE['stage']='poster'
       if do_poster:lines.append(poster(wait=False)[1])
     except Exception as e:lines.append('首次收尾出错：'+repr(e))
-    STATE['lines']=lines;server.log('firstrun',' | '.join(lines))
+    STATE.update(lines=lines,stage='done');server.log('firstrun',' | '.join(lines))
   STATE['thread']=threading.Thread(target=go,daemon=True);STATE['thread'].start();return True

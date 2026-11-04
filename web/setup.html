@@ -1,5 +1,5 @@
 <!doctype html><html lang=zh><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content="light dark">
-<title>castcall · 初始化</title><link rel=icon href=/favicon.svg><link rel=stylesheet href=/cbase.css>
+<title>castcall · 初始化</title><link rel=icon href=/favicon.svg><link rel=stylesheet href=/cbase.css><script src=/fields.js></script>
 <style>
 body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0 14px,var(--tape-b) 14px 28px) fixed}
 .wz{max-width:720px;margin:0 auto;padding:28px 16px 80px}
@@ -28,6 +28,11 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
 .go:disabled{opacity:.6;cursor:wait}
 .err{color:var(--err);font-weight:700;min-height:1.4em;margin:10px 2px 0;font-size:14px}
 .done{text-align:center}.done h2{justify-content:center;font-size:22px}.done p{color:var(--ink-soft);line-height:1.7}
+/* 完成页的收尾进度（GET /api/admin/firstrun） */
+.fr{list-style:none;padding:0;margin:14px auto 6px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.fr li{border:2px solid var(--ink);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:800;opacity:.45}
+.fr li.run{opacity:1;animation:frp 1.2s ease-in-out infinite}.fr li.ok{opacity:1;background:var(--gold-2);color:#2a2114}.fr li.skip{opacity:.7;text-decoration:line-through}
+@keyframes frp{50%{opacity:.5}}@media(prefers-reduced-motion:reduce){.fr li.run{animation:none}}
+.frmsg{font-size:13px!important;white-space:pre-line;text-align:left;max-width:520px;margin:6px auto 0!important}
 .done a{display:inline-block;margin-top:10px;padding:12px 22px;border:2.5px solid var(--ink);border-radius:14px;background:var(--gold-2);color:#2a2114;font-weight:900;text-decoration:none;box-shadow:4px 4px 0 var(--ink)}
 .tk{display:flex;gap:8px}.tk input{flex:1}
 @media(max-width:560px){.pick,.row{grid-template-columns:1fr}}
@@ -49,6 +54,7 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
  <label class=f><span>报名的人要留什么联系方式</span><select name=contactLabel><option>微信</option><option>QQ</option><option>邮箱</option><option>手机号</option></select></label>
 </section>
 <section class=st><h2><b>3</b>角色名单 <small>以后在后台增删改都行</small></h2>
+ <p class="pv hide" id=pfnote></p>
  <div class="pick src">
   <label><input type=radio name=source value=paste checked><b>粘贴名单</b><span>从群公告、表格里复制过来</span></label>
   <label><input type=radio name=source value=blank><b>先空着</b><span>进后台再一个个加</span></label>
@@ -58,13 +64,18 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
  <details style="margin-top:8px;font-size:13px"><summary style="cursor:pointer;color:var(--ink-soft)">只是想先看看效果？用示例数据</summary>
   <div style="margin-top:8px;display:flex;gap:8px;align-items:center"><select id=ex style="flex:1;border:2px solid var(--ink);border-radius:10px;padding:8px;font:inherit;background:var(--paper);color:var(--ink)"></select><button type=button class=btn id=useex>用这个</button></div></details>
 </section>
-<section class=st><h2><b>4</b>管理密码</h2>
+<section class=st><h2><b>4</b>报名要填什么 <small>可设选填，建好后也能改</small></h2>
+ <div id=fpick><p style="margin:0;font-size:13px;color:var(--ink-soft)">加载中…</p></div>
+</section>
+<section class=st><h2><b>5</b>管理密码</h2>
  <div class=row><label class=f><span>密码 <i>至少 8 位</i></span><input name=password type=password minlength=8 autocomplete=new-password></label><label class=f><span>再输一遍</span><input name=password2 type=password autocomplete=new-password></label></div>
  <p style="margin:0;font-size:12.5px;color:var(--ink-soft)">网页右下角的锁是后台入口，用这个密码登录。忘了可以在服务器上运行 <code>python3 init.py --force</code> 重设。</p>
 </section>
 <button class=go type=submit>建好它 →</button><p class=err id=err role=alert></p>
 </form>
-<section class="st done hide" id=done><h2>🎉 建好了</h2><p>你已经是管理员（这台设备上自动登录了）。<br>点右下角的锁进入后台：上传封面和立绘、审核报名、改活动信息。<br>正在后台<b>自动配图（粘贴了名单时）、生成一图流</b>，一两分钟后刷新页面就能看到。</p><a href=/>打开招募页 →</a></section>
+<section class="st done hide" id=done><h2>🎉 建好了</h2><p>你已经是管理员（这台设备上自动登录了）。<br>点右下角的锁进入后台：上传封面和立绘、审核报名、改活动信息、改报名表。</p>
+ <ol class=fr id=fr><li data-s=site class=ok>建站</li><li data-s=art>自动配图</li><li data-s=poster>生成一图流</li></ol><p class=frmsg id=frmsg></p>
+ <a href=/>打开招募页 →</a></section>
 </main>
 <script>
 const $=s=>document.querySelector(s),F=$('#wz'),T=new URLSearchParams(location.search).get('t')||'';
@@ -84,6 +95,21 @@ async function preview(){const pv=$('#pv');if(!ta.value.trim()){pv.textContent='
  catch(e){pv.className='pv bad';pv.textContent=e.message}}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 fetch('/api/setup/examples').then(r=>r.json()).then(j=>{$('#ex').innerHTML=j.items.map(x=>`<option value="${esc(x.name)}">${esc(x.name)}（${x.groups} 个团、${x.seats} 个席位）</option>`).join('')}).catch(()=>{});
+/* server.py --prefill 名单.txt：名单（和活动名）已经准备好了，这里预填，团长核对就行 */
+if(T)fetch('/api/setup/prefill?t='+encodeURIComponent(T)).then(r=>r.ok?r.json():{}).then(p=>{if(!p.names)return;
+ ta.value=p.names;touched=true;if(p.title&&!F.title.value)F.title.value=p.title;if(p.mode)F.mode.value=p.mode;
+ const n=$('#pfnote');n.classList.remove('hide');n.innerHTML='名单已经准备好了（'+esc(p.file||'')+'，'+esc(p.summary)+'）。核对一下，要改直接在下面改。';preview()}).catch(()=>{});
+/* 建完：轮询首次收尾（配图 → 一图流），完成页上一步步亮起来 */
+async function progress(src){const li=s=>$('#fr [data-s='+s+']'),msg=$('#frmsg');if(src!=='paste')li('art').classList.add('skip');
+ for(let i=0;i<300;i++){let j;try{j=await (await fetch('/api/admin/firstrun',{credentials:'same-origin'})).json()}catch(e){await new Promise(r=>setTimeout(r,2000));continue}
+  const st=j.stage,pp=j.poster||{};
+  if(src==='paste'){li('art').classList.toggle('run',st==='art');li('art').classList.toggle('ok',st==='poster'||st==='done')}
+  const pRun=st==='poster'||pp.running,pOk=pp.ready&&!pp.running&&st==='done',pSkip=st==='done'&&!pp.running&&!pp.ready;
+  li('poster').classList.toggle('run',!!pRun&&!pOk);li('poster').classList.toggle('ok',!!pOk);li('poster').classList.toggle('skip',!!pSkip);
+  msg.textContent=(j.lines||[]).join('\n')+(st==='done'&&pp.running?'\n一图流生成中，一两分钟…':'');
+  if(st==='done'&&!pp.running){if(pp.rc&&!pp.ready)msg.textContent+='\n一图流没生成出来，稍后在后台点「生成一图流」重试。';return}
+  await new Promise(r=>setTimeout(r,2000))}}
+let fp=null;fetch('/api/setup/fields').then(r=>r.json()).then(j=>{fp=fieldPicker($('#fpick'),j.presets,[])}).catch(()=>{$('#fpick').textContent='读不到字段列表，先跳过，建好后在后台「报名表」里设'});
 let example='';$('#useex').onclick=()=>{example=$('#ex').value;F.requestSubmit()};
 function startISO(){const d=F.date.value,t=F.time.value;if(!d||!t)return '';const o=-new Date(`${d}T${t}`).getTimezoneOffset(),p=n=>String(Math.floor(Math.abs(n))).padStart(2,'0');return `${d}T${t}:00${o>=0?'+':'-'}${p(o/60)}:${p(o%60)}`}
 F.onsubmit=async e=>{e.preventDefault();const err=$('#err'),btn=F.querySelector('.go');err.textContent='';
@@ -96,8 +122,8 @@ F.onsubmit=async e=>{e.preventDefault();const err=$('#err'),btn=F.querySelector(
  const cv=F.cvalue.value.trim();
  btn.disabled=true;btn.textContent='正在建…';
  try{await post('/api/setup',{mode:F.mode.value,title:F.title.value.trim()||'示例活动',date:F.date.value,start:startISO(),location:F.location.value.trim(),
-   contact:cv?((F.clabel.value?F.clabel.value+' ':'')+cv):'',contactLabel:F.contactLabel.value,source:src,names:ta.value,example,password:F.password.value});
-  F.classList.add('hide');$('#tokbox').classList.add('hide');$('#done').classList.remove('hide');sessionStorage.setItem('kr_edit','1');scrollTo({top:0})}
+   contact:cv?((F.clabel.value?F.clabel.value+' ':'')+cv):'',contactLabel:F.contactLabel.value,source:src,names:ta.value,example,password:F.password.value,fields:fp?fp.value():[]});
+  F.classList.add('hide');$('#tokbox').classList.add('hide');$('#done').classList.remove('hide');sessionStorage.setItem('kr_edit','1');scrollTo({top:0});progress(src)}
  catch(ex){err.textContent=ex.message;btn.disabled=false;btn.textContent='建好它 →';example=''}};
 </script>
 </body></html>

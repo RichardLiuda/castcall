@@ -235,8 +235,27 @@ function signupKick(){if(signupKickOn)return;signupKickOn=true;const t0=performa
  const step=()=>{if(!signupOpen()){signupKickOn=false;return}signupPin();if(performance.now()-t0<1200)requestAnimationFrame(step);else signupKickOn=false};step()}
 function openSignup(gi,i){const g=R.groups[gi],m=g&&g.members[i];if(!m||castKind(g.name,m)!=='vacant'||!signupOn(g))return;const CL=esc(SITE.signup.contactLabel||'联系方式');const root=signupRoot();root.style.setProperty('--c',castHex(g.color));
  const role=(m.character||'').trim()||'空席',card=root.querySelector('.signup-card');
- card.innerHTML=`<form novalidate><div class="signup-ctx"><p class="signup-kicker">${icon('users',14)}<span>空缺报名</span></p><h2 id="signup-title">${esc(role)}</h2><p class="signup-work">${esc(g.name)}</p></div><label class="signup-fld signup-cn"><span>${icon('user',14)}CN</span><input name="name" maxlength="40" autocomplete="name" enterkeyhint="next" required></label><label class="signup-fld signup-wx"><span>${icon('message',14)}${CL}</span><input name="contact" maxlength="60" autocomplete="off" enterkeyhint="done" required></label><div class="signup-foot"><p class="signup-err" role="alert"></p><div class="signup-actions"><button type="button" class="signup-btn" data-signup-close>取消</button><button type="submit" class="signup-btn go">${icon('arrow',16)}提交报名</button></div>${SITE.signup.note?`<p class="signup-fine">${esc(SITE.signup.note)}</p>`:''}</div></form>`;
- card.dataset.id=m.id||'';card.dataset.work=g.name;card.dataset.character=(m.character||'').trim();signupShow(root,card)}
+ card.innerHTML=`<form novalidate><div class="signup-ctx"><p class="signup-kicker">${icon('users',14)}<span>空缺报名</span></p><h2 id="signup-title">${esc(role)}</h2><p class="signup-work">${esc(g.name)}</p></div><label class="signup-fld signup-cn"><span>${icon('user',14)}CN</span><input name="name" maxlength="40" autocomplete="name" enterkeyhint="next" required></label><label class="signup-fld signup-wx"><span>${icon('message',14)}${CL}</span><input name="contact" maxlength="60" autocomplete="off" enterkeyhint="done" required></label>${signupExtraHTML()}<div class="signup-foot"><p class="signup-err" role="alert"></p><div class="signup-actions"><button type="button" class="signup-btn" data-signup-close>取消</button><button type="submit" class="signup-btn go">${icon('arrow',16)}提交报名</button></div>${SITE.signup.note?`<p class="signup-fine">${esc(SITE.signup.note)}</p>`:''}</div></form>`;
+ card.dataset.id=m.id||'';card.dataset.work=g.name;card.dataset.character=(m.character||'').trim();
+ card.querySelectorAll('.ph-pick input[type=file]').forEach(f=>{const pv=f.parentNode.querySelector('.ph-prev');f.addEventListener('change',()=>{const x=f.files[0];if(pv._u)URL.revokeObjectURL(pv._u);pv.hidden=!x;if(x){pv._u=URL.createObjectURL(x);pv.style.backgroundImage=`url(${pv._u})`}})});
+ signupShow(root,card)}
+/* 团长选的额外字段（site.json signup.fields，server/fields.py 定义）：身高 / 年龄 / 性别 / 样片 / 自定义题 */
+function signupExtraHTML(){return (SITE.signup.fields||[]).map(f=>{const lab=`<span>${esc(f.label)}${f.required?'':'<i class="signup-opt">选填</i>'}</span>`,n=`name="x-${esc(f.key)}"`;
+ if(f.type==='number')return `<label class="signup-fld signup-x">${lab}<span class="signup-num"><input ${n} type="number" inputmode="decimal" min="${f.min}" max="${f.max}" step="0.1">${f.unit?`<b>${esc(f.unit)}</b>`:''}</span></label>`;
+ if(f.type==='select')return `<fieldset class="signup-fld signup-x signup-seg"><legend>${lab}</legend><div>${f.options.map(o=>`<label><input type="radio" ${n} value="${esc(o)}"><span>${esc(o)}</span></label>`).join('')}</div></fieldset>`;
+ if(f.type==='image')return `<label class="signup-fld signup-x ph-pick">${lab}<input ${n} type="file" accept="image/jpeg,image/png,image/webp"><i class="ph-prev" hidden></i>${f.hint?`<small class="signup-hint">${esc(f.hint)}，只有团长看得到</small>`:''}</label>`;
+ if(f.type==='textarea')return `<label class="signup-fld signup-x">${lab}<textarea ${n} rows="3" maxlength="400"></textarea></label>`;
+ return `<label class="signup-fld signup-x">${lab}<input ${n} maxlength="60" autocomplete="off"></label>`}).join('')}
+/* 收集额外字段；样片先传到 /api/signup-sample 换文件名。→ {extra} 或抛出给用户看的错误 */
+async function signupExtra(form){const extra={};
+ for(const f of SITE.signup.fields||[]){const els=form.querySelectorAll(`[name="x-${f.key}"]`);let v='';
+  if(f.type==='select')v=([...els].find(e=>e.checked)||{}).value||'';
+  else if(f.type==='image'){const x=els[0]&&els[0].files[0];if(x){const body=await shrinkPhoto(x);if(body.size>6e6)throw new Error(f.label+'要小于 6 MB');
+    const r=await fetch('/api/signup-sample',{method:'POST',body});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||f.label+'上传失败');v=j.file}}
+  else v=((els[0]||{}).value||'').trim();
+  if(!v&&f.required)throw new Error((f.type==='image'?'请上传':f.type==='select'?'请选择':'请填写')+f.label);
+  if(v)extra[f.key]=v}
+ return extra}
 function signupShow(root,card){card.scrollTop=0;
  if(signupY==null)signupY=window.scrollY||0;
  if(!signupBaseH)signupBaseH=window.innerHeight;
@@ -275,7 +294,8 @@ async function onSignupSubmit(e){if(e.target.dataset.kind==='photo')return onPho
  if(SITE.signup.contactPattern){let ok=true;try{ok=new RegExp('^(?:'+SITE.signup.contactPattern+')$').test(contact)}catch(_){}if(!ok){err.textContent=CL+'格式不对';wxEl.focus();return}}
  if(!card.dataset.id){err.textContent='这条席位暂时不能报名';return}
  if(form.dataset.busy==='1')return;form.dataset.busy='1';btn.disabled=true;err.textContent='';
- try{const r=await fetch('/api/cast-signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,contact,work:card.dataset.work||'',character:card.dataset.character||'',id:card.dataset.id})});
+ try{const extra=await signupExtra(form);
+  const r=await fetch('/api/cast-signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,contact,work:card.dataset.work||'',character:card.dataset.character||'',id:card.dataset.id,extra})});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'提交失败，请稍后再试');
   closeSignup();castToast('已提交，等审核')}
  catch(ex){err.textContent=ex.message||'提交失败，请稍后再试';form.dataset.busy='';btn.disabled=false}}

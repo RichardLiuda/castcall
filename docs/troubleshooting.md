@@ -132,7 +132,10 @@ curl -b cookie http://127.0.0.1:5510/api/data > d.json   # 改 cover 后 PUT 回
 # 0 没有名单时，按作品角色表出一版（全部空缺），改好再用
 python3 server/artsearch.py roster Kanon -o 名单.txt
 
-# 1 建站 + 自动配图 + 生成一图流（不给 --password 就会随机生成并打印一次，务必抄下来）
+# 1 建站 + 自动配图 + 生成一图流
+#   标准做法是网页向导：python3 server/server.py --prefill 名单.txt --title "Kanon 团建"，打开打印的 /setup?t=… 链接，
+#   完成页会依次亮起「建站 → 自动配图 → 生成一图流」，结果也记在 logs/server.log 的 firstrun 那一行。
+#   没有浏览器时用命令行（不给 --password 就会随机生成并打印一次，务必抄下来）：
 python3 init.py --instance instance-kanon --title "Kanon 团建" \
   --import 名单.txt --yes
 # 期望：「N 个团、M 个席位（X 已定、Y 空缺)」→ 一行行「封面 / 立绘 … ← …」→
@@ -144,7 +147,7 @@ CASTCALL_INSTANCE=instance-kanon python3 server/artsearch.py auto
 
 # 3 单测
 python3 -m unittest discover -s tests
-# 期望：Ran 76 tests ... OK
+# 期望：Ran 88 tests ... OK
 
 # 4 起服务
 CASTCALL_INSTANCE=instance-kanon python3 server/server.py

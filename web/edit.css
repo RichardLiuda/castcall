@@ -174,3 +174,5 @@
 .brand-sw{display:block}.brand-sw .chk{display:flex;align-items:center;gap:8px;cursor:pointer}.brand-sw .fld{margin:10px 0 0}
 .rv-ph{grid-template-columns:56px 1fr auto;align-items:center}.rv-ph .rv-img{grid-row:span 2}.rv-img{flex:none;width:56px;aspect-ratio:4/5;border:2px solid var(--ink);border-radius:8px;overflow:hidden;display:block}.rv-img img{width:100%;height:100%;object-fit:cover;display:block}
 .rv-ph .rv-b{grid-column:2/-1}
+.rv-extra{color:var(--ink)!important;white-space:pre-wrap;overflow-wrap:anywhere}
+.rv-samples{display:flex;gap:6px;margin-top:4px}.rv-sample{width:64px;aspect-ratio:4/5;border:2px solid var(--ink);border-radius:8px;overflow:hidden;display:block}.rv-sample img{width:100%;height:100%;object-fit:cover;display:block}

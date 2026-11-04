@@ -5,7 +5,8 @@
 和 keyroster 的区别：审核不再只认 Notion。approve() 是唯一落座入口，后台按钮和 Notion 轮询都调它，
 而且走 roster.save()，所以 count、备份、outbox 和网页保存完全一致。"""
 import datetime,re
-import config,roster,store
+import os
+import config,fields,roster,store
 def _text(v,n,label,required):
   if v is None:v=''
   if not isinstance(v,str):raise ValueError(label+'格式不对')
@@ -51,7 +52,9 @@ def prepare(body,d):
   if g['name']!=grp or (m.get('character') or '')!=character:raise ValueError('席位信息已变，请刷新后再试')
   if (g.get('signup') or 'open')=='closed':raise ValueError('这个团暂停报名了')
   if (m.get('member') or '').strip():raise ValueError('这个席位已经有人了')
-  return {'seat':m['id'],'grp':grp,'character':character,'name':name,'contact':contact}
+  # 团长选的额外字段（身高 / 样片…）；样片要先走 /api/signup-sample 传上来，这里只认已经在 uploads/samples/ 里的文件
+  extra=fields.validate(site.get('fields'),body.get('extra'),lambda f:os.path.isfile(os.path.join(config.C.UPLOADS,'samples',f)))
+  return {'seat':m['id'],'grp':grp,'character':character,'name':name,'contact':contact,'extra':extra}
 def approve(i,source='后台'):
   """Seat signup #i. Caller holds the server LOCK. Returns (ok, message).
   A seat that someone else took meanwhile is never overwritten: the signup stays pending with a note."""

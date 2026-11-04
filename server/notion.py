@@ -93,6 +93,7 @@ def plain(p):
   return ''
 def cols(kind):return config.C.site['notion']['columns'][kind]
 def st(key):return config.C.site['notion']['status'][key]
+OPTIONAL={('signup','extra')}   # 没有这一列也照常同步，只是不写报名的补充信息
 def props(t,flat):
   """{逻辑字段: 值} → Notion properties, using the column names from site.json and the real column types."""
   out={};c=cols(t.kind)
@@ -135,6 +136,9 @@ def _push_signup(r):
   t,e=target('signup')
   if not t:return None
   flat={'name':r['name'],'contact':r['contact'],'group':r['grp'],'character':r['character'],'id':r['seat'],'status':st(r['status'])}
+  try:ex=__import__('fields').text(config.C.site['signup'].get('fields'),json.loads(r.get('extra') or '{}'))
+  except Exception:ex=''
+  if ex:flat['extra']=ex   # Notion 库里有「补充信息」列才会写（列名见 site.json notion.columns.signup.extra）
   pid=store.page_of('signup',r['id'])
   if pid:
     d,e=call(f'pages/{pid}',{'properties':props(t,flat)},'PATCH',t.version)
@@ -281,7 +285,8 @@ def check():
     if not t:out.append((label,False,'打不开这个库：'+e+'\n      → 多半是没把库共享给 integration（库右上角 ··· → 连接 → 选你的 integration）'));ok=False;continue
     miss=[];wrong=[]
     for f,name in cols(kind).items():
-      if name not in t.types:miss.append(name)
+      if name not in t.types:
+        if (kind,f) not in OPTIONAL:miss.append(name)
       elif value(t.types[name],'x') is None:wrong.append(f'{name}({t.types[name]})')
     good=not miss and not wrong;ok&=good
     msg=f'API {t.version}'+(f'，缺少列：{"、".join(miss)}' if miss else '')+(f'，列类型写不进去：{"、".join(wrong)}' if wrong else '')

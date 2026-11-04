@@ -23,24 +23,34 @@ python3 -m venv .venv-poster && .venv-poster/bin/pip install -r requirements-pos
   摄影 / 后勤这类工作组不会自动生成，问用户要不要加。
 - **两种都要把整理好的名单给用户过目、确认后再导入。**
 
-**第 2 步：建站。** 问清活动名称；日期、开场时间、地点、联系方式有就填。密码不要编：用户给就用，不给就不传 `--password`，
-让 `init.py` 随机生成并把打印的密码原样转告用户。
+**第 2 步：在网页向导里建站——选项交给团长在网页上选，不要在对话里逐项问。** 名单确认后存成 `名单.txt`，在后台启动：
 
 ```bash
-python3 init.py --title "活动名" --import 名单.txt --date 2026-12-12 --start 2026-12-12T11:00:00+08:00 \
-  --location "地点" --contact "微信 abc123" [--password "至少8位"] --yes
+python3 server/server.py --prefill 名单.txt --title "活动名"     # 活动名用户说过就带上，没说就不带
 ```
 
-`init.py` 建完会**自动配图，再生成一图流**，最后打印两行总结（配了几张、跳过几个；一图流成功 / 跳过的原因）。原样转告用户。
-已经初始化过（存在 `instance/roster.json`）时它会拒绝执行：改名单走 `python3 tools/import.py 名单.txt --dry`，看过再去掉 `--dry`。
+它会打印 `http://127.0.0.1:5510/setup?t=…`。**把这个完整链接原样给用户**（口令只出现在终端里），告诉用户：
 
-**第 3 步：启动并验收。** `python3 server/server.py`，打开 `http://127.0.0.1:5510/` 核对：团 / 角色 / CN 和名单一致，
+> 打开这个链接，名单已经填好了。在网页上核对名单，选单团还是多团、活动日期地点、报名的人除了 CN 和联系方式还要填什么（身高、年龄、性别、样片……都能设成选填或必填），再设一个管理密码，点「建好它」。完成页会显示自动配图和一图流的进度，好了告诉我。
+
+然后等用户说建好了。服务器保持运行（建完就是正式的网站，不用重启）。
+- 名单格式不对时 `server.py` 会在启动时报错退出：改好名单再启动。
+- 已经初始化过（存在 `instance/roster.json`）时 `--prefill` 不生效：改名单走 `python3 tools/import.py 名单.txt --dry`，看过再去掉 `--dry`。
+- **用户明确说不想用网页**、或者环境里没有浏览器（只能 ssh 的服务器），才用命令行一次做完；这时才在对话里问报名字段和密码：
+
+  ```bash
+  python3 init.py --title "活动名" --import 名单.txt [--fields "身高,样片*,性别"] [--password "至少8位"] --yes
+  ```
+
+  `--fields` 逗号分隔、`*` 结尾必填；密码不要编，不给就让它随机生成并把打印的密码原样转告用户。它同样会自动配图、生成一图流，把最后两行总结转告用户。
+
+**第 3 步：验收。** 打开 `http://127.0.0.1:5510/` 核对（服务器已经在跑；用 `init.py` 建的话先 `python3 server/server.py`）：团 / 角色 / CN 和名单一致，
 封面立绘配上了，抬头有「一图流」，空缺能点「报名 →」，右下角的锁能用密码进后台。
 
 **第 4 步：补漏。** 被跳过的角色：`python3 server/artsearch.py search 角色名 --group 团名` 列候选给用户挑，或者让用户在后台点「找立绘」。
 图改过以后要重新生成一图流（后台「生成一图流」或 `POST /api/admin/poster`）。
 
-**第 5 步：交付。** 一两句话汇报：几个团、几个角色、几个空缺、配好几张图、哪些没配上、一图流有没有生成、后台密码。
+**第 5 步：交付。** 一两句话汇报：几个团、几个角色、几个空缺、配好几张图、哪些没配上、一图流有没有生成。配图和一图流的结果在 `instance/logs/server.log` 里 `firstrun` 开头那一行，一图流生成好了会有 `instance/poster/master.html`。密码是用户自己在向导里设的，不用转告。
 要让别人访问：`docs/deploy.md`。
 
 只想看效果：`python3 init.py --example key-demo --yes`（13 个团的大样例，不配图，只生成一图流）。
@@ -92,6 +102,7 @@ CSV：表头里有 `团`（或 `作品` / `group`）、`角色`（`character` / 
 | `GET /api/admin/art/search?kind=portrait|cover&q=&group=`，`POST /api/admin/art/pick` | 找图 / 选图 |
 | `POST /api/admin/art/auto` | 后台跑一键配图 |
 | `POST /api/admin/poster` | 生成一图流（需要 Pillow + Playwright） |
+| `GET/POST /api/admin/signup-fields {"fields":[…]}` | 报名额外要填的（格式见 docs/config.md） |
 | `GET /api/admin/brand`，`POST /api/admin/brand?slot=logo|favicon|hero[&clear=1]`（body 是图片） | 站点素材 |
 | `GET /api/admin/photos`，`POST /api/admin/photos/<id> {"action":"approve|reject|reopen"}`，`POST /api/admin/photos/config {"enabled","moderation"}` | 成员本人照片 |
 

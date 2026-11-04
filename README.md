@@ -16,8 +16,8 @@
 |---|---|---|
 | 0 装环境 | Python 3.9+；一图流依赖建议装进 `.venv-poster/`（见下） | — |
 | 1 准备名单 | 用自己的名单，或按作品角色表先出一版（全部空缺） | `名单.txt` |
-| 2 建站 | 导入名单 → **自动配图** → **生成一图流** | 有封面、立绘、海报的名册站 |
-| 3 验收 | 启动，核对名册、配图、报名、后台 | `http://127.0.0.1:5510/` |
+| 2 建站 | 带着名单启动 → 在**网页向导**里核对名单、选单团 / 多团、活动信息、报名要填什么、设密码 → 自动配图 → 生成一图流 | 有封面、立绘、海报的名册站 |
+| 3 验收 | 核对名册、配图、报名、后台 | `http://127.0.0.1:5510/` |
 | 4 上线 | systemd + 反向代理 | [docs/deploy.md](docs/deploy.md) |
 
 ```bash
@@ -26,10 +26,15 @@ git clone https://github.com/RichardLiuda/castcall.git && cd castcall
 python3 -m venv .venv-poster && .venv-poster/bin/pip install -r requirements-poster.txt && .venv-poster/bin/playwright install chromium
 ```
 
+所有选项都在**网页向导**里选：单团 / 多团、活动日期地点、报名的人要填什么（身高、年龄、性别、样片……每项可选填或必填）、管理密码。完成页会显示自动配图和一图流的进度。
+
 ### 方式一：交给 AI 助手（推荐）
 
-把名单（文本、表格、截图都行）给它，或者只告诉它作品名，说「用 castcall 帮我搭招募页」。它会按标准流程走，
-**先问你名单是自己提供，还是由它按作品的角色表整理一版**，整理好给你过目，再建站、配图、生成一图流，最后汇报结果。
+把名单（文本、表格、截图都行）给它，或者只告诉它作品名，说「用 castcall 帮我搭招募页」。它会：
+
+1. **先问你名单是自己提供，还是由它按作品的角色表整理一版**，整理好给你过目；
+2. 带着名单启动服务器，给你一个向导链接——打开后名单已经填好，你在网页上选其余选项、设密码；
+3. 等你建好，核对页面，汇报配图和一图流的结果。
 
 - **Codex、Cursor 等**：会自动读仓库根目录的 [AGENTS.md](AGENTS.md)，不用额外设置。
 - **Claude Code**：除了 AGENTS.md，还可以装上 [castcall-setup](skills/castcall-setup/SKILL.md) 这个 skill（一份写给 AI 的操作手册，
@@ -42,23 +47,25 @@ python3 -m venv .venv-poster && .venv-poster/bin/pip install -r requirements-pos
 
   装好后在 Claude Code 里说「用 castcall 帮我搭招募页」，或者直接输入 `/castcall-setup`。
 
-### 方式二：命令行
+### 方式二：自己动手
 
 ```bash
-python3 server/artsearch.py roster CLANNAD -o 名单.txt    # 没有名单时：按作品角色表出一版（全部空缺），改好再用
-python3 init.py --title "活动名" --import 名单.txt --yes   # 建站 + 自动配图 + 生成一图流；密码随机生成，只打印一次
-python3 server/server.py                                   # http://127.0.0.1:5510/ ，右下角的锁是后台
+python3 server/artsearch.py roster CLANNAD -o 名单.txt          # 没有名单时：按作品角色表出一版（全部空缺），改好再用
+python3 server/server.py --prefill 名单.txt --title "活动名"     # 打开终端里打印的 /setup?t=… 链接，名单已经填好
+```
+
+没有名单就直接 `python3 server/server.py`，在向导里粘贴名单或者选「先空着」。
+
+### 没有浏览器时：命令行
+
+只能 ssh 的服务器、脚本批量建站，用 `init.py` 一次做完（效果和向导相同）：
+
+```bash
+python3 init.py --title "活动名" --import 名单.txt --fields "身高,样片*,性别" --yes   # * = 必填；密码随机生成，只打印一次
+python3 server/server.py
 ```
 
 `init.py` 不带参数就是一问一答。不想自动配图 / 生成一图流：加 `--no-art` / `--no-poster`。
-
-### 方式三：网页向导
-
-```bash
-python3 server/server.py     # 终端里会打印一个带口令的 /setup 链接，在浏览器里打开
-```
-
-选单团 / 多团、填活动信息、**把群公告或表格里的名单直接粘贴进去**、设管理密码。完成后在后台自动配图、生成一图流，一两分钟后刷新页面就能看到。
 
 ### 之后
 
@@ -75,7 +82,7 @@ python3 server/server.py     # 终端里会打印一个带口令的 /setup 链�
 | 名册 | 多团：封面卡墙，点开看席位；单团：一整页，招募中的角色在最前面，点一下就报名 |
 | 搜索 | 按角色名或 CN 找人 |
 | 缺人看板 | 所有空缺 / 角色未定 / 还没立绘的席位，按团列出 |
-| 报名 | 空缺席位上点「报名」，填 CN 和联系方式；**不会直接占座**，后台通过才写进名册 |
+| 报名 | 空缺席位上点「报名」，填 CN 和联系方式，以及团长选的身高 / 年龄 / 性别 / 样片 / 自定义题（可选填）；**不会直接占座**，后台通过才写进名册 |
 | 倒计时 | 填了开场时间就显示，活动结束后自动消失 |
 | 留言区 | 默认先显示、后台可隐藏；也可以改成先审后发 |
 | 一图流 | 建站时自动生成（装了依赖的话），抬头有入口；改了名册在后台重新生成 |

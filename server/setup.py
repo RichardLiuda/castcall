@@ -26,7 +26,7 @@ def set_password(pw,path=None):
 def initialized(C=None):
   C=C or config.C;return os.path.isfile(C.ROSTER) and os.path.isfile(C.AUTH)
 def create(instance,*,title,password,date='',start='',end='',location='',contact='',contact_label='微信',
-           roster=None,example=None,seed=True,force=False):
+           roster=None,example=None,seed=True,force=False,fields=None):
   """Returns (Config, seeded summary or None). Never overwrites an existing roster."""
   if not password or len(password)<8:raise ValueError('管理密码至少 8 位')
   if not (title or '').strip():raise ValueError('请填写活动名称')
@@ -39,6 +39,9 @@ def create(instance,*,title,password,date='',start='',end='',location='',contact
   site['event'].update(title=title.strip(),date=(date or '').strip(),startAt=(start or '').strip(),endAt=(end or '').strip(),
                        location=(location or '').strip(),organizer='',contact={'label':cl,'value':cv})
   site['signup']['contactLabel']=(contact_label or '微信').strip()
+  if fields is not None:
+    import fields as F
+    site['signup']['fields']=F.compact(fields)   # 报名额外要填的（身高 / 样片…），见 server/fields.py
   for d in (C.INSTANCE,C.UPLOADS,C.POSTER,C.BACKUPS,C.LOGS):os.makedirs(d,exist_ok=True)
   with open(C.SITE,'w',encoding='utf-8') as f:json.dump(site,f,ensure_ascii=False,indent=1)
   seeded=None

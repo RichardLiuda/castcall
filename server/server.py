@@ -10,10 +10,11 @@ import hashlib,hmac,html,json,os,re,secrets,subprocess,sys,threading,time,urllib
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
 from http.cookies import SimpleCookie
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-import config,roster,review,setup,store
+import config,fields,roster,review,setup,store
 from config import ROOT,WEB
 LOCK=threading.Lock();SESS={};HITS={}
-SETUP={'token':None,'instance':None}   # set while the instance is not initialized: the first-run wizard needs this token
+SETUP={'token':None,'instance':None,'prefill':None}   # set while the instance is not initialized: the first-run wizard needs this token
+# prefill：server.py --prefill 名单.txt 带进来的名单 / 活动名，向导打开时预填（同样要口令才读得到）
 log=roster.log
 
 # ── auth ──────────────────────────────────────────────────────────────────
@@ -237,9 +238,10 @@ class H(SimpleHTTPRequestHandler):
     """/covers/ /portraits/ /brand/ come from instance/uploads, /poster/ from instance/poster, the rest from web/."""
     p=urllib.parse.unquote(path.split('?',1)[0].split('#',1)[0])
     for pre,base in (('/covers/',os.path.join(config.C.UPLOADS,'covers')),('/portraits/',os.path.join(config.C.UPLOADS,'portraits')),
-                     ('/brand/',os.path.join(config.C.UPLOADS,'brand')),('/photos/',os.path.join(config.C.UPLOADS,'photos')),('/poster/',config.C.POSTER)):
+                     ('/brand/',os.path.join(config.C.UPLOADS,'brand')),('/photos/',os.path.join(config.C.UPLOADS,'photos')),('/samples/',os.path.join(config.C.UPLOADS,'samples')),('/poster/',config.C.POSTER)):
       if p.startswith(pre):
         # 成员照片只公开正在显示的那张；待审 / 被拒的只有登录后（审核时）能看
+        if pre=='/samples/' and not s.tok():return os.path.join(base,'__nope__')   # 报名样片：只给后台看
         if pre=='/photos/' and not s.tok() and 'photos/'+p[len(pre):] not in {v.split('?')[0] for v in photos_shown().values()}:return os.path.join(base,'__nope__')
         rel=os.path.normpath(p[len(pre):]).lstrip(os.sep)
         if rel.startswith('..'):return os.path.join(base,'__nope__')
@@ -323,12 +325,17 @@ class H(SimpleHTTPRequestHandler):
     if p in ('/setup','/setup/'):
       s.send(200,readf(os.path.join(WEB,'setup.html')).encode(),'text/html; charset=utf-8');return True
     if p=='/api/setup/examples':s.js(200,{'items':setup.examples()});return True
+    if p=='/api/setup/prefill':
+      t=(urllib.parse.parse_qs(urllib.parse.urlparse(s.path).query).get('t') or [''])[0]
+      if not SETUP['token'] or not hmac.compare_digest(t,SETUP['token']):s.js(403,{'error':'口令不对'});return True
+      s.js(200,SETUP['prefill'] or {});return True
+    if p=='/api/setup/fields':s.js(200,{'presets':[dict(v,key=k) for k,v in fields.PRESETS.items()]});return True
     if p=='/api/health':s.js(200,{'ok':True,'setup':True});return True
     if p in ('/','/index.html') or p in GEN or p.startswith('/api/') or p.startswith('/poster'):
       s.send_response(302);s.send_header('Location','/setup');s.send_header('Content-Length','0');s.end_headers();return True
     return False
   def setup_post(s,p):
-    if p not in ('/api/setup','/api/setup/preview'):return s.js(409,{'error':'还没初始化，先打开 /setup'})
+    if p not in ('/api/setup','/api/setup/preview'):s.close_connection=True;return s.js(409,{'error':'还没初始化，先打开 /setup'})   # 没读请求体：不能复用连接，否则剩下的 body 会被当成下一个请求
     hits,cap,now=s.limited('login')
     if len(hits)>=cap:return s.js(429,{'error':'尝试次数过多，请 10 分钟后再试'})
     try:b=s.body(400_000)
@@ -346,7 +353,8 @@ class H(SimpleHTTPRequestHandler):
       with LOCK:
         setup.create(SETUP['instance'],title=str(b.get('title') or ''),password=str(b.get('password') or ''),date=str(b.get('date') or ''),
           start=str(b.get('start') or ''),location=str(b.get('location') or ''),contact=str(b.get('contact') or ''),contact_label=str(b.get('contactLabel') or '微信'),
-          roster=parsed,example=str(b.get('example') or '') or None if src=='example' else None,seed=src=='example')
+          roster=parsed,example=str(b.get('example') or '') or None if src=='example' else None,seed=src=='example',
+          fields=b.get('fields') if isinstance(b.get('fields'),list) else None)
         if b.get('mode') in ('single','multi') and src!='example':
           j=jload(config.C.SITE,{});j['mode']=b['mode'];tmp=config.C.SITE+'.tmp'
           with open(tmp,'w',encoding='utf-8') as f:json.dump(j,f,ensure_ascii=False,indent=1)
@@ -361,10 +369,14 @@ class H(SimpleHTTPRequestHandler):
     return s.js(200,{'ok':True},f'cc_s={t}; Path=/; HttpOnly; SameSite=Strict; Max-Age={ttl}')
   def admin_get(s,p):
     if not s.tok():return s.js(401,{'error':'需要登录'})
-    if p=='/api/admin/signups':return s.js(200,{'items':store.signups(),'state':review.window_state()})
+    if p=='/api/admin/signups':return s.js(200,{'items':store.signups(),'state':review.window_state(),'fields':fields.normalize(config.C.site['signup'].get('fields'))})
+    if p=='/api/admin/signup-fields':return s.js(200,{'fields':fields.normalize(config.C.site['signup'].get('fields')),'presets':[dict(v,key=k) for k,v in fields.PRESETS.items()]})
     if p=='/api/admin/guestbook':return s.js(200,{'items':store.notes(limit=1000)})
     if p=='/api/admin/counts':return s.js(200,store.counts())
     if p=='/api/admin/poster':return s.js(200,poster_status())
+    if p=='/api/admin/firstrun':
+      import firstrun;t=firstrun.STATE['thread']
+      return s.js(200,{'started':bool(t),'stage':firstrun.STATE['stage'],'lines':firstrun.STATE['lines'],'poster':poster_status()})
     if p=='/api/admin/photos':return s.js(200,{'items':store.photos(),'config':config.C.site['photos']})
     if p=='/api/admin/brand':return s.js(200,{'slots':brand_state(),'poster':bool(config.C.site['poster']['enabled'])})
     if p=='/api/admin/art/search':
@@ -394,6 +406,7 @@ class H(SimpleHTTPRequestHandler):
       SESS.pop(s.tok(),None);return s.js(200,{'ok':True},'cc_s=; Path=/; Max-Age=0')
     if p=='/api/cast-signup':return s.cast_signup()
     if p=='/api/photo':return s.photo_post()
+    if p=='/api/signup-sample':return s.sample_post()
     if p=='/api/guestbook':return s.guestbook_post()
     if p.startswith('/api/admin/'):
       if not s.tok():return s.js(401,{'error':'需要登录'})
@@ -408,7 +421,7 @@ class H(SimpleHTTPRequestHandler):
     hits.append(now)
     try:
       rec=review.prepare(body,roster.load())
-      row,dup=store.add_signup(rec['seat'],rec['grp'],rec['character'],rec['name'],rec['contact'])
+      row,dup=store.add_signup(rec['seat'],rec['grp'],rec['character'],rec['name'],rec['contact'],extra=rec['extra'])
     except ValueError as e:
       msg=str(e);return s.js(409 if msg in ('这个席位已经有人了','席位信息已变，请刷新后再试') else 400,{'error':msg})
     except Exception as e:log('signup err',repr(e));return s.js(500,{'error':'提交失败，请稍后再试'})
@@ -435,6 +448,17 @@ class H(SimpleHTTPRequestHandler):
     r=store.add_photo(seat,g['name'],m.get('character') or '',member,f,st)
     log('photo',r['id'],st,g['name'],seat)
     return s.js(200,{'ok':True,'pending':st=='pending'})
+  def sample_post(s):
+    """Public: 报名表里的样片，先单独传，拿到文件名再随报名提交。只有登录后台才看得到（/samples/）。"""
+    n=int(s.headers.get('Content-Length',0) or 0)
+    if not fields.has_image(config.C.site['signup'].get('fields')) or review.window_state()!='open':s.close_connection=True;return s.js(404,{'error':'这次报名不收样片'})
+    hits,cap,now=s.limited('sample')
+    if len(hits)>=cap:s.close_connection=True;return s.js(429,{'error':'上传太频繁，请稍后再试'})
+    if n<16 or n>6_000_000:s.close_connection=True;return s.js(400,{'error':'样片要小于 6 MB'})
+    hits.append(now)
+    try:f=save_upload('samples',s.rfile.read(n))
+    except ValueError as e:return s.js(400,{'error':str(e)})
+    return s.js(200,{'ok':True,'file':f})
   def guestbook_post(s):
     G=config.C.site['guestbook']
     if not G['enabled']:return s.js(404,{'error':'留言区没开'})
@@ -496,6 +520,12 @@ class H(SimpleHTTPRequestHandler):
       r=store.set_photo(int(m.group(1)),st)
       if not r:return s.js(404,{'error':'没有这张照片'})
       return s.js(200,{'ok':True,'item':r})
+    if p=='/api/admin/signup-fields':
+      try:b=s.body(16384);fs=fields.compact(b.get('fields'))
+      except Exception:return s.js(400,{'error':'提交格式不对'})
+      if sum(1 for f in fs if f['key'] not in fields.PRESETS)>fields.MAX_CUSTOM:return s.js(400,{'error':f'自定义题最多 {fields.MAX_CUSTOM} 个'})
+      with LOCK:site_set('signup','fields',fs)
+      log('signup fields',fields.summary(fs));return s.js(200,{'ok':True,'fields':fields.normalize(fs)})
     if p=='/api/admin/photos/config':
       try:b=s.body(4096)
       except Exception:return s.js(400,{'error':'bad request'})
@@ -573,8 +603,27 @@ def preflight():
   return True
 def make_server(host=None,port=None):
   return ThreadingHTTPServer((host or config.C.host(),config.C.port() if port is None else port),H)
-def main():
+def prefill(path,title=''):
+  """--prefill 名单.txt → 向导预填的内容。名单格式不对就在启动时报出来，别等团长在网页上才发现。"""
+  import importer
+  if path=='-':text=sys.stdin.read()
+  else:
+    with open(path,encoding='utf-8-sig') as f:text=f.read()
+  d=importer.parse(text,title or '我们的团')
+  casts=sum(1 for g in d['groups'] if (g.get('kind') or 'cast')!='crew')
+  return {'names':text,'title':title,'mode':'single' if casts<=1 else 'multi','summary':importer.summary(d),'file':os.path.basename(path)}
+def main(argv=None):
+  import argparse
+  ap=argparse.ArgumentParser(description='castcall 服务器。还没初始化时进入网页开团向导。')
+  ap.add_argument('--prefill',metavar='名单.txt',help='向导里预先填好这份名单（格式见 docs/quickstart.md），团长打开链接核对、选项、设密码就能建站')
+  ap.add_argument('--title',default='',help='和 --prefill 一起用：预填活动名称')
+  a=ap.parse_args(sys.argv[1:] if argv is None else argv)
   ready=preflight()
+  if a.prefill:
+    if ready:print('已经初始化过了，--prefill 不生效。改名单用：python3 tools/import.py 名单.txt --dry',file=sys.stderr)
+    else:
+      try:SETUP['prefill']=prefill(a.prefill,a.title.strip())
+      except (OSError,ValueError) as e:print(f'名单读不了：{e}',file=sys.stderr);return 1
   try:srv=make_server()
   except OSError as e:
     if e.errno in (48,98,10048):   # EADDRINUSE on macOS / Linux / Windows
@@ -585,7 +634,9 @@ def main():
   log('start',host,port,'notion' if config.C.notion_on() else 'local-only')
   shown='127.0.0.1' if host in ('0.0.0.0','::','') else host
   if ready:print(f'castcall: http://{shown}:{port}/  （实例目录 {config.C.INSTANCE}，Notion {"已启用" if config.C.notion_on() else "未启用"}）',flush=True)
-  else:print(f'castcall 还没初始化。在浏览器里打开下面这个链接完成设置（链接里的口令只在这里出现，别发给别人）：\n\n  http://{shown}:{port}/setup?t={SETUP["token"]}\n\n（也可以停掉服务器，用 python3 init.py 在命令行里初始化）',flush=True)
+  else:
+    pf=SETUP['prefill'];pre=f'名单已预填：{pf["file"]}（{pf["summary"]}）\n' if pf else ''
+    print(f'castcall 还没初始化。{pre}在浏览器里打开下面这个链接完成设置（链接里的口令只在这里出现，别发给别人）：\n\n  http://{shown}:{port}/setup?t={SETUP["token"]}\n\n（也可以停掉服务器，用 python3 init.py 在命令行里初始化）',flush=True)
   try:srv.serve_forever()
   except KeyboardInterrupt:pass
   return 0

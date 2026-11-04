@@ -17,7 +17,7 @@ create table if not exists signups(
   seat text not null, grp text not null, character text not null default '',
   name text not null, contact text not null,
   status text not null default 'pending', source text not null default '',
-  created text not null, decided text not null default '', note text not null default '');
+  created text not null, decided text not null default '', note text not null default '', extra text not null default '{}');
 create index if not exists signups_seat on signups(seat,status);
 create table if not exists guestbook(
   id integer primary key autoincrement,
@@ -38,12 +38,18 @@ def now():return datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d
 def db():
   os.makedirs(os.path.dirname(config.C.DB),exist_ok=True)
   c=sqlite3.connect(config.C.DB,timeout=10,isolation_level=None)
-  c.row_factory=sqlite3.Row;c.execute('pragma journal_mode=wal');c.executescript(SCHEMA);return c
+  c.row_factory=sqlite3.Row;c.execute('pragma journal_mode=wal');c.executescript(SCHEMA)
+  if config.C.DB not in MIGRATED:
+    # 旧库没有 signups.extra（报名额外字段，JSON）：补一列
+    if 'extra' not in {r['name'] for r in c.execute('pragma table_info(signups)')}:c.execute("alter table signups add column extra text not null default '{}'")
+    MIGRATED.add(config.C.DB)
+  return c
+MIGRATED=set()
 def rows(c,q,*a):return [dict(r) for r in c.execute(q,a)]
 
 # ── signups ────────────────────────────────────────────────────────────────
 DUP_WINDOW=600
-def add_signup(seat,grp,character,name,contact,source='网页'):
+def add_signup(seat,grp,character,name,contact,source='网页',extra=None):
   """→ (row, duplicate). The same seat + name + contact inside 10 min is a retry, not a second signup:
   the existing row comes back and nothing is inserted (kept in the db, so it survives a restart)."""
   c=db()
@@ -52,7 +58,7 @@ def add_signup(seat,grp,character,name,contact,source='网页'):
     since=(datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(seconds=DUP_WINDOW)).strftime('%Y-%m-%dT%H:%M:%S')
     old=c.execute("select * from signups where seat=? and name=? and contact=? and status='pending' and created>=? order by id desc limit 1",(seat,name,contact,since)).fetchone()
     if old:c.execute('commit');return dict(old),True
-    cur=c.execute('insert into signups(seat,grp,character,name,contact,created,source) values(?,?,?,?,?,?,?)',(seat,grp,character,name,contact,now(),source))
+    cur=c.execute('insert into signups(seat,grp,character,name,contact,created,source,extra) values(?,?,?,?,?,?,?,?)',(seat,grp,character,name,contact,now(),source,json.dumps(extra or {},ensure_ascii=False)))
     r=c.execute('select * from signups where id=?',(cur.lastrowid,)).fetchone();c.execute('commit');return dict(r),False
   except Exception:
     try:c.execute('rollback')
