@@ -77,6 +77,20 @@ body.casting main{padding-bottom:96px}
 .cast-note b{display:block;margin:0 0 4px;font-size:11px;letter-spacing:.22em;color:var(--gold);font-weight:800}
 .cast-note p{margin:0}
 
+/* 招募须知（notice）：单团页 / 报名表 / 缺人看板三处共享渲染，见 cbase.js noticeHTML() */
+.notice-block{margin:16px 0 20px;max-width:70em}
+.notice-lead{margin:0 0 8px;font-size:16px;font-weight:800;color:var(--ink)}
+.notice-items{display:flex;flex-direction:column;gap:6px}
+.notice-item{margin:0;padding:2px 0 2px 12px;border-left:3px solid var(--notice-info);font-size:13.5px;line-height:1.55;color:var(--ink);overflow-wrap:anywhere}
+.notice-item[data-kind=must]{border-color:var(--notice-must)}
+.notice-item[data-kind=deny]{border-color:var(--notice-deny)}
+.notice-item[data-kind=warn]{border-color:var(--notice-warn)}
+.notice-more{display:block;margin:8px 0 0;background:none;border:none;padding:0;color:var(--gold);font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit}
+.notice-signup{margin:0 0 4px;max-width:none}
+.notice-signup .notice-item{border-left:none;padding-left:0;font-weight:600}
+.notice-signup .notice-more{color:var(--ink-soft);font-weight:600;cursor:default}
+.notice-board{margin:0 0 8px;color:var(--ink-soft);font-size:12.5px;line-height:1.6}
+
 #sheet #sm:not(.ie):empty:before,#sheet #sc:not(.ie):empty:before{content:attr(data-ph);color:var(--ink-soft);font-weight:700}
 #sheet .cast-join{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin:14px 0 0;min-height:44px;border:2px solid var(--ink);border-radius:12px;background:var(--ink);color:var(--paper);font:inherit;font-weight:800;font-size:15px;cursor:pointer}
 #sheet .cast-join .ic{width:16px;height:16px}
@@ -84,6 +98,7 @@ body.casting main{padding-bottom:96px}
 #sheet .cast-join:active{transform:translate(1px,1px)}
 
 @media(max-width:639px){
+ .notice-solo:not(.open) .notice-items .notice-item:nth-child(n+3){display:none}
  .cast-top{margin-bottom:14px}
  .cast-cover{width:64px;height:44px}
  .cast-wh{padding:10px}
@@ -385,6 +400,12 @@ body.qfocus #res{position:relative;z-index:19;background:var(--page);border-radi
 #solo .seat-open .ni{width:64px;height:64px;font-size:28px}
 #solo .seat-open .a{flex:none;font-size:17px}
 #solo .seat-open .go{font-size:13px;padding:6px 14px}
+/* 招募中的空位也配到立绘时，露出半透明的角色图（不是在找人，是提示"这个角色是谁"），
+   区别于已定阵容的实色立绘，一眼能看出还没定人；没配图时仍是纯文字占位 */
+#solo .seat-open:has(.ci){padding:0}
+#solo .seat-open .ci{order:-1;width:100%;aspect-ratio:4/5;background:var(--ci) center 18%/cover no-repeat,color-mix(in srgb,var(--c) 14%,var(--paper));opacity:.45;border-bottom:2.5px dashed color-mix(in srgb,var(--c) 70%,var(--ink))}
+#solo .seat-open:has(.ci) .a{padding:12px 14px 0}
+#solo .seat-open:has(.ci) .go{margin:0 14px 16px}
 @media(max-width:639px){#solo .pills,#solo .solo-open{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px 14px}#solo .pill .b{font-size:16px}}
 #solo .pill .a,#solo .pill .b{flex:none!important;display:block;white-space:normal;overflow:visible;line-height:1.3;text-shadow:none}
 #solo .pill .b{padding-right:14px!important}

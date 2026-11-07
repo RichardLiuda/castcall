@@ -15,7 +15,7 @@ function login(){const pw=inp('','','password'),er=h('div',{class:'err'});const 
  pw.addEventListener('keydown',e=>e.key=='Enter'&&go());modal('编辑需要密码',[fld('密码',pw),er,h('div',{class:'mrow'},h('button',{class:'btn',onclick:close},'取消'),h('button',{class:'btn pri',onclick:go},'进入编辑'))])}
 let editing=false;
 function setEdit(on){editing=on;document.body.classList.toggle('editing',on);$('#fab').replaceChildren(iconEl(on?'unlock':'lock',22));$('#fab').setAttribute('aria-label',on?'编辑中':'进入编辑');
- const tb=$('#etb');tb.innerHTML='';if(on){tb.append(h('button',{class:'btn pri',id:'newrole',onclick:()=>{const c=$('.cv.open');const gi=c?+c.id.slice(1):+(SS.getItem('kr_open_last')||0);entryForm(Math.min(gi,D.groups.length-1),-1,1)}},iconEl('plus'),'新角色'),h('button',{class:'btn',onclick:()=>review('signups')},iconEl('users'),'审核',h('b',{id:'rvn',hidden:''})),h('button',{class:'btn',onclick:()=>links('all')},iconEl('links'),'连线视图'),h('button',{class:'btn',onclick:()=>groupForm(-1)},iconEl('plus'),SITE.mode==='single'?'加一个团':'新团'),h('button',{class:'btn',onclick:artAuto},iconEl('palette'),'一键配图'),h('button',{class:'btn',onclick:brandPanel},iconEl('camera'),'站点素材'),h('button',{class:'btn',onclick:fieldsPanel},iconEl('pencil'),'报名表'),...(SITE.poster.enabled?[h('button',{class:'btn',onclick:posterBuild},iconEl('palette'),'生成一图流')]:[]),h('button',{class:'btn',onclick:async()=>{await api('POST','/api/logout');SS.removeItem('kr_edit');setEdit(false);toast('已退出编辑')}},iconEl('logout'),'退出'))}
+ const tb=$('#etb');tb.innerHTML='';if(on){tb.append(h('button',{class:'btn pri',id:'newrole',onclick:()=>{const c=$('.cv.open');const gi=c?+c.id.slice(1):+(SS.getItem('kr_open_last')||0);entryForm(Math.min(gi,D.groups.length-1),-1,1)}},iconEl('plus'),'新角色'),h('button',{class:'btn',onclick:()=>review('signups')},iconEl('users'),'审核',h('b',{id:'rvn',hidden:''})),h('button',{class:'btn',onclick:()=>links('all')},iconEl('links'),'连线视图'),h('button',{class:'btn',onclick:()=>groupForm(-1)},iconEl('plus'),SITE.mode==='single'?'加一个团':'新团'),h('button',{class:'btn',onclick:artAuto},iconEl('palette'),'一键配图'),h('button',{class:'btn',onclick:brandPanel},iconEl('camera'),'站点素材'),h('button',{class:'btn',onclick:fieldsPanel},iconEl('pencil'),'报名表'),h('button',{class:'btn',onclick:noticePanel},iconEl('pencil'),'招募须知'),...(SITE.poster.enabled?[h('button',{class:'btn',onclick:posterBuild},iconEl('palette'),'生成一图流')]:[]),h('button',{class:'btn',onclick:async()=>{await api('POST','/api/logout');SS.removeItem('kr_edit');setEdit(false);toast('已退出编辑')}},iconEl('logout'),'退出'))}
  soloTools();
  $$('.cv').forEach((c,gi)=>{let t=c.querySelector('.gtools');if(!t){t=h('div',{class:'gtools'},h('button',{class:'btn',onclick:()=>entryForm(gi,-1)},iconEl('plus'),'添加'),h('button',{class:'btn',onclick:()=>groupForm(gi)},iconEl('pencil'),SITE.mode==='single'?'活动 / 团信息':'团信息'),h('button',{class:'btn',onclick:()=>links(gi)},iconEl('links'),'连线'));c.querySelector('.body').prepend(t)}});
  if(on)reviewCount()}
@@ -127,6 +127,21 @@ async function fieldsPanel(){let st;try{st=await api('GET','/api/admin/signup-fi
  const box=h('div'),er=h('div',{class:'err'}),fp=fieldPicker(box,st.presets,st.fields);
  const save=async()=>{er.textContent='';try{await api('POST','/api/admin/signup-fields',{fields:fp.value()});SS.setItem('kr_edit','1');toast('报名表已更新');setTimeout(()=>location.reload(),500)}catch(e){er.textContent=e.message}};
  modal('报名表要填什么',[box,h('p',{class:'ap-note'},'去掉某一项不会删掉已经收到的答案，审核里照样能看到。'),er,h('div',{class:'mrow'},h('button',{class:'btn',onclick:close},'取消'),h('button',{class:'btn pri',onclick:save},'保存'))])}
+/* 招募须知（site.json notice）：团长在一处写要求 / 不接受 / 补充 / 风险，单团页 / 报名表 / 缺人看板自动复用，见 cbase.js noticeHTML() */
+async function noticePanel(){let st;try{st=await api('GET','/api/admin/notice')}catch(e){return toast('读不到招募须知：'+e.message,3000)}
+ const nt=st.notice||{enabled:false,lead:'',items:[]};
+ const en=h('input',{type:'checkbox'});en.checked=!!nt.enabled;
+ const lead=h('input',{maxlength:40,placeholder:'一句话定调，可留空'});lead.value=nt.lead||'';
+ const er=h('div',{class:'err'});
+ const KINDS=[['must','必须 / 卡什么'],['warn','提醒 / 风险'],['deny','不接受'],['info','补充说明']];
+ const boxes={};
+ const mkRow=text=>{const t=h('input',{maxlength:80});t.value=text||'';const row=h('div',{class:'notice-row'});row.append(t,h('button',{class:'btn ghost',type:'button',onclick:()=>row.remove()},'删除'));return row};
+ const groups=KINDS.map(([k,label])=>{const box=h('div',{class:'notice-rows'},...((nt.items||[]).filter(it=>it.kind===k).map(it=>mkRow(it.text))));boxes[k]=box;
+  return h('div',{class:'notice-group'},h('h4',{},label),box,h('button',{class:'btn ghost',type:'button',onclick:()=>box.append(mkRow(''))},'+ 添加'))});
+ const save=async()=>{er.textContent='';
+  const items=[];KINDS.forEach(([k])=>{[...boxes[k].querySelectorAll('input')].forEach(i=>{const t=i.value.trim();if(t)items.push({kind:k,text:t})})});
+  try{await api('POST','/api/admin/notice',{enabled:en.checked,lead:lead.value.trim(),items});SS.setItem('kr_edit','1');toast('招募须知已更新');setTimeout(()=>location.reload(),500)}catch(e){er.textContent=e.message}};
+ modal('招募须知',[h('label',{class:'chk'},en,'启用'),fld('一句话定调',lead),...groups,h('p',{class:'ap-note'},'报名表只显示 must / deny；单团页按 must → warn → deny → info 的顺序折叠显示前 3 条。关掉开关时页面和现在一样。'),er,h('div',{class:'mrow'},h('button',{class:'btn',onclick:close},'取消'),h('button',{class:'btn pri',onclick:save},'保存'))])}
 async function brandPanel(){let st;try{st=await api('GET','/api/admin/brand')}catch(e){return toast('读不到站点素材：'+e.message,3000)}
  let dirty=false;const er=h('div',{class:'err'}),list=h('div',{class:'brand'});
  const send=async(slot,file)=>{er.textContent='';if(file&&file.size>8e6){er.textContent='图片要小于 8 MB';return}

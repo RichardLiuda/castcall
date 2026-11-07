@@ -11,6 +11,29 @@ const signupOn=g=>SITE.signup.enabled!==false&&SITE.signupState==='open'&&(g.sig
 /* 团的负责人 / 咨询方式 / 说明，显示在展开后的席位上方；单团时就是活动说明 */
 function gmeta(g){const r=[];if(g.lead)r.push(`<span><b>团长</b>${esc(g.lead)}</span>`);if(g.contact)r.push(`<span><b>咨询</b>${esc(g.contact)}</span>`);
  return r.length||g.note?`<div class=gmeta>${r.length?`<p class=gm-row>${r.join('')}</p>`:''}${g.note?`<p class=gm-note>${esc(g.note)}</p>`:''}</div>`:''}
+/* 招募须知（site.json notice，全站一份，不分团）：单团页 / 报名表 / 缺人看板三处复用同一份数据。
+   单团页折叠时优先 must、其次 warn（同 kind 内保持原顺序）取前 3 条；展开后按原顺序铺开。
+   报名表只要 must/deny，must 优先占位凑 4 条。看板一行各取 2 条。 */
+const NOTICE_RANK={must:0,warn:1,deny:2,info:3};
+function noticeHTML(where){const nt=SITE.notice||{},items=nt.items||[];
+ if(!nt.enabled||!items.length)return '';
+ if(where==='solo'){
+  const open=sessionStorage.getItem('kr_notice_open')==='1';
+  const show=open?items:items.map((it,idx)=>({it,idx})).sort((a,b)=>(NOTICE_RANK[a.it.kind]-NOTICE_RANK[b.it.kind])||(a.idx-b.idx)).slice(0,3).map(x=>x.it);
+  const row=it=>`<p class="notice-item" data-kind="${it.kind}">${esc(it.text)}</p>`;
+  const toggle=items.length>3?`<button type="button" class="notice-more" data-notice-toggle>${open?'收起 ▴':'查看全部 '+items.length+' 条 ▾'}</button>`:'';
+  return `<div class="notice-block notice-solo${open?' open':''}">${nt.lead?`<p class="notice-lead">${esc(nt.lead)}</p>`:''}<div class="notice-items">${show.map(row).join('')}</div>${toggle}</div>`}
+ if(where==='signup'){
+  const pool=[...items.filter(it=>it.kind==='must'),...items.filter(it=>it.kind==='deny')],shown=pool.slice(0,4),rest=pool.length-shown.length;
+  if(!shown.length)return '';
+  const row=it=>`<p class="notice-item" data-kind="${it.kind}">${it.kind==='deny'?'✕ ':'· '}${esc(it.text)}</p>`;
+  return `<div class="notice-block notice-signup">${shown.map(row).join('')}${rest>0?`<p class="notice-more">还有 ${rest} 条，见页面须知</p>`:''}</div>`}
+ if(where==='board'){
+  const musts=items.filter(it=>it.kind==='must'),denies=items.filter(it=>it.kind==='deny'),shown=musts.slice(0,2).concat(denies.slice(0,2));
+  if(!shown.length)return '';
+  const parts=musts.slice(0,2).map(it=>esc(it.text)).concat(denies.slice(0,2).map(it=>'✕ '+esc(it.text)));
+  return `<p class="notice-board">${parts.join(' · ')}${musts.length+denies.length>shown.length?'…':''}</p>`}
+ return ''}
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 // img('covers/x.jpg') -> CSS image value: versioned url, as image-set(avif, jpeg) when a fresh .avif exists (window.IMGV from chars.js)
 const AV=!!(window.CSS&&CSS.supports('background-image',"image-set(url('x.avif') type('image/avif'))"));
@@ -36,7 +59,7 @@ function sheetArt(card,gi,i,u,from){if(!u){card.style.setProperty('--ci','none')
   painted=1;paint(0)};
  im.onload=go;if(cached)go()}
 // thumbs are attached lazily (card open / press / search) so a closed roster does not download all of them
-function ciLoad(r){if(!r)return;(r.matches&&r.matches('.pill[data-ci]')?[r]:r.querySelectorAll('.pill[data-ci]')).forEach(p=>{p.style.setProperty('--ci',img(p.dataset.ci));p.removeAttribute('data-ci');
+function ciLoad(r){if(!r)return;const sel='.pill[data-ci],.seat-open[data-ci]';(r.matches&&r.matches(sel)?[r]:r.querySelectorAll(sel)).forEach(p=>{p.style.setProperty('--ci',img(p.dataset.ci));p.removeAttribute('data-ci');
   const v=p.querySelector('.pv[data-pv]');if(v){v.style.setProperty('--pv',img(v.dataset.pv));v.removeAttribute('data-pv')}})}
 function ci(gi,i){const g=R.groups[gi],m=g.members[i],c=(window.CHARS||{})[g.name+'|'+m.character];return c||''}
 /* 成员本人照片（site.json photos.enabled，审核通过的）：按席位 id 存，服务器已经筛掉换了人的 */
@@ -51,7 +74,8 @@ function pill(gi,i,q){const g=R.groups[gi],m=g.members[i];const P=v=>v||'（待�
 function soloHTML(gi){const g=R.groups[gi],seats=g.members.map((m,i)=>[m,i]);
  const set=seats.filter(([m])=>hasCN(m)),open=seats.filter(([m])=>!hasCN(m)&&(m.character||'').trim()),on=signupOn(g);
  const stat=(n,t,k)=>`<span class="solo-st${k?' '+k:''}"><b>${n}</b>${t}</span>`;
- const seat=(m,i,gj,can)=>`<button type="button" class="seat-open" data-g="${gj}" data-i="${i}"><i class="ni">${esc([...(m.character||'?')][0])}</i><span class="a">${esc(m.character)}</span><span class="go">${can?'报名 →':'暂停报名'}</span></button>`;
+ const seat=(m,i,gj,can)=>{const u0=ci(gj,i),u=u0.startsWith('chars/')?u0.replace('chars/','chars/thumb/'):u0;
+  return `<button type="button" class="seat-open" data-g="${gj}" data-i="${i}"${u?` data-ci="${esc(u)}"`:''}>${u?'<i class="ci"></i>':`<i class="ni">${esc([...(m.character||'?')][0])}</i>`}<span class="a">${esc(m.character)}</span><span class="go">${can?'报名 →':'暂停报名'}</span></button>`};
  /* 工作组（摄影 / 后勤 / 妆娘…）不是「另一个团」，但人得在页面上：已定的进胶囊，缺的留报名入口。
     放在已定阵容之后，一个 crew 组一段。 */
  const crewBlock=R.groups.map((c,j)=>[c,j]).filter(([c,j])=>j!==gi&&crew(c)).map(([c,j])=>{
@@ -65,7 +89,7 @@ function soloHTML(gi){const g=R.groups[gi],seats=g.members.map((m,i)=>[m,i]);
  return `<section id="solo" style="--c:${g.color}"><header class="solo-hero"><div class="solo-tx">`+
   `<p class="solo-k">CAST CALL${crew(g)?'':' · '+g.members.length+' 个角色'}</p><h2>${esc(g.name)}</h2>`+
   `<p class="solo-sts">${stat(set.length,'已定')}${open.length?stat(open.length,'招募中','hot'):stat('✓','全员已定')}</p></div></header>`+
-  `<div class="solo-body"><div class="solo-tools"></div>${gmeta(g)}`+
+  `<div class="solo-body"><div class="solo-tools"></div>${gmeta(g)}${noticeHTML('solo')}`+
   (open.length?`<h3 class="solo-h">招募中<b>${open.length}</b>${on?'':'<small>暂停报名</small>'}</h3><div class="solo-open">${open.map(([m,i])=>seat(m,i,gi,on)).join('')}</div>`:'')+
   `<h3 class="solo-h">${crew(g)?'成员':'已定阵容'}<b>${set.length}</b></h3>`+
   (set.length?`<div class="pills">${set.map(([m,i])=>pill(gi,i,'')).join('')}</div>`:`<p class="empty">还没有人，等你来。</p>`)+
@@ -103,7 +127,8 @@ function openSheet(gi,i,dir,from){const g=R.groups[gi],n=g.members.length;if(!n)
  $('#sheet').classList.add('open')}
 document.addEventListener('pointerenter',e=>{const p=e.target.closest&&e.target.closest('.pill');if(!p)return;artWarm(ci(+p.dataset.g,+p.dataset.i))},true);
 document.addEventListener('pointerdown',e=>{const p=e.target.closest('.pill');if(p){ciLoad(p);artWarm(ci(+p.dataset.g,+p.dataset.i))}if(!p||RM)return;const r=p.getBoundingClientRect(),s=Math.max(r.width,r.height)*2.2,d=document.createElement('span');d.className='rp';d.style.cssText=`width:${s}px;height:${s}px;left:${e.clientX-r.left-s/2}px;top:${e.clientY-r.top-s/2}px`;p.appendChild(d);setTimeout(()=>d.remove(),500)});
-document.addEventListener('click',e=>{const p=e.target.closest('.pill');if(p)return openSheet(+p.dataset.g,+p.dataset.i,0,p);
+document.addEventListener('click',e=>{const nt=e.target.closest('[data-notice-toggle]');if(nt){const open=sessionStorage.getItem('kr_notice_open')==='1';try{sessionStorage.setItem('kr_notice_open',open?'0':'1')}catch(err){}if(document.getElementById('solo'))renderSolo();return}
+ const p=e.target.closest('.pill');if(p)return openSheet(+p.dataset.g,+p.dataset.i,0,p);
  const so=e.target.closest('.seat-open');if(so){const g=R.groups[+so.dataset.g];if(g&&signupOn(g)&&!document.body.classList.contains('editing'))return openSignup(+so.dataset.g,+so.dataset.i);return openSheet(+so.dataset.g,+so.dataset.i,0,so)}
  if(e.target.closest('#sheet [data-signup]')){if(cur)openSignup(cur[0],cur[1]);return}
  if(e.target.closest('#sheet [data-photo]')){if(cur)openPhoto(cur[0],cur[1]);return}
@@ -168,7 +193,7 @@ function renderCast(){closeSignup();closeGuestbook();const root=$('#cast');if(!r
   body='<div class="cast-board">'+groups.map(gr=>{const col=castHex(gr.g.color),face=r=>{const f=castFace(r);return `<button type="button" class="cast-line cast-row" data-k="${r.k}" data-g="${r.gi}" data-i="${r.i}" title="${esc(f.title)}"><span class="cast-ord">${castFolio(r.order)}</span>${castAv(gr.g,r.m)}<span class="cast-role"><b class="cast-d${f.gap&&r.k==='loose'?' miss':''}">${esc(f.role)}</b><b class="cast-p">${esc(f.title)}</b></span><span class="cast-mem${r.k==='vacant'?' miss':''}">${esc(f.who)}</span><span class="cast-meta">${esc(f.meta)}</span><span class="cast-st">${CAST_LABEL[r.k]}</span></button>`};
    return `<section class="cast-work" style="--c:${col}"><header class="cast-wh"><i class="cast-cover"${castCover(gr.g)}></i><div class="cast-wt"><p class="cast-no">No. ${castFolio(gr.gi+1)}</p><h3 title="${esc(gr.g.name)}">${esc(gr.g.name)}</h3></div><p class="cast-count">${gr.rows.length} 席</p></header><div class="cast-cols cast-line" aria-hidden="true"><span>排序</span><span>配图</span><span>角色</span><span>成员</span><span>状态</span></div>${gr.rows.map(face).join('')}</section>`}).join('')+'</div>'}
  const ct=SITE.event.contact||{},note=ct.value?`<footer class="cast-note"><b>联系方式</b><p>${esc((ct.label?ct.label+' ':'')+ct.value)}</p></footer>`:'';
- root.innerHTML=`<div class="cast-top"><div class="cast-mast"><p class="cast-kicker"><span>CALL SHEET</span>${when?`<span class="cast-when">${esc(when)}</span>`:''}</p><h2>缺人看板</h2></div><div class="cast-chips" role="group" aria-label="筛选状态">${chips}</div></div>${body}${note}`}
+ root.innerHTML=`<div class="cast-top"><div class="cast-mast"><p class="cast-kicker"><span>CALL SHEET</span>${when?`<span class="cast-when">${esc(when)}</span>`:''}</p><h2>缺人看板</h2></div><div class="cast-chips" role="group" aria-label="筛选状态">${chips}</div></div>${body}${noticeHTML('board')}${note}`}
 function setCast(on){on=!!on;document.body.classList.toggle('casting',on);const m=$('#m');if(m)m.classList.toggle('casting',on);
  const root=$('#cast');if(root)root.setAttribute('aria-hidden',on?'false':'true');
  const b=$('#castbtn');if(b){b.setAttribute('aria-pressed',on?'true':'false');const n=castRows().filter(r=>r.k==='vacant'||r.k==='loose').length;
@@ -235,7 +260,7 @@ function signupKick(){if(signupKickOn)return;signupKickOn=true;const t0=performa
  const step=()=>{if(!signupOpen()){signupKickOn=false;return}signupPin();if(performance.now()-t0<1200)requestAnimationFrame(step);else signupKickOn=false};step()}
 function openSignup(gi,i){const g=R.groups[gi],m=g&&g.members[i];if(!m||castKind(g.name,m)!=='vacant'||!signupOn(g))return;const CL=esc(SITE.signup.contactLabel||'联系方式');const root=signupRoot();root.style.setProperty('--c',castHex(g.color));
  const role=(m.character||'').trim()||'空席',card=root.querySelector('.signup-card');
- card.innerHTML=`<form novalidate><div class="signup-ctx"><p class="signup-kicker">${icon('users',14)}<span>空缺报名</span></p><h2 id="signup-title">${esc(role)}</h2><p class="signup-work">${esc(g.name)}</p></div><label class="signup-fld signup-cn"><span>${icon('user',14)}CN</span><input name="name" maxlength="40" autocomplete="name" enterkeyhint="next" required></label><label class="signup-fld signup-wx"><span>${icon('message',14)}${CL}</span><input name="contact" maxlength="60" autocomplete="off" enterkeyhint="done" required></label>${signupExtraHTML()}<div class="signup-foot"><p class="signup-err" role="alert"></p><div class="signup-actions"><button type="button" class="signup-btn" data-signup-close>取消</button><button type="submit" class="signup-btn go">${icon('arrow',16)}提交报名</button></div>${SITE.signup.note?`<p class="signup-fine">${esc(SITE.signup.note)}</p>`:''}</div></form>`;
+ card.innerHTML=`<form novalidate><div class="signup-ctx"><p class="signup-kicker">${icon('users',14)}<span>空缺报名</span></p><h2 id="signup-title">${esc(role)}</h2><p class="signup-work">${esc(g.name)}</p></div><label class="signup-fld signup-cn"><span>${icon('user',14)}CN</span><input name="name" maxlength="40" autocomplete="name" enterkeyhint="next" required></label><label class="signup-fld signup-wx"><span>${icon('message',14)}${CL}</span><input name="contact" maxlength="60" autocomplete="off" enterkeyhint="done" required></label>${signupExtraHTML()}<div class="signup-foot"><p class="signup-err" role="alert"></p><div class="signup-actions"><button type="button" class="signup-btn" data-signup-close>取消</button><button type="submit" class="signup-btn go">${icon('arrow',16)}提交报名</button></div>${noticeHTML('signup')}${SITE.signup.note?`<p class="signup-fine">${esc(SITE.signup.note)}</p>`:''}</div></form>`;
  card.dataset.id=m.id||'';card.dataset.work=g.name;card.dataset.character=(m.character||'').trim();
  card.querySelectorAll('.ph-pick input[type=file]').forEach(f=>{const pv=f.parentNode.querySelector('.ph-prev');f.addEventListener('change',()=>{const x=f.files[0];if(pv._u)URL.revokeObjectURL(pv._u);pv.hidden=!x;if(x){pv._u=URL.createObjectURL(x);pv.style.backgroundImage=`url(${pv._u})`}})});
  signupShow(root,card)}

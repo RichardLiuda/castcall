@@ -35,6 +35,11 @@ DEFAULTS={
     'note':'提交后等审核，不会直接占上这个席位。',
     'fields':[],            # 额外要填的：身高 / 年龄 / 性别 / 样片…，见 server/fields.py 和 docs/config.md
   },
+  'notice':{               # 招募须知：要求 / 不接受 / 补充 / 风险，见 server/notice.py 和 docs/config.md
+    'enabled':False,
+    'lead':'',             # 一句话定调
+    'items':[],            # [{"kind":"must"/"deny"/"warn"/"info","text":"..."}]
+  },
   'guestbook':{
     'enabled':True,
     'moderation':'post',    # post：先显示，后台可隐藏；pre：后台通过后才显示
@@ -96,8 +101,14 @@ class Config:
         with open(s.SITE,encoding='utf-8') as f:raw=json.load(f)
       s._site=merge(copy.deepcopy(DEFAULTS),raw);s._mt=mt
     return s._site
-  def host(s):return s.getenv('CASTCALL_HOST') or s.site['server']['host']
-  def port(s):return int(s.getenv('CASTCALL_PORT') or s.site['server']['port'])
+  def host(s):
+    """托管平台（Docker、多数 PaaS、WorkBuddy 之类的在线应用）只给一个 PORT 环境变量，并要求监听 0.0.0.0。
+    这时 site.json 里的 127.0.0.1 会让服务绑在回环上、外面访问不到，所以有 PORT 时默认放开；CASTCALL_HOST 显式给的值仍然优先。"""
+    h=s.getenv('CASTCALL_HOST') or s.site['server']['host']
+    if h in ('127.0.0.1','localhost','::1') and not s.getenv('CASTCALL_HOST') and os.environ.get('PORT'):return '0.0.0.0'
+    return h
+  def port(s):return int(s.getenv('CASTCALL_PORT') or os.environ.get('PORT') or s.site['server']['port'])
+  def hosted(s):return bool(os.environ.get('PORT'))   # 平台给了 PORT = 跑在托管平台上，前面一定有一层代理
   def proxy_header(s):return s.getenv('CASTCALL_TRUST_PROXY') or s.site['server']['trustProxyHeader']
   def notion_token(s):return s.getenv('NOTION_TOKEN')
   def notion_db(s,kind):return s.getenv('NOTION_'+kind.upper()+'_DB')
@@ -108,6 +119,7 @@ class Config:
     """The part of site.json the browser may see (/site.js). Never put secrets in site.json."""
     t=s.site;return {'mode':t['mode'],'event':t['event'],'brand':t['brand'],
       'signup':{**{k:t['signup'][k] for k in ('enabled','opensAt','closesAt','contactLabel','contactPattern','note')},'fields':__import__('fields').normalize(t['signup'].get('fields'))},
+      'notice':{'enabled':bool(t['notice']['enabled']),'lead':t['notice']['lead'],'items':__import__('notice').normalize(t['notice'].get('items'))},
       'guestbook':{'enabled':t['guestbook']['enabled'],'moderation':t['guestbook']['moderation']},
       'poster':{'enabled':t['poster']['enabled'],'slug':t['poster']['slug']},
       'photos':{'enabled':bool(t['photos']['enabled']),'moderation':t['photos']['moderation']}}

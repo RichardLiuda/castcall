@@ -5,7 +5,8 @@
   --gold:#a07030;--gold-2:#e6b35a;--tape-a:#ffe9b8;--tape-b:#fff3d6;--mark:#ffe08a;--line:#f0e2c4;
   --veil:#fff;--scrim:#3337;--scrim-sheet:#3338;
   --stamp-bg:#333;--stamp-fg:#ffe08a;--toast-bg:#333;--toast-fg:#fff;--page-veil:#fffaf0e8;
-  --hot:#c0392b;--err:#d33
+  --hot:#c0392b;--err:#d33;
+  --notice-must:var(--hot);--notice-deny:var(--err);--notice-warn:#b8860b;--notice-info:var(--ink-soft)
 }
 *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--page)}body{margin:0;font-family:"Noto Sans SC",system-ui,sans-serif;background:var(--page);color:var(--ink);-webkit-tap-highlight-color:transparent}
 .hdr{background:repeating-linear-gradient(45deg,var(--tape-a) 0 12px,var(--tape-b) 12px 24px);border-bottom:3px dashed var(--gold-2);padding:22px 16px 10px;transition:padding .25s}

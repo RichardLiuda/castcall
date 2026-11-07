@@ -10,7 +10,7 @@ import hashlib,hmac,html,json,os,re,secrets,subprocess,sys,threading,time,urllib
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
 from http.cookies import SimpleCookie
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-import config,fields,roster,review,setup,store
+import config,fields,notice,roster,review,setup,store
 from config import ROOT,WEB
 LOCK=threading.Lock();SESS={};HITS={}
 SETUP={'token':None,'instance':None,'prefill':None}   # set while the instance is not initialized: the first-run wizard needs this token
@@ -373,6 +373,7 @@ class H(SimpleHTTPRequestHandler):
     if not s.tok():return s.js(401,{'error':'需要登录'})
     if p=='/api/admin/signups':return s.js(200,{'items':store.signups(),'state':review.window_state(),'fields':fields.normalize(config.C.site['signup'].get('fields'))})
     if p=='/api/admin/signup-fields':return s.js(200,{'fields':fields.normalize(config.C.site['signup'].get('fields')),'presets':[dict(v,key=k) for k,v in fields.PRESETS.items()]})
+    if p=='/api/admin/notice':return s.js(200,{'notice':config.C.site['notice']})
     if p=='/api/admin/guestbook':return s.js(200,{'items':store.notes(limit=1000)})
     if p=='/api/admin/counts':return s.js(200,store.counts())
     if p=='/api/admin/poster':return s.js(200,poster_status())
@@ -528,6 +529,12 @@ class H(SimpleHTTPRequestHandler):
       if sum(1 for f in fs if f['key'] not in fields.PRESETS)>fields.MAX_CUSTOM:return s.js(400,{'error':f'自定义题最多 {fields.MAX_CUSTOM} 个'})
       with LOCK:site_set('signup','fields',fs)
       log('signup fields',fields.summary(fs));return s.js(200,{'ok':True,'fields':fields.normalize(fs)})
+    if p=='/api/admin/notice':
+      try:b=s.body(16384);nt=notice.compact(b)
+      except Exception:return s.js(400,{'error':'提交格式不对'})
+      with LOCK:
+        site_set('notice','enabled',nt['enabled']);site_set('notice','lead',nt['lead']);site_set('notice','items',nt['items'])
+      log('notice updated');return s.js(200,{'ok':True,'notice':nt})
     if p=='/api/admin/photos/config':
       try:b=s.body(4096)
       except Exception:return s.js(400,{'error':'bad request'})
