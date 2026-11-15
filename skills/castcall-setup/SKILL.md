@@ -16,6 +16,9 @@ description: Deploy or update a castcall cos 团建 / 团片 recruiting site —
    - 你来整理：`python3 server/artsearch.py roster 作品A 作品B -o 名单.txt`；再问要不要加摄影 / 后勤等工作组。
    - **整理结果给用户过目，确认后才导入。**
 
+2.5. **核对名字——建站之前**：`python3 server/artsearch.py names 名单.txt`。`✓` 能配（`→` 后是库里的写法）、`⚠` 像写错了、`✗` 作品里没这个名（后面列出实际角色，点一个就换）。
+   `⚠` / `✗` 要**告诉用户并等他确认，不要自己改名单**；退出码非 0 = 有名字配不上。核对结果会绑定成角色 id 写进 `instance/uploads/art_bind.json`，后面配图按 id 取图、不再靠搜索。Bangumi 连不上会自动改用 AniList 核对，只有两个库都不通才算没法核对。详见 `AGENTS.md` 第 1.5 步。
+
 3. **建站——走网页向导**：`python3 server/server.py --prefill 名单.txt --title "活动名"` 放后台跑，
    把它打印的 `http://127.0.0.1:5510/setup?t=…` 完整链接给用户（话术见 `AGENTS.md` 第 2 步）。
    单团 / 多团、日期地点、**报名要填的信息**（身高 / 年龄 / 性别 / 样片 / 自定义题，选填或必填）、密码，都让用户在网页上选，不要在对话里逐项问。

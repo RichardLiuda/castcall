@@ -1,5 +1,7 @@
 # 部署
 
+> 这份讲自己的服务器（systemd + 反向代理）。上传目录、平台给链接的托管方式看 [hosting.md](hosting.md)。
+
 下面以一台 Linux 服务器 + systemd + nginx 为例。用 Caddy、Cloudflare Tunnel 也一样：castcall 只监听本机端口，外面套一层负责 HTTPS 的反向代理。
 
 ## 1. 放代码、初始化

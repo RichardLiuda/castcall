@@ -11,7 +11,7 @@ from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
 from http.cookies import SimpleCookie
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 import config,fields,notice,roster,review,setup,store
-from config import ROOT,WEB
+from config import ROOT,WEB,VERSION
 LOCK=threading.Lock();SESS={};HITS={}
 SETUP={'token':None,'instance':None,'prefill':None}   # set while the instance is not initialized: the first-run wizard needs this token
 # prefill：server.py --prefill 名单.txt 带进来的名单 / 活动名，向导打开时预填（同样要口令才读得到）
@@ -133,9 +133,12 @@ def index_html():
   poster=f'<a class="poster-mini go" id=posterlink-hdr href=/poster/>一图流</a>' if s['poster']['enabled'] and poster_ready() else ''
   date=f'<span class=di></span><span class=dd>{E(e.get("date"))}</span>' if e.get('date') else ''
   loc=f'<span class=loc><span class=li></span>{E(e.get("location"))}</span>' if e.get('location') else ''
+  fav=s['brand'].get('favicon') or ''
+  # apple-touch-icon 不认 SVG：只在团长自己传了图标时给，否则 iOS「添加到主屏」还是拿网页截图凑
+  apple=f'<link rel=apple-touch-icon href="/brand/{E(fav)}">' if fav and re.fullmatch(r'[\w.-]+',fav) else ''
   rep={'{{title}}':E(e.get('title')),'{{subtitle}}':E(e.get('subtitle')),'{{logo}}':logo_tag,'{{date}}':date,'{{loc}}':loc,
-       '{{location}}':E(e.get('location')),'{{poster}}':poster,'{{mode}}':mode(d),'{{head}}':style,
-       '{{favicon}}':'/brand/'+E(s['brand'].get('favicon')) if s['brand'].get('favicon') else '/favicon.svg'}
+       '{{location}}':E(e.get('location')),'{{poster}}':poster,'{{mode}}':mode(d),'{{head}}':style,'{{appleicon}}':apple,
+       '{{favicon}}':'/brand/'+E(fav) if fav else '/favicon.svg'}
   for k,v in rep.items():h=h.replace(k,v)
   if not date and not loc:h=h.replace('<span class=dd>· <b id=tot>','<span class=dd><b id=tot>')   # 没日期没地点时，人数前面不要孤零零一个「·」
   if not s['guestbook']['enabled']:h=re.sub(r'<section id=guestbook.*?</section>','',h,flags=re.S)
@@ -170,16 +173,29 @@ def poster_build():
 def poster_cmd():
   """(argv, env) for poster/build.py on this instance. Shared with firstrun.py (init.py runs it in the foreground)."""
   args=[poster_python(),os.path.join(ROOT,'poster','build.py'),'--instance',config.C.INSTANCE]
-  args+=['master','social'] if mode()=='single' else ['master','wide']
+  # portrait 是手机网页那版（1200 宽、2 列），漏掉它 /poster/ 在竖屏上只能退回横条
+  args+=['master','social','portrait'] if mode()=='single' else ['master','wide','portrait']
   env=dict(os.environ,CASTCALL_INSTANCE=config.C.INSTANCE)
   if config.C.getenv('CASTCALL_CHROME'):env['CASTCALL_CHROME']=config.C.getenv('CASTCALL_CHROME')   # .env values are not in os.environ
   return args,env
+def poster_sources():
+  """改动会进一图流的文件：名册（含团名 / 颜色 / 封面）、站点（活动信息、品牌、hero）、立绘映射。
+  看着像是少扫了 uploads/，但换封面写 roster.json、换立绘写 map.json、换 logo/hero 写 site.json，
+  这三个就够了；扫整个目录会把「传了一张没人用的图」也算成过期。"""
+  return (config.C.ROSTER,config.C.SITE,config.C.MAP)
+def poster_stale():
+  """一图流比名册旧：名册改过了还没重新生成。没生成过不算过期——那是 ready 的事，不是 stale。"""
+  f=os.path.join(config.C.POSTER,'master.html')
+  if not os.path.isfile(f):return False
+  t=os.path.getmtime(f)
+  return any(os.path.isfile(p) and os.path.getmtime(p)>t for p in poster_sources())
 def poster_status():
   p=POSTER['proc'];run=bool(p and p.poll() is None)
   if p and not run:POSTER['rc']=p.returncode
   try:tail=readf(os.path.join(config.C.LOGS,'poster.log'))[-1500:]
   except OSError:tail=''
-  return {'available':poster_available(),'running':run,'rc':POSTER['rc'],'startedAt':POSTER['at'],'ready':poster_ready(),'log':tail}
+  return {'available':poster_available(),'running':run,'rc':POSTER['rc'],'startedAt':POSTER['at'],'ready':poster_ready(),
+          'stale':poster_stale(),'log':tail}
 POSTER_BACK=(
 '<div class="kr-poster-chrome" role="navigation" aria-label="海报工具">'
 '<a class="kr-poster-back" href="/">返回名单</a>'
@@ -204,32 +220,82 @@ POSTER_BACK=(
 'var ox=(vv&&vv.offsetLeft)||0,oy=(vv&&vv.offsetTop)||0;'
 'chrome.style.position="fixed";chrome.style.zIndex="9999";chrome.style.transformOrigin="top left";chrome.style.transform="scale("+(1/s)+")";'
 'chrome.style.left=(ox+12)+"px";chrome.style.top=(oy+12)+"px";}'
-'var ex=document.getElementById("kr-poster-export"),wide=/\\/poster\\/wide/i.test(location.pathname);'
-'var slug=document.documentElement.dataset.slug||"poster",n=wide?"wide.jpg":"master.jpg",fname=slug+"-"+n;'
-'if(ex){ex.href="/poster/"+n+"?v="+Date.now();ex.setAttribute("download",fname);'
-'ex.addEventListener("click",function(e){e.preventDefault();fetch(ex.href,{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.blob()})'
+# 导出跟着当前页面走：看的是哪一版，下的就是哪一版。
+# 以前只认 wide（其余一律 master.jpg），于是竖版页面点「导出图片」拿到的还是 2400×1255 的横条——
+# 团长看着满屏的竖版，下载下来却是同一张老横图，只能得出「改了没用」这个结论。
+'var ex=document.getElementById("kr-poster-export"),path=location.pathname;'
+'var slug=document.documentElement.dataset.slug||"poster";'
+'var n=/\\/poster\\/wide/i.test(path)?"wide.jpg":(/\\/poster\\/portrait/i.test(path)?"portrait.jpg":"master.jpg"),fname=slug+"-"+n;'
+# ?v= 用文件的 mtime 而不是 Date.now()：同一个 mtime 才能命中 end_headers 里那条 immutable。
+# 名册改了 -> 重新生成 -> mtime 变了 -> URL 变了，不会拿到旧图；没改 -> 重复导出直接走缓存。
+'if(ex){var V=window.POSTER_V||{};ex.href="/poster/"+n+"?v="+(V[n.split(".")[0]]||0);ex.setAttribute("download",fname);'
+'ex.addEventListener("click",function(e){e.preventDefault();fetch(ex.href).then(function(r){if(!r.ok)throw 0;return r.blob()})'
 '.then(function(blob){var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove();'
 'setTimeout(function(){URL.revokeObjectURL(a.href)},1500)}).catch(function(){location.href=ex.href})});}'
 'place();if(window.visualViewport){visualViewport.addEventListener("resize",place);visualViewport.addEventListener("scroll",place)}'
 'addEventListener("resize",place);addEventListener("scroll",place,{passive:true});addEventListener("load",place);'
 '})();</script>'
 )
+def poster_versions():
+  """{master: mtime, wide: mtime, social: mtime, portrait: mtime}：导出链接的 ?v= 用图自己的 mtime。
+  同一版重复导出命中 immutable 那条缓存；名册改了重新生成、mtime 一变 URL 就变，不会给旧图。"""
+  out={}
+  for n in ('master','wide','social','portrait'):
+    f=os.path.join(config.C.POSTER,n+'.jpg')
+    if os.path.isfile(f):out[n]=int(os.path.getmtime(f))
+  return out
 def poster_page(name):
   f=os.path.join(config.C.POSTER,name)
   if not os.path.isfile(f):return None
   h=readf(f)
   slug=re.sub(r'[^\w-]','',config.C.site['poster'].get('slug') or 'poster') or 'poster'
   h=re.sub(r'<html([^>]*)>',lambda m:f'<html{m.group(1)} data-slug="{slug}">',h,count=1)
+  back=POSTER_BACK.replace('<script>(function(){','<script>window.POSTER_V='+json.dumps(poster_versions())+';</script><script>(function(){',1)
   m=re.search(r'<body[^>]*>',h,re.I)
-  h=h[:m.end()]+POSTER_BACK+h[m.end():] if m else h+POSTER_BACK
+  h=h[:m.end()]+back+h[m.end():] if m else h+back
   return h.encode()
 def poster_chooser():
-  only=mode()=='single' or not os.path.isfile(os.path.join(config.C.POSTER,'wide.html'))
-  js="location.replace('/poster/master.html'+location.search+location.hash)" if only else "location.replace((matchMedia('(min-width:900px)').matches?'/poster/wide.html':'/poster/master.html')+location.search+location.hash)"
-  return f'<!doctype html><html lang=zh><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>一图流</title><script>{js}</script><p style="font:600 14px/1.5 system-ui,sans-serif;margin:24px"><a href="/poster/master.html">一图流</a> · <a href="/">返回名单</a></p>'.encode()
+  """按屏幕形状挑版式：竖屏（高比宽大）走 portrait，宽屏走 wide，其余 master。
+
+  以前只有 master / wide 两个选择，而且「单团」直接写死 master：2400×1255 的横条
+  在竖屏里按宽缩放只剩 42% 屏高，网页再竖直居中，卡片就被挤到屏幕下半截去了。
+  portrait.html 是 1200 宽的竖版（一个团占满一行、卡片 2 列），高度能铺满一屏。
+  旧实例还没重新生成时文件不存在，回落到 master —— 不能让 /poster/ 直接 404。"""
+  have={n:os.path.isfile(os.path.join(config.C.POSTER,n+'.html')) for n in ('master','wide','portrait')}
+  js=("location.replace('/poster/'+(function(){var w=innerWidth,h=innerHeight;"
+      "var P=%s,W=%s;"%(str(have['portrait']).lower(),str(have['wide']).lower())+
+      "if(P&&h>w*1.05)return 'portrait';"
+      "if(W&&w>=900)return 'wide';return 'master';})()+'.html'+location.search+location.hash)")
+  return f'<!doctype html><html lang=zh><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>一图流</title><link rel=icon href="/favicon.svg" type="image/svg+xml"><script>{js}</script><p style="font:600 14px/1.5 system-ui,sans-serif;margin:24px"><a href="/poster/master.html">一图流</a> · <a href="/">返回名单</a></p>'.encode()
 
 # ── HTTP ──────────────────────────────────────────────────────────────────
-FAVICON=b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#e6b35a"/><path d="M9 22V10h5a4 4 0 0 1 0 8h-5m7 0 6 4" fill="none" stroke="#333" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+def favicon_svg():
+  """浏览器标签页图标：拿团名首字现画一个，底色取站点的主题色。
+
+  以前这里是一段写死的图形（一个长得像 R 的占位）：团名改成「Kanon 团片」，
+  标签上还是那块黄底加一个陌生字母，团长只会当成浏览器的默认图标。
+  现在不传图也有「自己的」图标；团长在「站点素材」里传了图标就用那张（见 index_html）。"""
+  s=config.C.site;ev=s.get('event') or {};br=s.get('brand') or {}
+  ch=''.join(str(ev.get('title') or ev.get('subtitle') or '团').split())[:1] or '团'
+  fill=str(br.get('accent') or '')
+  if not re.fullmatch(r'#[0-9a-fA-F]{6}',fill):       # 没设主题色就跟第一个团的颜色，再没有才用金色
+    fill=''
+    try:groups=roster.load().get('groups') or []
+    except (OSError,ValueError):groups=[]   # 向导还没建站：roster.json 不存在，图标照样要能画
+    for g in groups:
+      c=str(g.get('color') or '')
+      if re.fullmatch(r'#[0-9a-fA-F]{6}',c):fill=c;break
+    fill=fill or '#e6b35a'
+  r,g,b=(int(fill[i:i+2],16) for i in (1,3,5))
+  ink='#2b2115' if 0.299*r+0.587*g+0.114*b>=150 else '#fff8ec'   # 亮底配深字，暗底配米白
+  # 拉丁字母只有半高（cap height ≈ 0.72em），可以再大一号；汉字占满 em 框，同样的字号就顶出去了。
+  # 基线按各自的视觉中心反推，否则字会往上飘（汉字尤其明显）。
+  fs,dy=(24.5,.36) if ord(ch[0])<0x2000 else (20.4,.375)
+  return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+          f'<rect width="32" height="32" rx="7.5" fill="{fill}"/>'
+          f'<text x="16" y="{16+fs*dy:.1f}" text-anchor="middle" font-size="{fs}" font-weight="700" '
+          f"font-family=\"system-ui,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif\" "
+          f'fill="{ink}">{html.escape(ch)}</text></svg>').encode()
 class H(SimpleHTTPRequestHandler):
   protocol_version='HTTP/1.1';timeout=60
   def __init__(s,*a,**k):super().__init__(*a,directory=WEB,**k)
@@ -249,11 +315,17 @@ class H(SimpleHTTPRequestHandler):
     return super().translate_path(path)
   def end_headers(s):
     p,_,q=s.path.partition('?')
-    if s.path.startswith('/api') or p.endswith(('.html','/')) or (p.startswith('/poster/') and p.endswith('.jpg') and '/cache/' not in p):
+    if s.path.startswith('/api') or p.endswith(('.html','/')):
       s.send_header('Cache-Control','no-store')
+    elif p.startswith('/poster/cache/'):
+      # 立绘裁切图的名字就是内容 hash（build.py 的 bust()），换图必换名：可以永远缓存。
+      # 以前这里跟导出的 master.jpg 一起 no-store，团长每次翻海报都在重下几十张缩略图。
+      s.send_header('Cache-Control','public, max-age=31536000, immutable')
     elif p in GEN:s.send_header('Cache-Control',getattr(s,'_cc','no-cache'))
-    elif p.endswith(('.css','.js','.jpg','.jpeg','.png','.svg','.webp','.gif')):
-      # ?v= that matches the file's mtime -> safe to cache forever (a new file gets a new v); otherwise revalidate
+    elif p.startswith('/favicon') or p.endswith(('.css','.js','.jpg','.jpeg','.png','.svg','.webp','.gif')):
+      # ?v= 与文件 mtime 一致 -> 永久缓存（改了文件 v 就变）；否则 revalidate。
+      # 导出的 master.jpg / wide.jpg 也走这条：POSTER_BACK 的下载链接带 ?v=<时间戳>，
+      # 同一版重复导出能命中缓存，名册改了 mtime 变、v 对不上就重新下。
       v=re.search(r'(?:^|&)v=(\d+)',q);f=s.translate_path(p)
       ok=v and os.path.isfile(f) and int(os.path.getmtime(f))==int(v.group(1))
       s.send_header('Cache-Control','public, max-age=31536000, immutable' if ok else 'no-cache')
@@ -302,17 +374,26 @@ class H(SimpleHTTPRequestHandler):
       b=gen_js(p);e=etag(b);s._cc='public, max-age=31536000, immutable' if s.path.endswith('?v='+e.strip('"')) else 'no-cache'
       if e in (s.headers.get('If-None-Match') or ''):s.send_response(304);s.send_header('ETag',e);s.send_header('Content-Length','0');return s.end_headers()
       return s.send(200,b,'application/javascript; charset=utf-8',[('ETag',e)])
-    if p in ('/favicon.svg','/favicon.ico'):return s.send(200,FAVICON,'image/svg+xml')   # .ico: pages without a <link rel=icon> (the poster)
+    # 按团名现画，改完团名不用重新构建；.ico 也回同一份（导出的一图流没有 <link rel=icon>，会来问它）。
+    # 团长传过图标就用那张：一图流页面的链接写死在这里，不然换了图标只有首页变。
+    if p in ('/favicon.svg','/favicon.ico'):
+      f=str((config.C.site.get('brand') or {}).get('favicon') or '')
+      fp=os.path.join(config.C.UPLOADS,'brand',f) if re.fullmatch(r'[\w.-]+',f) else ''
+      if fp and os.path.isfile(fp):
+        ct={'png':'image/png','jpg':'image/jpeg','jpeg':'image/jpeg','webp':'image/webp','gif':'image/gif','svg':'image/svg+xml'}
+        with open(fp,'rb') as fh:raw=fh.read()
+        return s.send(200,raw,ct.get(fp.rsplit('.',1)[-1].lower(),'application/octet-stream'))
+      return s.send(200,favicon_svg(),'image/svg+xml')
     if p=='/api/guestbook':
       if not config.C.site['guestbook']['enabled']:return s.js(404,{'error':'留言区没开'})
       try:return s.js(200,{'items':review.public_notes()})
       except Exception as e:log('guestbook read err',repr(e));return s.js(500,{'error':'暂时读不到留言'})
     if p=='/api/data':return s.js(200,roster.load())
     if p=='/api/me':return s.js(200,{'auth':bool(s.tok())})
-    if p=='/api/health':return s.js(200,{'ok':True})
+    if p=='/api/health':return s.js(200,{'ok':True,'version':VERSION})
     if p.startswith('/api/admin/'):return s.admin_get(p)
     if p in ('/poster','/poster/'):return s.send(200,poster_chooser(),'text/html; charset=utf-8')
-    for n in ('master','wide'):
+    for n in ('master','portrait','wide'):
       if p in (f'/poster/{n}',f'/poster/{n}.html'):
         b=poster_page(n+'.html')
         if b is None:return s.js(404,{'error':'一图流还没生成，到后台点「生成一图流」'})
@@ -335,7 +416,7 @@ class H(SimpleHTTPRequestHandler):
       s.send_response(302);s.send_header('Location','/setup');s.send_header('Content-Length','0');s.end_headers();return True
     return False
   def setup_post(s,p):
-    if p not in ('/api/setup','/api/setup/preview'):s.close_connection=True;return s.js(409,{'error':'还没初始化，先打开 /setup'})   # 没读请求体：不能复用连接，否则剩下的 body 会被当成下一个请求
+    if p not in ('/api/setup','/api/setup/preview','/api/setup/names'):s.close_connection=True;return s.js(409,{'error':'还没初始化，先打开 /setup'})   # 没读请求体：不能复用连接，否则剩下的 body 会被当成下一个请求
     hits,cap,now=s.limited('login')
     if len(hits)>=cap:return s.js(429,{'error':'尝试次数过多，请 10 分钟后再试'})
     try:b=s.body(400_000)
@@ -343,12 +424,23 @@ class H(SimpleHTTPRequestHandler):
     if not isinstance(b,dict) or not hmac.compare_digest(str(b.get('token') or ''),SETUP['token']):
       hits.append(now);return s.js(403,{'error':'口令不对：用服务器启动时终端里打印的那个链接打开'})
     import importer
-    text=str(b.get('names') or '');src=b.get('source') or 'blank'
+    # 给了名单却没说是哪来的，按「粘贴」算：向导的「核对名字」只发 names + title，
+    # 少一个 source 就被当成「先空着」，于是每次都回「名单是空的」——按钮一直是废的。
+    text=str(b.get('names') or '');src=b.get('source') or ('paste' if text.strip() else 'blank')
     try:
       parsed=importer.parse(text,str(b.get('title') or '我们的团').strip()[:59] or '我们的团') if src=='paste' else None
     except ValueError as e:return s.js(400,{'error':str(e)})
     if p=='/api/setup/preview':
       return s.js(200,{'summary':importer.summary(parsed),'groups':[{'name':g['name'],'n':len(g['members']),'open':sum(1 for m in g['members'] if not m['member'])} for g in parsed['groups']]} if parsed else {'summary':''})
+    if p=='/api/setup/names':
+      # 名单预检：每个名字能不能配上图。结果落在 uploads/art_bind.json，建站后的自动配图直接按它取图。
+      if not parsed:return s.js(400,{'error':'名单是空的'})
+      import artsearch
+      config.use(SETUP['instance'])
+      rep=artsearch.bind(parsed)
+      return s.js(200,{'line':artsearch.bind_line(rep),'net':rep['net'],'ok':rep['ok'],'total':rep['total'],
+        'near':rep['near'],'missing':rep['missing'],
+        'groups':[{'name':g['name'],'work':g.get('work') or {},'items':g['items']} for g in rep['groups']]})
     try:
       with LOCK:
         setup.create(SETUP['instance'],title=str(b.get('title') or ''),password=str(b.get('password') or ''),date=str(b.get('date') or ''),
@@ -377,6 +469,10 @@ class H(SimpleHTTPRequestHandler):
     if p=='/api/admin/guestbook':return s.js(200,{'items':store.notes(limit=1000)})
     if p=='/api/admin/counts':return s.js(200,store.counts())
     if p=='/api/admin/poster':return s.js(200,poster_status())
+    if p=='/api/admin/whoami':
+      # 托管后自检：服务器看到的来源 IP 是不是代理的；平台用哪个请求头传真实 IP（填进 CASTCALL_TRUST_PROXY）
+      H=('X-Forwarded-For','X-Real-IP','CF-Connecting-IP','True-Client-IP','Forwarded')
+      return s.js(200,{'peer':s.client_address[0],'ip':s.ip(),'trustProxyHeader':config.C.proxy_header() or '','headers':{k:s.headers.get(k) for k in H if s.headers.get(k)}})
     if p=='/api/admin/firstrun':
       import firstrun;t=firstrun.STATE['thread']
       return s.js(200,{'started':bool(t),'stage':firstrun.STATE['stage'],'lines':firstrun.STATE['lines'],'poster':poster_status()})
@@ -575,6 +671,8 @@ class H(SimpleHTTPRequestHandler):
         else:
           if not g or not c:return s.js(400,{'error':'立绘要带 group 和 character'})
           with LOCK:name=artsearch.save_portrait(g,c,url)
+          # 手选的也算「绑」：存下角色 id，名单核对就不会再对同一个名字报「找不到」
+          artsearch.bind_manual(g,c,b.get('id'),str(b.get('name') or c),url)
       except ValueError as e:return s.js(400,{'error':str(e)})
       log('art pick',kind,g,c,name);return s.js(200,{'ok':True,'file':name})
     if p=='/api/admin/art/auto':
@@ -661,6 +759,10 @@ def main(argv=None):
     threading.Thread(target=lambda:exit_when_built(srv),daemon=True).start()
   threading.Thread(target=lambda:notion().loop(LOCK),daemon=True).start()
   log('start',host,port,'notion' if config.C.notion_on() else 'local-only')
+  if config.C.hosted() and not config.C.proxy_header():
+    # 平台前面的代理让所有请求都从同一个 IP 来：频率限制会变成全站共用一份（10 分钟全站只能报名 8 次）
+    print('提示：看起来跑在托管平台上（有 PORT），但没设 CASTCALL_TRUST_PROXY。所有访客会共用一份频率限制。'
+          '登录后台后打开 /api/admin/whoami 看平台用哪个请求头传真实 IP，填进 .env，见 docs/hosting.md',file=sys.stderr,flush=True)
   shown='127.0.0.1' if host in ('0.0.0.0','::','') else host
   if ready:print(f'castcall: http://{shown}:{port}/  （实例目录 {config.C.INSTANCE}，Notion {"已启用" if config.C.notion_on() else "未启用"}）',flush=True)
   else:

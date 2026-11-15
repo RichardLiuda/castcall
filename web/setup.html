@@ -23,6 +23,19 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
 .src{margin:0 0 12px}.src label{padding-top:12px;padding-bottom:12px}
 .pv{margin:6px 0 0;font-size:13px;color:var(--ink-soft);min-height:1.4em}.pv b{color:var(--ink)}.pv.bad{color:var(--err)}
 .pv ul{margin:6px 0 0;padding-left:18px}.pv li{margin:2px 0}
+/* 名单预检：每个名字配不配得上图（✓ 能配 / ⚠ 像写错了 / ✗ 作品里没这个名） */
+.nc{margin:8px 0 0;border:2px solid var(--ink);border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.55;background:color-mix(in srgb,var(--gold-2) 10%,var(--paper))}
+.nc ul{margin:2px 0 0;padding:0;list-style:none}
+.nc li{display:flex;gap:8px;align-items:baseline;padding:2px 0}
+.nc .k{flex:none;width:16px;text-align:center;font-weight:900}
+.nc .g{font-weight:800;margin:9px 0 0}.nc .g:first-child{margin-top:0}
+.nc .s-ok .k{color:var(--ink-soft)}
+.nc .s-near .k{color:var(--notice-warn)}
+.nc .s-missing .k,.nc .s-unknown .k{color:var(--err)}
+.nc .w{color:var(--ink-soft)}.nc .w b{color:var(--err)}
+.nc button{margin-left:auto;flex:none;font-size:12px;padding:2px 9px}
+.nc .cand .k{visibility:hidden}
+.nc .cand button{margin:3px 5px 0 0;font-size:12px;padding:2px 9px}
 .hide{display:none!important}
 .go{display:block;width:100%;border:2.5px solid var(--ink);border-radius:14px;background:var(--ink);color:var(--paper);font:inherit;font-size:17px;font-weight:900;padding:14px;cursor:pointer;box-shadow:4px 4px 0 var(--gold-2)}
 .go:disabled{opacity:.6;cursor:wait}
@@ -61,6 +74,8 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
  </div>
  <label class=f id=pastebox><span>每行一个角色，后面跟 CN；没有 CN 就是空缺，可以报名</span><textarea name=names spellcheck=false></textarea></label>
  <div class=pv id=pv></div>
+ <div id=chkbox style="margin:8px 0 0"><button type=button class=btn id=chk>检查这些名字配不配得上图</button> <span style="font-size:12.5px;color:var(--ink-soft)">去 Bangumi 逐个核对，十来个角色十几秒</span></div>
+ <div class="nc hide" id=nc></div>
  <details style="margin-top:8px;font-size:13px"><summary style="cursor:pointer;color:var(--ink-soft)">只是想先看看效果？用示例数据</summary>
   <div style="margin-top:8px;display:flex;gap:8px;align-items:center"><select id=ex style="flex:1;border:2px solid var(--ink);border-radius:10px;padding:8px;font:inherit;background:var(--paper);color:var(--ink)"></select><button type=button class=btn id=useex>用这个</button></div></details>
 </section>
@@ -85,7 +100,7 @@ const SAMPLE={single:'## CLANNAD\n> 光坂高中外景 + 棚拍，妆造自理\n
  multi:'## CLANNAD\n古河渚 云果\n冈崎朋也\n\n## Kanon\n月宫亚由 大圆\n水濑名雪\n\n## 摄影 / 后勤\n摄影 阿光\n后勤'};
 const ta=F.names;let touched=false;ta.addEventListener('input',()=>touched=true);
 const syncSample=()=>{if(!touched){ta.value='';ta.placeholder=SAMPLE[F.mode.value]+'\n\n（上面是格式示例。多个团就用「## 团名」分开）'}};
-F.addEventListener('change',e=>{if(e.target.name==='mode')syncSample();if(e.target.name==='source'){$('#pastebox').classList.toggle('hide',F.source.value!=='paste');$('#pv').classList.toggle('hide',F.source.value!=='paste')}});
+F.addEventListener('change',e=>{if(e.target.name==='mode')syncSample();if(e.target.name==='source'){for(const id of ['#pastebox','#pv','#chkbox'])$(id).classList.toggle('hide',F.source.value!=='paste');if(F.source.value!=='paste')$('#nc').classList.add('hide')}});
 syncSample();
 const post=(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(Object.assign({token:token()},b))}).then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j});
 let pt=0;ta.addEventListener('input',()=>{clearTimeout(pt);pt=setTimeout(preview,350)});
@@ -94,20 +109,82 @@ async function preview(){const pv=$('#pv');if(!ta.value.trim()){pv.textContent='
   pv.innerHTML='读到 <b>'+j.summary+'</b>'+(j.groups.length>1||F.mode.value==='multi'?'<ul>'+j.groups.map(g=>`<li>${esc(g.name)}：${g.n} 个角色${g.open?`，${g.open} 个空缺`:''}</li>`).join('')+'</ul>':'')}
  catch(e){pv.className='pv bad';pv.textContent=e.message}}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* 名单预检：名字定下来之前就确认配得上图——不要等建完站、少了几张立绘才发现。
+   核对结果会落盘成「名字 → 角色 id」的绑定，建站时自动配图直接按 id 取图，不用再搜。 */
+const ncEl=$('#nc');
+const ncShow=h=>{ncEl.className='nc';ncEl.innerHTML=h};
+const ncHide=()=>{ncEl.className='nc hide';ncEl.innerHTML=''};
+function renderNames(j){
+ if(j.net===false){return ncShow(`<b>${esc(j.line||'现在连不上 Bangumi，名字没法核对')}</b><div class=w style="margin-top:4px">不影响建站。网络好了在后台点「一键配图」，会自动再对一次。</div>`)}
+ let h=`<b>${esc(j.line||'')}</b>`;
+ for(const g of (j.groups||[])){
+  const its=Object.entries(g.items||{});if(!its.length)continue;
+  const w=g.work||{};
+  h+=`<div class=g>${esc(g.name)}${w.title?` <span class=w>→ ${esc(w.title)}</span>`:''}${w.exact===false?' <span class=w><b>团名不是精确的作品名，先确认是这部</b></span>':''}</div><ul>`;
+  for(const [ch,it] of its){
+   const sym={ok:'✓',near:'⚠',missing:'✗'}[it.state]||'?';
+   let t=esc(ch);
+   if(it.state==='ok'){if(it.name&&it.name!==ch)t+=` <span class=w>→ ${esc(it.name)}</span>`}
+   else if(it.state==='near')t+=` <span class=w>→ <b>${esc(it.suggest||'')}</b>，名单里这个字可能是错的</span>`;
+   else t+=` <span class=w>${esc(it.why||'作品里没有这个名字')}</span>`;
+   h+=`<li class=s-${esc(it.state)}><span class=k>${sym}</span><span>${t}</span>`;
+   if(it.state==='near')h+=`<button type=button class=btn data-adopt="${esc(ch)}" data-good="${esc(it.suggest||'')}">改成它</button>`;
+   h+='</li>';
+   // 「月宫亚由」和「月宮あゆ」差三个字，自动匹配不可靠，但人一眼就认出来——把作品里的名字摆出来让他点。
+   const cs=it.state==='missing'?(it.candidates||[]):[];
+   if(cs.length)h+=`<li class=cand><span class=k></span><span class=w>作品里是这些名字，点一个就换成它：${cs.map(c=>`<button type=button class=btn data-adopt="${esc(ch)}" data-good="${esc(c.name)}">${esc(c.name)}</button>`).join('')}</span></li>`;
+  }
+  h+='</ul>';
+ }
+ if(!(j.near||[]).length&&!(j.missing||[]).length&&j.ok)h+=' <span class=w>全部能配上图，可以继续。</span>';
+ ncShow(h);
+ ncEl.querySelectorAll('[data-adopt]').forEach(b=>b.onclick=()=>adopt(b.dataset.adopt,b.dataset.good));
+}
+async function checkNames(){
+ if(!ta.value.trim()){ncHide();return}
+ const btn=$('#chk'),old=btn.textContent;btn.disabled=true;btn.textContent='核对中…';
+ ncShow('<b>正在核对…</b>每个角色要去 Bangumi 问一次，十来个角色大约十几秒。');
+ try{renderNames(await post('/api/setup/names',{names:ta.value,title:F.title.value||'我们的团'}))}
+ catch(e){ncShow('<b>没核对成：</b>'+esc(e.message)+'<div class=w style="margin-top:4px">不影响建站，进后台「找立绘」可以手选。</div>')}
+ finally{btn.disabled=false;btn.textContent=old}
+}
+function adopt(ch,good){
+ if(!good)return;
+ const lines=ta.value.split('\n');let done=false;
+ for(let i=0;i<lines.length;i++){
+  const t=lines[i];if(!t.trim()||/^\s*[#>]/.test(t))continue;
+  const m=t.match(/^(\s*(?:[-*•·]|\d+[.、)）]|[（(]\d+[)）])?\s*)([^\s:：|｜\t]+)/);
+  if(m&&m[2]===ch){lines[i]=m[1]+good+t.slice(m[0].length);done=true;break}
+ }
+ if(!done){ncShow(ncEl.innerHTML+`<div class=w style="margin-top:6px"><b>名单里没找到「${esc(ch)}」这一行，手动改一下。</b></div>`);return}
+ ta.value=lines.join('\n');touched=true;preview();checkNames();
+}
+$('#chk').onclick=checkNames;
 fetch('/api/setup/examples').then(r=>r.json()).then(j=>{$('#ex').innerHTML=j.items.map(x=>`<option value="${esc(x.name)}">${esc(x.name)}（${x.groups} 个团、${x.seats} 个席位）</option>`).join('')}).catch(()=>{});
 /* server.py --prefill 名单.txt：名单（和活动名）已经准备好了，这里预填，团长核对就行 */
 if(T)fetch('/api/setup/prefill?t='+encodeURIComponent(T)).then(r=>r.ok?r.json():{}).then(p=>{if(!p.names)return;
  ta.value=p.names;touched=true;if(p.title&&!F.title.value)F.title.value=p.title;if(p.mode)F.mode.value=p.mode;
- const n=$('#pfnote');n.classList.remove('hide');n.innerHTML='名单已经准备好了（'+esc(p.file||'')+'，'+esc(p.summary)+'）。核对一下，要改直接在下面改。';preview()}).catch(()=>{});
+ const n=$('#pfnote');n.classList.remove('hide');n.innerHTML='名单已经准备好了（'+esc(p.file||'')+'，'+esc(p.summary)+'）。核对一下，要改直接在下面改。';preview();setTimeout(checkNames,200)}).catch(()=>{});
 /* 建完：轮询首次收尾（配图 → 一图流），完成页上一步步亮起来 */
 async function progress(src){const li=s=>$('#fr [data-s='+s+']'),msg=$('#frmsg');if(src!=='paste')li('art').classList.add('skip');
+ let grace=0;
  for(let i=0;i<300;i++){let j;try{j=await (await fetch('/api/admin/firstrun',{credentials:'same-origin'})).json()}catch(e){await new Promise(r=>setTimeout(r,2000));continue}
   const st=j.stage,pp=j.poster||{};
   if(src==='paste'){li('art').classList.toggle('run',st==='art');li('art').classList.toggle('ok',st==='poster'||st==='done')}
-  const pRun=st==='poster'||pp.running,pOk=pp.ready&&!pp.running&&st==='done',pSkip=st==='done'&&!pp.running&&!pp.ready;
+  const pRun=st==='poster'||pp.running,pOk=pp.ready&&!pp.running&&st==='done';
+  /* stage=done 会早于后台海报落盘：此刻 ready 还是 false。以前一看到 done 就 return，
+     页面把「其实生成成功了」画成跳过，并且不再轮询，团长再等也不会变绿。
+     给一分钟宽限继续问；只有真没装依赖（available=false）才立刻算跳过。 */
+  const pWait=st==='done'&&!pp.running&&!pp.ready&&pp.available!==false&&grace++<30;
+  const pSkip=st==='done'&&!pp.running&&!pp.ready&&!pWait;
   li('poster').classList.toggle('run',!!pRun&&!pOk);li('poster').classList.toggle('ok',!!pOk);li('poster').classList.toggle('skip',!!pSkip);
-  msg.textContent=(j.lines||[]).join('\n')+(st==='done'&&pp.running?'\n一图流生成中，一两分钟…':'');
-  if(st==='done'&&!pp.running){if(pp.rc&&!pp.ready)msg.textContent+='\n一图流没生成出来，稍后在后台点「生成一图流」重试。';return}
+  let txt=(j.lines||[]).join('\n');
+  if(pWait)txt+='\n一图流生成中，一两分钟…';
+  /* lines 是首次收尾的历史日志，「后台生成中」那行写下去以后不会再改。
+     海报已经落盘时把这行换掉，否则三格全亮了、下面还写着「生成中」，团长不知道该不该等。 */
+  if(pOk)txt=txt.replace(/一图流：后台生成中[^\n]*/g,'一图流：已经生成好了，抬头能看到「一图流」入口');
+  msg.textContent=txt;
+  if(st==='done'&&!pp.running&&!pWait){if(pp.rc&&!pp.ready)msg.textContent+='\n一图流没生成出来，稍后在后台点「生成一图流」重试。';return}
   await new Promise(r=>setTimeout(r,2000))}}
 let fp=null;fetch('/api/setup/fields').then(r=>r.json()).then(j=>{fp=fieldPicker($('#fpick'),j.presets,[])}).catch(()=>{$('#fpick').textContent='读不到字段列表，先跳过，建好后在后台「报名表」里设'});
 let example='';$('#useex').onclick=()=>{example=$('#ex').value;F.requestSubmit()};

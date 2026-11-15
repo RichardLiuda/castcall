@@ -13,7 +13,12 @@ class Pages(Base):
     s.assertIn('<title>示例 cos 团建 · 成员一览</title>',h)
     s.assertIn('data-mode=multi',h);s.assertIn('某某公园',h)
     s.assertNotIn('{{',h)
-    s.assertNotIn('{{',h)
+  def test_health_reports_the_version(s):
+    r=s.c.get('/api/health');s.assertEqual(r.status,200)
+    d=json.loads(r.text)
+    s.assertEqual(d['ok'],True)
+    # 平台和文档都靠这一行确认线上跑的是哪版，格式得是 semver，不能是空串或 "dev"
+    s.assertRegex(d['version'],r'^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$')
   def test_site_js_is_public_only(s):
     t=s.c.get('/site.js').text;s.assertTrue(t.startswith('window.SITE='))
     d=json.loads(t[len('window.SITE='):-1]);s.assertEqual(d['mode'],'multi');s.assertEqual(d['signupState'],'open')
@@ -25,6 +30,29 @@ class Pages(Base):
     s.assertEqual(s.c.get('/cbase.js').status,200)
     s.assertEqual(s.c.get('/covers/../../auth.json').status,404)
     s.assertEqual(s.c.get('/covers/%2e%2e/%2e%2e/auth.json').status,404)
+  def test_favicon_is_drawn_from_the_title(s):
+    """标签页图标默认按团名首字现画。写死一个图形的话，换个团名它也不变，
+    团长在标签上看到一块陌生黄底，只会当成浏览器的默认图标（S1 里那个 R）。"""
+    r=s.c.get('/favicon.svg');s.assertEqual(r.status,200)
+    s.assertIn('image/svg+xml',r.header('Content-Type'))
+    s.assertIn(f'>{config.C.site["event"]["title"][0]}</text>',r.text)
+    s.assertIn('no-cache',r.header('Cache-Control'))
+    s.assertEqual(s.c.get('/favicon.ico').text,r.text)     # 没有 <link rel=icon> 的页面会来问这个
+    s.assertIn('href="/favicon.svg"',s.c.get('/').text)
+  def test_favicon_works_before_first_setup(s):
+    """全新实例打开向导时 roster.json 还不存在：图标取不到团色也不能 500。
+    setup.html 会来问 /favicon.svg，一次 500 就写进 server.log（跑一遍向导才看得见）。"""
+    p,bak=config.C.ROSTER,config.C.ROSTER+'.bak'
+    os.rename(p,bak)
+    try:
+      r=s.c.get('/favicon.svg');s.assertEqual(r.status,200)
+      s.assertIn('<svg',r.text);s.assertIn('fill="#e6b35a"',r.text)   # 没有团色就退回金色
+    finally:os.replace(bak,p)
+  def test_favicon_follows_the_accent_colour(s):
+    edit_site(lambda j:j['brand'].update(accent='#223344'))
+    s.assertIn('fill="#223344"',s.c.get('/favicon.svg').text)
+    edit_site(lambda j:j['brand'].update(accent='#ffeecc'))
+    s.assertIn('fill="#2b2115"',s.c.get('/favicon.svg').text)   # 浅底要配深字，否则白字看不见
 
 class Auth(Base):
   def test_login_and_save_requires_session(s):
@@ -153,6 +181,9 @@ class Uploads(Base):
     s.assertIn(f'/brand/{f}',s.c.get('/').text)                    # site.json 热加载，页面立刻带上 logo
     s.assertEqual(s.c.req('POST','/api/admin/brand?slot=favicon',raw=s.PNG).status,200)
     s.assertIn(f'rel=icon href="/brand/{f}"',s.c.get('/').text)
+    s.assertIn(f'apple-touch-icon href="/brand/{f}"',s.c.get('/').text)   # iOS「添加到主屏」不认 SVG 默认图标
+    # 一图流页面把图标地址写死在 /favicon.svg 上：传了图以后这个地址也得换成那张，否则只有首页变
+    r=s.c.get('/favicon.svg');s.assertEqual(r.body,s.PNG);s.assertIn('image/png',r.header('Content-Type'))
     s.assertEqual(s.c.req('POST','/api/admin/brand?slot=hero',raw=s.PNG).status,200)
     s.assertEqual(config.C.site['poster']['hero'],f)
     s.assertEqual(s.c.req('POST','/api/admin/brand?slot=logo&clear=1',raw=b'').status,200)
@@ -161,6 +192,25 @@ class Uploads(Base):
     s.assertEqual(s.c.req('POST','/api/admin/brand?slot=logo',raw=b'<svg onload=alert(1)>'+b' '*40).status,400)
   def test_upload_requires_login(s):
     s.assertEqual(s.c.req('POST','/api/admin/upload?kind=cover',raw=s.PNG).status,401)
+  def test_picking_a_portrait_also_binds_the_name(s):
+    """后台手选一张立绘 = 对这个名字的人工确认，要写进 art_bind.json。
+    不写的话，名单核对下次还报「作品里没有这个名字」，换张图又得重新点一遍（S1 里的月宫亚由）。"""
+    import artsearch
+    old,oldc=artsearch.save_portrait,artsearch.save_cover
+    artsearch.save_portrait=lambda g,c,url:'portraits/x.png'
+    artsearch.save_cover=lambda g,url,lock:'covers/x.png'
+    try:
+      s.c.login()
+      r=s.c.post('/api/admin/art/pick',{'kind':'portrait','url':'https://example.com/y.png','group':'示例作品 A','character':'主角','id':123,'name':'主人公'})
+      s.assertEqual(r.status,200,r.text)
+      s.assertEqual(s.c.post('/api/admin/art/pick',{'kind':'cover','url':'https://example.com/c.png','group':'示例作品 A'}).status,200)
+    finally:artsearch.save_portrait,artsearch.save_cover=old,oldc
+    p=os.path.join(config.C.UPLOADS,'art_bind.json')
+    d={}
+    if os.path.exists(p):
+      with open(p,encoding='utf-8') as f:d=json.load(f)
+    s.assertEqual((d['示例作品 A|主角']['id'],d['示例作品 A|主角']['by']),(123,'manual'))
+    s.assertEqual(len(d),1,'封面不该往绑定表里写东西')
 
 class Single(Base):
   mode='single'
@@ -173,12 +223,49 @@ class Single(Base):
     s.assertIn('data-mode=multi',s.c.get('/').text)
 
 class Poster(Base):
+  DOC='<!doctype html><html><head></head><body><p>x</p></body></html>'
+  def put(s,name,body=None):
+    p=os.path.join(config.C.POSTER,name);wf(p,body or (s.DOC if name.endswith('.html') else 'x'));return p
   def test_poster_missing_is_404_not_500(s):
     s.assertEqual(s.c.get('/poster/master.html').status,404)
   def test_poster_page_gets_chrome(s):
-    wf(os.path.join(config.C.POSTER,'master.html'),'<!doctype html><html><head></head><body><p>x</p></body></html>')
+    s.put('master.html')
     r=s.c.get('/poster/master.html');s.assertEqual(r.status,200);s.assertIn('kr-poster-chrome',r.text);s.assertIn('data-slug="castcall"',r.text)
     s.assertIn('posterlink-hdr',s.c.get('/').text)
+  def test_stale_follows_the_files_that_feed_the_poster(s):
+    """名册 / 站点 / 立绘任一改过 -> 过期；重新生成（master.html 变新）-> 不过期。
+    只看这三个文件、不扫 uploads/ 整个目录：传一张没人用的图不该说海报旧了。"""
+    import server,time
+    mp=s.put('master.html');t0=time.time();os.utime(mp,(t0,t0))
+    s.assertFalse(server.poster_status()['stale'])
+    for k in ('ROSTER','SITE','MAP'):
+      p=getattr(config.C,k)
+      if not os.path.isfile(p):continue
+      os.utime(p,(t0+5,t0+5))
+      s.assertTrue(server.poster_status()['stale'],k+' 改过之后应该是旧的')
+      os.utime(p,(t0-5,t0-5))
+      s.assertFalse(server.poster_status()['stale'])
+    os.utime(mp,(t0+60,t0+60));s.assertFalse(server.poster_status()['stale'])
+  def test_stale_needs_a_poster_to_begin_with(s):
+    """没生成过一图流时不算「过期」——那是「还没做」，后台该显示生成按钮不是「旧」。"""
+    import server
+    s.assertFalse(server.poster_status()['ready']);s.assertFalse(server.poster_status()['stale'])
+  def test_cache_headers(s):
+    """cache/ 里的裁切图名字就是内容 hash，永久缓存；导出的 jpg 只有 ?v= 对上 mtime 才 immutable。"""
+    cache=os.path.join(config.C.POSTER,'cache');os.makedirs(cache,exist_ok=True)
+    wf(os.path.join(cache,'abc123abc123.jpg'),'x')
+    s.assertIn('immutable',s.c.get('/poster/cache/abc123abc123.jpg').header('cache-control'))
+    jp=s.put('master.jpg');ts=int(os.path.getmtime(jp))
+    s.assertIn('immutable',s.c.get(f'/poster/master.jpg?v={ts}').header('cache-control'))
+    for q in ('','?v='+str(ts-1),'?v=hashed'):
+      s.assertNotIn('immutable',s.c.get('/poster/master.jpg'+q).header('cache-control'),'不该永久缓存：'+q)
+  def test_export_link_pins_the_file_mtime(s):
+    """导出的 ?v= 是图自己的 mtime（不是 Date.now()）：同一版重复导出命中缓存，重新生成后 URL 自动变。"""
+    s.put('master.html');jp=s.put('master.jpg');ts=int(os.path.getmtime(jp))
+    h=s.c.get('/poster/master.html').text
+    s.assertIn('window.POSTER_V=',h)
+    v=json.loads(urllib.parse.unquote(h.split('window.POSTER_V=',1)[1].split(';',1)[0]))
+    s.assertEqual(v['master'],ts)
 
 class Examples(unittest.TestCase):
   def test_init_example_seeds_demo_content(s):
@@ -248,6 +335,20 @@ class Wizard(unittest.TestCase):
   def test_wizard_multi_blank_and_example(s):
     r=s.c.post('/api/setup',s.body(mode='multi',source='blank'));s.assertEqual(r.status,200,r.text)
     s.assertEqual(config.C.site['mode'],'multi')
+  def test_names_check_needs_no_source(s):
+    """向导的「核对名字」只发 names + title：少了 source 也要按粘贴处理。
+    以前默认成「先空着」，于是每次都回 400「名单是空的」——按钮一直是废的，团长会以为名单没填进去。"""
+    import artsearch
+    old=artsearch.bind
+    artsearch.bind=lambda parsed:{'net':True,'ok':1,'total':1,'near':[],'missing':[],'sources':['Bangumi'],
+                                 'groups':[{'name':g['name'],'work':{},'items':{}} for g in parsed['groups']]}
+    try:
+      b=s.body();b.pop('source')
+      r=s.c.post('/api/setup/names',b);s.assertEqual(r.status,200,r.text)
+      s.assertEqual(r.json()['total'],1);s.assertIn('1 个角色',r.json()['line'])
+      # 名单真的是空的时候，仍然要拦
+      s.assertEqual(s.c.post('/api/setup/names',dict(b,names='')).status,400)
+    finally:artsearch.bind=old
   def test_wizard_example(s):
     r=s.c.post('/api/setup',s.body(source='example',example='key-single'));s.assertEqual(r.status,200,r.text)
     import store;s.assertGreaterEqual(len(store.signups('pending')),3)
@@ -409,6 +510,30 @@ class SignupFields(Base):
     g,m=s.vacant();s.assertEqual(s.c.post('/api/cast-signup',signup_body(g,m)).status,200)
     s.assertEqual(store.signups()[0]['extra'],'{}')
 
+class InitNameCheck(unittest.TestCase):
+  """init.py --import 的名单核对。log 回调以前写成 lambda *x:print('  '+x)：x 是 tuple，
+  内核第一次心跳就 TypeError，然后被 except 吞成「没核对成」——预检静默失效，CLI 看起来一切正常。
+  零上下文会话跑出来才发现（S1）。"""
+  def test_import_check_prints_and_survives_multi_arg_log(s):
+    import artsearch,contextlib,io,shutil,tempfile
+    from helpers import ROOT
+    sys.path.insert(0,ROOT);import init
+    d=tempfile.mkdtemp(prefix='castcall-nc-');names=os.path.join(d,'名单.txt')
+    with open(names,'w',encoding='utf-8') as f:f.write('## Kanon\n泽渡真琴 小满\n美坂栞\n')
+    old=artsearch.bind;seen=[]
+    def fake(roster,log=print,**k):
+      log('核对 Kanon（2 个角色）…');log('第二行','第二段')   # 多参数也要能吃
+      seen.append(1)
+      return {'net':True,'ok':1,'total':2,'near':[],'missing':['美坂栞'],'groups':[]}
+    artsearch.bind=fake
+    try:
+      with contextlib.redirect_stdout(io.StringIO()) as out:
+        rc=init.main(['--instance',d,'--import',names,'--password','x'*10,'--yes','--no-poster'])
+    finally:artsearch.bind=old;shutil.rmtree(d,ignore_errors=True)
+    o=out.getvalue()
+    s.assertEqual(rc,0,o);s.assertTrue(seen,'核对根本没跑');s.assertIn('核对 Kanon',o);s.assertIn('第二段',o)
+    s.assertIn('找不到    美坂栞',o);s.assertNotIn('没核对成',o)
+
 class SignupFieldsSetup(unittest.TestCase):
   def test_init_fields_flag(s):
     import contextlib,io,shutil,tempfile
@@ -529,3 +654,47 @@ class SurvivesKill(unittest.TestCase):
       firstrun.STATE['finished']=True;t.join(5)
     finally:T.sleep=real
     s.assertEqual(calls,['shutdown'])
+
+class Hosting(Base):
+  """托管平台：PORT + 0.0.0.0、代理后的真实 IP、打包发布目录。"""
+  def test_port_env_binds_all_interfaces(s):
+    old={k:os.environ.pop(k,None) for k in ('PORT','CASTCALL_HOST','CASTCALL_PORT')}
+    try:
+      s.assertEqual((config.C.host(),config.C.port(),config.C.hosted()),('127.0.0.1',5510,False))
+      os.environ['PORT']='8080';s.assertEqual((config.C.host(),config.C.port(),config.C.hosted()),('0.0.0.0',8080,True))
+      os.environ['CASTCALL_HOST']='127.0.0.1';s.assertEqual(config.C.host(),'127.0.0.1','explicit CASTCALL_HOST wins')
+      os.environ['CASTCALL_PORT']='9000';s.assertEqual(config.C.port(),9000)
+    finally:
+      for k,v in old.items():
+        os.environ.pop(k,None)
+        if v is not None:os.environ[k]=v
+  def test_whoami(s):
+    s.assertEqual(s.c.get('/api/admin/whoami').status,401)
+    s.c.login();j=s.c.get('/api/admin/whoami',headers={'X-Forwarded-For':'1.2.3.4, 10.0.0.9'}).json()
+    s.assertEqual((j['peer'],j['ip'],j['trustProxyHeader']),('127.0.0.1','127.0.0.1',''))
+    s.assertEqual(j['headers'],{'X-Forwarded-For':'1.2.3.4, 10.0.0.9'})
+    os.environ['CASTCALL_TRUST_PROXY']='X-Forwarded-For'
+    try:s.assertEqual(s.c.get('/api/admin/whoami',headers={'X-Forwarded-For':'1.2.3.4, 10.0.0.9'}).json()['ip'],'10.0.0.9','rightmost hop = the one our proxy added')
+    finally:os.environ.pop('CASTCALL_TRUST_PROXY',None)
+  def test_bundle(s):
+    import contextlib,io,shutil,tempfile
+    from helpers import ROOT
+    sys.path.insert(0,os.path.join(ROOT,'tools'));import bundle
+    g,m=s.vacant();s.assertEqual(s.c.post('/api/cast-signup',signup_body(g,m)).status,200)
+    with open(os.path.join(s.dir,'.env'),'w') as f:f.write('CASTCALL_CHROME=/Applications/Chrome\nNOTION_TOKEN=ntn_x\n')
+    open(os.path.join(s.dir,'firstrun.pending'),'w').write('{}');open(os.path.join(s.dir,'.setup-token'),'w').write('x')
+    config.use(s.dir)
+    out=os.path.join(tempfile.mkdtemp(prefix='castcall-pub-'),'pub')
+    try:
+      with contextlib.redirect_stdout(io.StringIO()) as o:rc=bundle.main(['--instance',s.dir,'--out',out])
+      s.assertEqual(rc,0,o.getvalue());t=o.getvalue()
+      s.assertIn('报名 1 条',t);s.assertIn('整个覆盖',t);s.assertIn('CASTCALL_CHROME',t)
+      s.assertTrue(os.path.isfile(os.path.join(out,'server','server.py')));s.assertFalse(os.path.exists(os.path.join(out,'tests')))
+      di=os.path.join(out,'instance')
+      for x in ('firstrun.pending','.setup-token','logs','.env'):s.assertFalse(os.path.exists(os.path.join(di,x)),x)
+      env=open(os.path.join(out,'.env')).read();s.assertIn('NOTION_TOKEN=ntn_x',env);s.assertNotIn('CHROME',env)
+      import sqlite3;c=sqlite3.connect(os.path.join(di,'castcall.db'));s.assertEqual(c.execute('select count(*) from signups').fetchone()[0],1);c.close()
+      with contextlib.redirect_stdout(io.StringIO()):s.assertEqual(bundle.main(['--instance',s.dir,'--out',out]),0,'rebuilds its own dir')
+      os.remove(os.path.join(out,'.castcall-bundle'))
+      with s.assertRaises(SystemExit),contextlib.redirect_stdout(io.StringIO()):bundle.main(['--instance',s.dir,'--out',out])
+    finally:shutil.rmtree(os.path.dirname(out),ignore_errors=True)

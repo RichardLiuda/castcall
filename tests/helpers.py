@@ -21,6 +21,7 @@ def edit_site(fn):
 def make_instance(mode='multi',site=None):
   d=tempfile.mkdtemp(prefix='castcall-test-')
   C=config.use(d)
+  C.env={}   # 开发机根目录 .env（上线的 CASTCALL_TRUST_PROXY 等）不该渗进单测：用例自己设的头才算数
   for k in ('UPLOADS','POSTER','BACKUPS','LOGS'):os.makedirs(getattr(C,k),exist_ok=True)
   s=rj(os.path.join(ROOT,'examples','site.example.json'))
   config.merge(s,site or {})

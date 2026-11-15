@@ -7,6 +7,7 @@ Builds two throw-away instances (multi + single), starts a server for each, then
 roster, cast board, a public signup, admin login → review → approve, the guestbook, single-group layout,
 phone width, and (unless --no-poster) the poster build. Screenshots + report.json land in --out."""
 import argparse,json,os,shutil,socket,subprocess,sys,tempfile,time,urllib.request
+from urllib.parse import urljoin
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PW='e2e-password-1'
 def free_port():
@@ -111,8 +112,27 @@ def main(a):
           step('poster: web page + chrome',q.locator('.kr-poster-chrome').count()==1)
           pg.goto(U);pg.wait_for_timeout(500);step('poster: header link appears',pg.locator('#posterlink-hdr').count()==1)
         r=subprocess.run([sys.executable,os.path.join(ROOT,'poster','build.py'),'--instance',dirs['single']],env=env,capture_output=True,text=True,timeout=600)
-        step('poster: single build (master + social)',r.returncode==0,(r.stdout+r.stderr)[-300:])
-        if r.returncode==0:shutil.copy(os.path.join(dirs['single'],'poster','social.jpg'),os.path.join(out,'poster-social.jpg'))
+        step('poster: single build (master + social + portrait)',r.returncode==0,(r.stdout+r.stderr)[-300:])
+        if r.returncode==0:
+          shutil.copy(os.path.join(dirs['single'],'poster','social.jpg'),os.path.join(out,'poster-social.jpg'))
+          # 竖屏打开 /poster/ 必须落到竖版，而且整幅要把屏幕填起来。
+          # 判据用「clip 高度 ≥ 85% 视口」：这一轮要修的就是横条只占 42% 屏高、卡片沉底。
+          ph=page(390,844,True);ph.goto(S+'poster/');ph.wait_for_timeout(1500)
+          step('poster: 竖屏落到 portrait 页','portrait.html' in ph.url,ph.url)
+          bh=ph.evaluate("()=>{const c=document.getElementById('kr-poster-clip');return c?c.getBoundingClientRect().height:0}")
+          step('poster: 竖版铺满一屏',bh>=844*.85,f'{bh:.0f}/844')
+          shot(ph,'15-poster-portrait-phone')
+          # 「看的是哪版、下的就得是哪版」。以前导出按钮只认 wide（其余一律 master.jpg），
+          # 竖版页面点「导出图片」下到的是 2400×1255 的横条——团长因此认定「改了没用」。
+          # 判据不看 href 字符串，直接把那张图下下来量宽高：竖版必须比宽更高。
+          href=ph.eval_on_selector('#kr-poster-export','e=>e.getAttribute("href")')
+          r=ph.request.get(urljoin(S,href))
+          tmp=os.path.join(out,'export-portrait.jpg');open(tmp,'wb').write(r.body())
+          from PIL import Image as _Im
+          w,h=_Im.open(tmp).size
+          step('poster: 竖版页导出的是竖图',('portrait' in (href or '')) and h>w*1.2,f'{href} → {w}×{h}')
+          desk=page(1280,900);desk.goto(S+'poster/');desk.wait_for_timeout(1200)
+          step('poster: 宽屏不落 portrait','portrait.html' not in desk.url,desk.url)
       br.close()
   finally:
     for p in procs.values():p.terminate()

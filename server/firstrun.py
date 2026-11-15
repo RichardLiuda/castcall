@@ -8,11 +8,23 @@ import config
 INSTALL='pip install -r requirements-poster.txt && playwright install chromium（详见 docs/poster.md）'
 def art(lock=None,log=print):
   import artsearch
-  try:rep=artsearch.auto(lock,log=log)
+  try:
+    # 配图前先把名字绑到确定的角色上：绑上了就直接按 id 取图，不再搜索（搜索会漂，还会配上同名角色）。
+    # 向导里点过「检查这些名字配不配得上图」的话这里全是缓存；没点过就在这儿补一次。
+    try:
+      import roster as R
+      artsearch.bind(R.load(),log=lambda *a:None,skip_bound=True)
+    except Exception:pass
+    rep=artsearch.auto(lock,log=log)
   except Exception as e:return {'covers':0,'portraits':0,'skipped':[],'errors':[repr(e)]}
   return rep
 def art_line(rep):
   s=f"配图：封面 {rep.get('covers',0)} 张、立绘 {rep.get('portraits',0)} 张"
+  tags=[]
+  if rep.get('bound'):tags.append(f"{rep['bound']} 个用的是名单预检时绑好的角色")
+  if rep.get('viacn'):tags.append(f"{rep['viacn']} 个按中文名在作品角色表里对上")
+  if tags:s+=f"（{'，'.join(tags)}）"
+  if rep.get('near'):s+=f"，{len(rep['near'])} 个按近似名对上（名单里可能有错字：{'、'.join(rep['near'][:3])}）"
   if rep.get('skipped'):s+=f"，{len(rep['skipped'])} 个没把握跳过（后台「找立绘」手选）"
   if rep.get('errors'):s+=f"，{len(rep['errors'])} 个出错（多半是网络，稍后后台点「一键配图」重试）"
   return s

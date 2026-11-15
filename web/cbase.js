@@ -68,7 +68,7 @@ function pill(gi,i,q){const g=R.groups[gi],m=g.members[i];const P=v=>v||'（待�
  const u0=ci(gi,i),ua=u0.startsWith('chars/')?u0.replace('chars/','chars/thumb/'):u0,ph=photoOf(gi,i),u=ph||ua;
  /* 有本人照片时它是卡片主图；角色立绘缩成右下角的小圆徽（只有单团的大卡显示，多团胶囊太小） */
  const pv=ph&&ua?`<i class="pv" data-pv="${esc(ua)}"></i>`:'';
- return `<button class="pill${ph?' ph':''}" style="--c:${g.color};--k:${Math.min(i,24)}"${u?` data-ci="${esc(u)}"`:''} data-g="${gi}" data-i="${i}">${u?'<i class="ci">'+pv+'</i>'+(crew(g)?'<i class="ni cam">'+icon('camera',13)+'</i>':''):`<i class="ni">${crew(g)?icon('camera',16):esc([...(m.character||m.member||'?')][0])}</i>`}<span class="a">${hl(x,q)}</span><span class="b">${hl(y,q)}</span></button>`}
+ return `<button class="pill${ph?' ph':''}" style="--c:${g.color};--k:${Math.min(i,24)}"${u?` data-ci="${esc(u)}"`:''} data-g="${gi}" data-i="${i}">${u?'<i class="ci">'+pv+'</i>'+(crew(g)?'<i class="ni cam">'+icon('camera',13)+'</i>':''):`<i class="ni">${esc([...((crew(g)?(m.member||m.character):(m.character||m.member))||'?')][0])}</i>`}<span class="a">${hl(x,q)}</span><span class="b">${hl(y,q)}</span></button>`}
 /* 单团页：一个团就是整个活动，不需要「点开/收起」。顶部是团的封面和人数，然后是团长、咨询、说明，
    招募中的角色排在最前、直接点「报名」；已定的阵容放后面。多个团时 index.html 走封面卡墙，不用这里。 */
 function soloHTML(gi){const g=R.groups[gi],seats=g.members.map((m,i)=>[m,i]);

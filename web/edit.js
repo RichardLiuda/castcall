@@ -15,7 +15,7 @@ function login(){const pw=inp('','','password'),er=h('div',{class:'err'});const 
  pw.addEventListener('keydown',e=>e.key=='Enter'&&go());modal('编辑需要密码',[fld('密码',pw),er,h('div',{class:'mrow'},h('button',{class:'btn',onclick:close},'取消'),h('button',{class:'btn pri',onclick:go},'进入编辑'))])}
 let editing=false;
 function setEdit(on){editing=on;document.body.classList.toggle('editing',on);$('#fab').replaceChildren(iconEl(on?'unlock':'lock',22));$('#fab').setAttribute('aria-label',on?'编辑中':'进入编辑');
- const tb=$('#etb');tb.innerHTML='';if(on){tb.append(h('button',{class:'btn pri',id:'newrole',onclick:()=>{const c=$('.cv.open');const gi=c?+c.id.slice(1):+(SS.getItem('kr_open_last')||0);entryForm(Math.min(gi,D.groups.length-1),-1,1)}},iconEl('plus'),'新角色'),h('button',{class:'btn',onclick:()=>review('signups')},iconEl('users'),'审核',h('b',{id:'rvn',hidden:''})),h('button',{class:'btn',onclick:()=>links('all')},iconEl('links'),'连线视图'),h('button',{class:'btn',onclick:()=>groupForm(-1)},iconEl('plus'),SITE.mode==='single'?'加一个团':'新团'),h('button',{class:'btn',onclick:artAuto},iconEl('palette'),'一键配图'),h('button',{class:'btn',onclick:brandPanel},iconEl('camera'),'站点素材'),h('button',{class:'btn',onclick:fieldsPanel},iconEl('pencil'),'报名表'),h('button',{class:'btn',onclick:noticePanel},iconEl('pencil'),'招募须知'),...(SITE.poster.enabled?[h('button',{class:'btn',onclick:posterBuild},iconEl('palette'),'生成一图流')]:[]),h('button',{class:'btn',onclick:async()=>{await api('POST','/api/logout');SS.removeItem('kr_edit');setEdit(false);toast('已退出编辑')}},iconEl('logout'),'退出'))}
+ const tb=$('#etb');tb.innerHTML='';if(on){tb.append(h('button',{class:'btn pri',id:'newrole',onclick:()=>{const c=$('.cv.open');const gi=c?+c.id.slice(1):+(SS.getItem('kr_open_last')||0);entryForm(Math.min(gi,D.groups.length-1),-1,1)}},iconEl('plus'),'新角色'),h('button',{class:'btn',onclick:()=>review('signups')},iconEl('users'),'审核',h('b',{id:'rvn',hidden:''})),h('button',{class:'btn',onclick:()=>links('all')},iconEl('links'),'连线视图'),h('button',{class:'btn',onclick:()=>groupForm(-1)},iconEl('plus'),SITE.mode==='single'?'加一个团':'新团'),h('button',{class:'btn',onclick:artAuto},iconEl('palette'),'一键配图'),h('button',{class:'btn',onclick:brandPanel},iconEl('camera'),'站点素材'),h('button',{class:'btn',onclick:fieldsPanel},iconEl('pencil'),'报名表'),h('button',{class:'btn',onclick:noticePanel},iconEl('pencil'),'招募须知'),...(SITE.poster.enabled?[posterBtn()]:[]),h('button',{class:'btn',onclick:async()=>{await api('POST','/api/logout');SS.removeItem('kr_edit');setEdit(false);toast('已退出编辑')}},iconEl('logout'),'退出'))}
  soloTools();
  $$('.cv').forEach((c,gi)=>{let t=c.querySelector('.gtools');if(!t){t=h('div',{class:'gtools'},h('button',{class:'btn',onclick:()=>entryForm(gi,-1)},iconEl('plus'),'添加'),h('button',{class:'btn',onclick:()=>groupForm(gi)},iconEl('pencil'),SITE.mode==='single'?'活动 / 团信息':'团信息'),h('button',{class:'btn',onclick:()=>links(gi)},iconEl('links'),'连线'));c.querySelector('.body').prepend(t)}});
  if(on)reviewCount()}
@@ -109,7 +109,7 @@ function artPick(kind,q,group,character){const box=h('div',{class:'ap'}),qi=inp(
   try{const r=await api('GET','/api/admin/art/search?'+new URLSearchParams({kind,q:qi.value.trim(),group}));
    if(!r.items.length){box.replaceChildren(h('p',{class:'rv-empty'},r.error||'没找到，换个名字试试（日文名 / 罗马字也行）'));return}
    box.replaceChildren(...r.items.map(it=>{const b=h('button',{class:'ap-it'+(kind==='cover'?' wide':''),type:'button',title:it.url},h('img',{src:it.thumb,alt:'',loading:'lazy',referrerpolicy:'no-referrer'}),h('b',{},it.title||''),h('small',{},[it.source,it.sub].filter(Boolean).join(' · ')+(it.inwork?' · ✓ 这部作品':'')));
-    b.onclick=async()=>{b.disabled=true;try{await api('POST','/api/admin/art/pick',{kind,url:it.url,group,character});SS.setItem('kr_edit','1');toast(kind==='cover'?'封面已换':'立绘已换');setTimeout(()=>location.reload(),500)}catch(e){er.textContent=e.message;b.disabled=false}};return b}))}
+    b.onclick=async()=>{b.disabled=true;try{await api('POST','/api/admin/art/pick',{kind,url:it.url,group,character,id:it.id,name:it.title});SS.setItem('kr_edit','1');toast(kind==='cover'?'封面已换':'立绘已换');setTimeout(()=>location.reload(),500)}catch(e){er.textContent=e.message;b.disabled=false}};return b}))}
   catch(e){box.replaceChildren();er.textContent=e.message}};
  qi.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();run()}});
  modal(kind==='cover'?`给「${group}」找封面`:`给「${character}」找立绘`,[h('div',{class:'ap-q'},qi,h('button',{class:'btn pri',type:'button',onclick:run},'搜')),box,er,h('p',{class:'ap-note'},'图片来自 Bangumi 和 AniList，点一张就用它。'),h('div',{class:'mrow'},h('button',{class:'btn',onclick:close},'关闭'))]);
@@ -121,7 +121,7 @@ async function artAuto(){if(!confirm('给缺封面的团找封面、缺立绘的
   if((r.covers||0)+(r.portraits||0)){SS.setItem('kr_edit','1');toastAct(msg,'刷新',()=>location.reload(),10000)}else toast(msg+((r.errors||[])[0]?'：'+r.errors[0]:''),8000)}catch(e){clearInterval(t)}},2500)}
 /* ---------- poster ---------- */
 /* 站点素材：logo / 标签页图标 / 一图流大图，选了就上传并写进 site.json，关掉面板后刷新页面生效 */
-const BRAND=[['logo','标题前的 logo','透明底 PNG 最好，方形或横向都行'],['favicon','浏览器标签页图标','方形 PNG，64×64 以上；留空用内置图标'],['hero','一图流大图','铺在海报标题和底部；换完要重新生成一图流']];
+const BRAND=[['logo','标题前的 logo','透明底 PNG 最好，方形或横向都行'],['favicon','浏览器标签页图标','方形 PNG，512×512 最好（至少 64×64）。不传就按团名首字自动画一个，颜色跟主题色'],['hero','一图流大图','铺在海报标题和底部；换完要重新生成一图流']];
 /* 报名表要填什么（site.json signup.fields）：和开团向导同一个选择器（fields.js）。改了立刻对新报名生效，旧报名的答案不动 */
 async function fieldsPanel(){let st;try{st=await api('GET','/api/admin/signup-fields')}catch(e){return toast('读不到报名表设置：'+e.message,3000)}
  const box=h('div'),er=h('div',{class:'err'}),fp=fieldPicker(box,st.presets,st.fields);
@@ -149,7 +149,8 @@ async function brandPanel(){let st;try{st=await api('GET','/api/admin/brand')}ca
    if(!r.ok)throw new Error(j.error||r.status);st.slots=j.slots;dirty=true;draw();toast(file?'已换上':'已恢复默认')}catch(e){er.textContent=e.message}};
  const draw=()=>{list.innerHTML='';for(const [k,t,hint] of BRAND){if(k==='hero'&&!st.poster)continue;const v=st.slots[k];
   const f=h('input',{type:'file',accept:'image/png,image/jpeg,image/webp,image/gif',hidden:''});f.addEventListener('change',()=>f.files[0]&&send(k,f.files[0]));
-  list.append(h('div',{class:'brand-row'+(k==='hero'?' wide':'')},h('div',{class:'brand-th'},v.url?h('img',{src:v.url,alt:''}):h('span',{},k==='favicon'?'内置':'未设置')),
+  /* 没传图标时把服务端现画的那个也显示出来：只写「内置」两个字，团长没法判断标签页上会是什么样 */
+  list.append(h('div',{class:'brand-row'+(k==='hero'?' wide':'')},h('div',{class:'brand-th'},v.url?h('img',{src:v.url,alt:''}):(k==='favicon'?h('img',{src:'/favicon.svg',alt:'',title:'按团名首字自动生成'}):h('span',{},'未设置'))),
    h('div',{class:'brand-tx'},h('b',{},t),h('small',{},hint),h('div',{class:'brand-act'},h('button',{class:'btn',type:'button',onclick:()=>f.click()},v.url?'换一张':'上传'),
     ...(v.url?[h('button',{class:'btn ghost',type:'button',onclick:()=>confirm('恢复默认？图片文件会留在服务器上。')&&send(k)},'恢复默认')]:[]),f))))}};
  /* 成员照片开关：开了以后已定成员能在自己的角色卡里传本人照片 */
@@ -160,8 +161,14 @@ async function brandPanel(){let st;try{st=await api('GET','/api/admin/brand')}ca
  const photos=h('div',{class:'brand-row brand-sw'},h('div',{class:'brand-tx'},h('label',{class:'chk'},on,h('b',{},'成员本人照片')),h('small',{},'开了以后，已定的成员能在自己的角色卡里上传照片，显示在卡片和详情里；在「审核 → 照片」里管理。'),h('div',{class:'fld'},mo,h('label',{},'审核方式'))));
  draw();close.after=()=>{if(dirty){SS.setItem('kr_edit','1');location.reload()}};
  modal('站点素材',[list,photos,er,h('div',{class:'mrow'},h('button',{class:'btn pri',onclick:close},'完成'))])}
+/* 「生成一图流」按钮：名册改过、海报还没重建时挂一个「旧」标记。
+   服务器判断依据是 roster.json / site.json / uploads/map.json 比 poster/master.html 新（见 poster_stale）。
+   没有这一下，团长改完名册点开海报，看到的是上一版，会以为改动没保存。 */
+function posterBtn(){const b=h('button',{class:'btn',onclick:posterBuild},iconEl('palette'),'生成一图流',h('b',{id:'rvs',hidden:'',style:'background:#e6b35a;color:#3a2b10;padding:0 4px;border-radius:4px;margin-left:4px;font-size:10px;line-height:1.5'},'旧'));
+ api('GET','/api/admin/poster').then(s=>{const d=$('#rvs');if(d&&s.stale)d.hidden=false}).catch(()=>{});return b}
 async function posterBuild(){try{await api('POST','/api/admin/poster');toast('一图流生成中，大概要一两分钟…',4000)}catch(e){return toast((e.j&&e.j.error)||e.message,6000)}
  const t=setInterval(async()=>{try{const s=await api('GET','/api/admin/poster');if(s.running)return;clearInterval(t);
+  const d=$('#rvs');if(d)d.hidden=!s.stale;
   if(s.rc===0)toastAct('一图流已更新','打开',()=>open('/poster/','_blank'),8000);else toast('一图流生成失败，日志在 instance/logs/poster.log',6000)}catch(e){clearInterval(t)}},2500)}
 /* ---------- links view ---------- */
 let L=null;

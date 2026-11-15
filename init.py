@@ -50,6 +50,20 @@ def main(argv):
     try:roster=importer.parse(text,a.title or '我们的团')
     except ValueError as e:print(e);return 1
     print('名单：'+importer.summary(roster))
+    # 名单刚定下来就核对「这些名字配不配得上图」：配不上的现在就告诉你，别等建完站少了几张立绘才发现。
+    # 核对过的名字会绑到确定的角色 id，配图时直接按 id 取图，不再靠搜索（搜索结果会漂）。
+    if not a.no_art:
+      import artsearch
+      print('核对每个名字能不能配上图…')
+      try:
+        # log 回调要能吃多个参数：bind() 现在只用单参数，但把 tuple 拼进字符串迟早出事
+        # （`'  '+x` 里 x 是 tuple → TypeError，然后被下面的 except 吞成「没核对成」）。
+        rep=artsearch.bind(roster,log=lambda *x:print('  '+' '.join(str(i) for i in x)))
+        print('  '+artsearch.bind_line(rep))
+        for x in rep['near']:print('  像写错了  '+x)
+        for x in rep['missing']:print('  找不到    '+x)
+        if rep['near'] or rep['missing']:print('  改好名字重新导入更省事；不改也行，建站后在后台「找立绘」手选。')
+      except Exception as e:print(f'  没核对成（{e}），不影响建站；网络好了在后台点「一键配图」')
     a.mode=a.mode or ('single' if len(roster['groups'])==1 else 'multi')
   mode=a.mode or ('single' if ask('单团还是多团？输入 1 = 单团（一个团的团片），2 = 多团（多个团同时招募）','2',y)=='1' else 'multi')
   title=a.title or ask('活动名称','示例 cos 团建' if mode=='multi' else '示例团片',y)
