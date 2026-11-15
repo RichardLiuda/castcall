@@ -17,6 +17,13 @@ SETUP={'token':None,'instance':None,'prefill':None}   # set while the instance i
 # prefill：server.py --prefill 名单.txt 带进来的名单 / 活动名，向导打开时预填（同样要口令才读得到）
 log=roster.log
 
+def health_payload(setup_mode=False):
+  """两个出口（还没建站 / 已经建站）都从这里取。以前各写各的，加了版本号就只加了一半：
+  刚 clone 下来那一刻回来的恰恰是没版本的那个，而这正是最需要确认「跑的是哪版」的时候。"""
+  d={'ok':True,'version':VERSION}
+  if setup_mode:d['setup']=True
+  return d
+
 # ── auth ──────────────────────────────────────────────────────────────────
 def check_pw(p):
   a=jload(config.C.AUTH,None)
@@ -390,7 +397,7 @@ class H(SimpleHTTPRequestHandler):
       except Exception as e:log('guestbook read err',repr(e));return s.js(500,{'error':'暂时读不到留言'})
     if p=='/api/data':return s.js(200,roster.load())
     if p=='/api/me':return s.js(200,{'auth':bool(s.tok())})
-    if p=='/api/health':return s.js(200,{'ok':True,'version':VERSION})
+    if p=='/api/health':return s.js(200,health_payload())
     if p.startswith('/api/admin/'):return s.admin_get(p)
     if p in ('/poster','/poster/'):return s.send(200,poster_chooser(),'text/html; charset=utf-8')
     for n in ('master','portrait','wide'):
@@ -411,7 +418,7 @@ class H(SimpleHTTPRequestHandler):
       if not SETUP['token'] or not hmac.compare_digest(t,SETUP['token']):s.js(403,{'error':'口令不对'});return True
       s.js(200,SETUP['prefill'] or {});return True
     if p=='/api/setup/fields':s.js(200,{'presets':[dict(v,key=k) for k,v in fields.PRESETS.items()]});return True
-    if p=='/api/health':s.js(200,{'ok':True,'setup':True});return True
+    if p=='/api/health':s.js(200,health_payload(True));return True
     if p in ('/','/index.html') or p in GEN or p.startswith('/api/') or p.startswith('/poster'):
       s.send_response(302);s.send_header('Location','/setup');s.send_header('Content-Length','0');s.end_headers();return True
     return False

@@ -19,6 +19,11 @@ class Pages(Base):
     s.assertEqual(d['ok'],True)
     # 平台和文档都靠这一行确认线上跑的是哪版，格式得是 semver，不能是空串或 "dev"
     s.assertRegex(d['version'],r'^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$')
+    # 还没建站时走的是另一个出口——刚 clone 下来那一刻回来的正是它，不能漏
+    import server
+    for payload in (server.health_payload(),server.health_payload(True)):
+      s.assertEqual(payload['ok'],True)
+      s.assertRegex(payload['version'],r'^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$')
   def test_site_js_is_public_only(s):
     t=s.c.get('/site.js').text;s.assertTrue(t.startswith('window.SITE='))
     d=json.loads(t[len('window.SITE='):-1]);s.assertEqual(d['mode'],'multi');s.assertEqual(d['signupState'],'open')
