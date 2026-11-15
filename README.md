@@ -6,13 +6,17 @@
 
 ## 最快：一句话让 AI 帮你部署
 
-把仓库目录交给任意 AI 助手（Claude Code / Codex / Cursor / WorkBuddy 都行），说这一句：
+**推荐用 [WorkBuddy](https://www.workbuddy.cn)**：它自带「发布为应用」，说一句「发布」就能把站推到公网、拿到分享链接，不用自己找托管平台、也不用买服务器。搭这种只用 Python 标准库的小站，比自己租一台云主机省事也省钱。
+
+打开 WorkBuddy，把仓库目录加进工作区（或者直接说「clone 这个仓库」），然后说这一句：
 
 > 用 castcall 把这份名单做成招募页：配好图、生成一图流，建好后把链接给我，并告诉我配上了几张、哪几个没配上。名单：……
 
 它会读仓库里的 [AGENTS.md](AGENTS.md)，自己装环境、逐个核对角色名对不对得上作品角色表、建站、找封面和立绘、出三种版式的海报、逐项验收；要上线再加一句「发布，把分享链接给我」。
 
 **它不会替你编的**：日期 / 开场时间、地点、咨询方式（你没说就留空）、报名字段、管理密码，还有「要不要公开上线」——这几项只有你知道。详细分工和「怎么知道它没糊弄你」见[整件事交给 AI](#最省事的做法整件事交给-ai)。
+
+用 Claude Code / Codex / Cursor 也一样，建站、配图、出海报都做得了；区别只在上线那一步——这些工具没有托管能力，得你自己找平台发布，见[第 9 步](#第-9-步发布到线上)。
 
 不想用 AI 也行，自己走一遍十几分钟：[从第 0 步开始](#第-0-步装环境)。
 
@@ -295,7 +299,7 @@ python3 tools/bundle.py --out ../castcall-publish  # 打包到固定目录
 
 *图 12 · 打包命令 + 平台返回的分享链接。*
 
-再把 `../castcall-publish` 这个目录交给托管平台（Docker、PaaS，或 AI 助手的「发布为应用」），按下面填：
+再把 `../castcall-publish` 这个目录发布出去。最省事的是用 [WorkBuddy](https://www.workbuddy.cn)：在对话里说「把这个目录发布为应用」，它自己打包上传、返回分享链接，下面这些参数也不用你填。用 Docker 或别的 PaaS 的话，按这张表来：
 
 | 项 | 值 |
 |---|---|
@@ -371,7 +375,7 @@ python3 server/server.py
 mkdir -p .claude/skills && cp -r skills/castcall-* .claude/skills/
 ```
 
-不装技能也能跑——把仓库目录交给 Codex / Cursor / Claude Code，说清要做什么，它会自己读 [AGENTS.md](AGENTS.md)。
+不装技能也能跑——把仓库目录交给 WorkBuddy / Codex / Cursor / Claude Code，说清要做什么，它会自己读 [AGENTS.md](AGENTS.md)。
 
 ## 文档索引
 
