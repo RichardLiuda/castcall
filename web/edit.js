@@ -104,15 +104,18 @@ function review(tab){let dirty=false;const box=h('div',{class:'rv'}),tabs=h('div
  modal('审核',[tabs,box,h('div',{class:'mrow'},h('button',{class:'btn',onclick:close},'关闭'))]);
  $('#modal .mc').classList.add('wide');close.after=()=>{$('#modal .mc').classList.remove('wide');reviewCount();if(dirty){SS.setItem('kr_edit','1');location.reload()}};draw()}
 /* ---------- art: Bangumi / AniList ---------- */
-function artPick(kind,q,group,character){const box=h('div',{class:'ap'}),qi=inp(q,kind==='cover'?'作品名':'角色名（中文、日文都行）'),er=h('div',{class:'err'});
- const run=async()=>{box.replaceChildren(h('p',{class:'rv-empty'},'正在找…'));er.textContent='';
+function artPick(kind,q,group,character){const box=h('div',{class:'ap'}),qi=inp(q,kind==='cover'?'作品名':'角色名（中文、日文都行）'),er=h('div',{class:'err'}),warn=h('p',{class:'ap-note ap-warn'});
+ const run=async()=>{box.replaceChildren(h('p',{class:'rv-empty'},'正在找…'));er.textContent='';warn.textContent='';
   try{const r=await api('GET','/api/admin/art/search?'+new URLSearchParams({kind,q:qi.value.trim(),group}));
    if(!r.items.length){box.replaceChildren(h('p',{class:'rv-empty'},r.error||'没找到，换个名字试试（日文名 / 罗马字也行）'));return}
-   box.replaceChildren(...r.items.map(it=>{const b=h('button',{class:'ap-it'+(kind==='cover'?' wide':''),type:'button',title:it.url},h('img',{src:it.thumb,alt:'',loading:'lazy',referrerpolicy:'no-referrer'}),h('b',{},it.title||''),h('small',{},[it.source,it.sub].filter(Boolean).join(' · ')+(it.inwork?' · ✓ 这部作品':'')));
+   box.replaceChildren(...r.items.map(it=>{const th=h('img',{src:'/api/admin/art/thumb?u='+encodeURIComponent(it.thumb),alt:'',loading:'lazy'});
+    const b=h('button',{class:'ap-it'+(kind==='cover'?' wide':''),type:'button',title:it.url},th,h('b',{},it.title||''),h('small',{},[it.source,it.sub].filter(Boolean).join(' · ')+(it.inwork?' · ✓ 这部作品':'')));
+    /* 缩略图是服务器去图床取的；取不到（线路连不上 lain.bgm.tv）就摆个占位块，别留破图，也别挡住点选 */
+    th.onerror=()=>{th.replaceWith(h('div',{class:'ap-noimg'},'缩略图没拉到'));warn.textContent='缩略图取不到是服务器连不上图床（跟名单无关），照样可以点一张试：保存时服务器会再下一次。一直不行就换一张，或用「站点素材」传自己的图。'};
     b.onclick=async()=>{b.disabled=true;try{await api('POST','/api/admin/art/pick',{kind,url:it.url,group,character,id:it.id,name:it.title});SS.setItem('kr_edit','1');toast(kind==='cover'?'封面已换':'立绘已换');setTimeout(()=>location.reload(),500)}catch(e){er.textContent=e.message;b.disabled=false}};return b}))}
   catch(e){box.replaceChildren();er.textContent=e.message}};
  qi.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();run()}});
- modal(kind==='cover'?`给「${group}」找封面`:`给「${character}」找立绘`,[h('div',{class:'ap-q'},qi,h('button',{class:'btn pri',type:'button',onclick:run},'搜')),box,er,h('p',{class:'ap-note'},'图片来自 Bangumi 和 AniList，点一张就用它。'),h('div',{class:'mrow'},h('button',{class:'btn',onclick:close},'关闭'))]);
+ modal(kind==='cover'?`给「${group}」找封面`:`给「${character}」找立绘`,[h('div',{class:'ap-q'},qi,h('button',{class:'btn pri',type:'button',onclick:run},'搜')),box,warn,er,h('p',{class:'ap-note'},'图片来自 Bangumi 和 AniList，点一张就用它。'),h('div',{class:'mrow'},h('button',{class:'btn',onclick:close},'关闭'))]);
  $('#modal .mc').classList.add('wide');close.after=()=>$('#modal .mc').classList.remove('wide');run()}
 async function artAuto(){if(!confirm('给缺封面的团找封面、缺立绘的角色找立绘？\n只配有把握的，找不到的会跳过；已有的图不动。大概要一两分钟。'))return;
  try{await api('POST','/api/admin/art/auto')}catch(e){return toast(e.message,4000)}toast('正在配图…',3000);

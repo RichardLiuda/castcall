@@ -1,5 +1,5 @@
 """Art finder against a fake Bangumi / AniList (no network)."""
-import os,sys,time,unittest
+import os,sys,time,unittest,urllib.parse
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 from helpers import Base
 import config,net,artsearch
@@ -65,6 +65,21 @@ class Art(Base):
     import importer;d=importer.parse(text,'t');s.assertEqual([m['member'] for m in d['groups'][0]['members']],['',''])
     s.assertIn('Bangumi #500',notes[0])
     text,_=artsearch.roster_text(['作品甲'],main_only=True,log=lambda *a:None);s.assertEqual(text,'## 作品甲\n主角\n')
+  def test_thumb_proxy_caches_and_refuses_other_hosts(s):
+    """配图面板的缩略图走服务器（国内线路直连 lain.bgm.tv 会是 ERR_SSL_PROTOCOL_ERROR），取一次就缓存。"""
+    s.assertEqual(s.c.get('/api/admin/art/thumb?u=https://lain.bgm.tv/pic/crt/l/a.jpg').status,401)
+    s.c.login()
+    u='https://lain.bgm.tv/pic/crt/l/thumb-cache-test.jpg'
+    q='/api/admin/art/thumb?u='+urllib.parse.quote(u,safe='')
+    r=s.c.get(q);s.assertEqual(r.status,200,str(r.status)+' '+r.body[:80].decode('utf-8','replace'));s.assertEqual(r.body,PNG)
+    s.assertEqual(r.header('content-type'),'image/png')
+    s.assertEqual(s.fake.calls.count(u),1)
+    s.assertEqual(s.c.get(q).body,PNG);s.assertEqual(s.fake.calls.count(u),1)   # 第二次不再下载
+    s.assertEqual(s.c.get('/api/admin/art/thumb?u='+urllib.parse.quote('https://evil.example/a.jpg',safe='')).status,400)
+    _req=net.request
+    net.request=lambda *a,**k:(None,'Connection timed out')
+    try:s.assertEqual(s.c.get('/api/admin/art/thumb?u='+urllib.parse.quote('https://lain.bgm.tv/pic/crt/l/down.jpg',safe='')).status,502)
+    finally:net.request=_req
   def test_only_image_hosts(s):
     s.assertTrue(artsearch.allowed('https://lain.bgm.tv/pic/x.jpg'));s.assertTrue(artsearch.allowed('https://s4.anilist.co/file/x.png'))
     for u in ('http://lain.bgm.tv/x.jpg','https://evil.example/x.jpg','https://lain.bgm.tv.evil.example/x','file:///etc/passwd','https://127.0.0.1/x'):s.assertFalse(artsearch.allowed(u),u)

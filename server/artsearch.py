@@ -455,10 +455,10 @@ def allowed(url):
   try:h=urllib.parse.urlparse(url).hostname or ''
   except Exception:return False
   return urllib.parse.urlparse(url).scheme=='https' and any(h==x or h.endswith('.'+x) for x in HOSTS)
-def fetch(url):
+def fetch(url,limit=8_000_000,timeout=25):
   """Download a candidate image → bytes. Only the image hosts of the two sites (this is not a generic fetcher)."""
   if not allowed(url):raise ValueError('只能下载 Bangumi / AniList 的图片')
-  b,e=net.request(url,raw=True,limit=8_000_000,headers={'Accept':'image/*'},timeout=25)
+  b,e=net.request(url,raw=True,limit=limit,headers={'Accept':'image/*'},timeout=timeout)
   if b is None:raise ValueError('下载失败：'+e)
   return b
 def save_portrait(group,character,url):

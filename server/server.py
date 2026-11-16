@@ -501,6 +501,29 @@ class H(SimpleHTTPRequestHandler):
       q=urllib.parse.parse_qs(urllib.parse.urlparse(s.path).query);Q=lambda k:(q.get(k) or [''])[0]
       res,err=artsearch.search('cover' if Q('kind')=='cover' else 'portrait',Q('q'),Q('group'))
       return s.js(200 if res or not err else 502,{'items':res[:12],'error':err})
+    if p=='/api/admin/art/thumb':
+      # 缩略图由服务器代取：国内线路对 lain.bgm.tv 常见 DNS 污染 / TLS 被中间设备打断，浏览器直连就是
+      # ERR_SSL_PROTOCOL_ERROR 加一排破图，而服务器（另一条线路 / 国外机器）往往还取得到。
+      # 按 URL 缓存在 instance/cache/thumbs/，面板反复开不重复下载；取不到就回 502，前端显示占位块。
+      import artsearch
+      u=(urllib.parse.parse_qs(urllib.parse.urlparse(s.path).query).get('u') or [''])[0]
+      if not artsearch.allowed(u):return s.js(400,{'error':'只能取 Bangumi / AniList 的图'})
+      CT={'jpg':'image/jpeg','png':'image/png','webp':'image/webp','gif':'image/gif'}
+      d=os.path.join(config.C.INSTANCE,'cache','thumbs');h=hashlib.sha1(u.encode()).hexdigest()[:20]
+      hit=next((e for e in CT if os.path.exists(os.path.join(d,h+'.'+e))),None)
+      if hit:
+        with open(os.path.join(d,h+'.'+hit),'rb') as f:raw=f.read()
+        return s.send(200,raw,CT[hit],[('Cache-Control','public, max-age=86400')])
+      try:raw=artsearch.fetch(u,limit=3_000_000,timeout=15)
+      except ValueError as e:return s.js(502,{'error':str(e)})
+      ext=sniff(raw)
+      if not ext:return s.js(502,{'error':'取回来的不是图片'})
+      try:
+        os.makedirs(d,exist_ok=True);fp=os.path.join(d,h+'.'+ext)
+        with open(fp+'.tmp','wb') as f:f.write(raw)
+        os.replace(fp+'.tmp',fp)
+      except OSError:pass          # 缓存写不进去不影响这次显示
+      return s.send(200,raw,CT[ext],[('Cache-Control','public, max-age=86400')])
     if p=='/api/admin/art/auto':
       import artsearch
       return s.js(200,artsearch.auto_status())

@@ -55,6 +55,16 @@ AniList 自己也会抖：同一条命令第一次跑可能封面 `TimeoutError`
 - `artsearch.py auto --dry` 先看会配哪张，再去掉 `--dry`。
 - 想知道某张图是「搜来的」还是「按中文名对上的」，看 `instance/uploads/art_index.json`：里面按角色 id 记了候选名和 url。
 
+**缩略图是一排灰块，和上面不是一回事。** 后台「找封面 / 找立绘」的候选图显示成「缩略图没拉到」，控制台里是
+`lain.bgm.tv/…: Failed to load resource: net::ERR_SSL_PROTOCOL_ERROR`——这**不代表这个角色配不上图**，是你的线路连不上
+Bangumi 的**图床**。`lain.bgm.tv`（图片）和 `api.bgm.tv`（接口）是两个域名，国内常见 DNS 污染：`lain.bgm.tv` 被解析到
+一个不相干的 IP，TLS 握手当场被打断，所以是 SSL 报错而不是 404。核对名字走的是接口，完全可能照样通过。
+
+现在缩略图统一由**服务器**代取（`GET /api/admin/art/thumb?u=…`，按 URL 缓存在 `instance/cache/thumbs/`），浏览器不再直连
+图床：服务器那条线路通、你这条不通时，图照样看得见。两边都不通就显示灰块加一行提示，**点一张仍然可以试**——保存时
+服务器会重新下载一次，成了就有图；一直下不来就换一张，或用「站点素材」传自己的图。缓存只增不删，几百 KB 一张缩略图，
+嫌大可以直接删掉那个目录。
+
 ### 1.2 一图流跑不了
 
 **看到** 后台点「生成一图流」没反应；命令行 `ModuleNotFoundError: No module named 'PIL'`。
