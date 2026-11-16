@@ -88,7 +88,7 @@ playwright install chromium
 
 - AGENTS.md / skill 要求 AI 发完链接就用提问框（比如 Claude Code 的 `AskUserQuestion`）把这一轮卡住，等你在网页上填完、点「建好了」再往下走。
 - 没有提问框的 AI 用 `server.py --prefill 名单.txt --exit-after-setup` 前台运行：建完、配完图、生成完一图流自己退出。
-- 真被杀了：用同一条命令重启。**向导链接不变**（口令存在 `instance/.setup-token`），已经打开的页面直接接着提交；建站后配图 / 一图流没跑完，重启时自动补跑（`instance/firstrun.pending`）。
+- 真被杀了：用同一条命令重启。**向导链接和 6 位验证码都不变**（存在 `instance/.setup-token`），已经打开的页面直接接着提交；建站后配图 / 一图流没跑完，重启时自动补跑（`instance/firstrun.pending`）。
 
 **怎么办** 让 AI 重启服务器，或者自己在终端里运行它打印过的那条命令。建好后想一直开着：自己的终端里 `python3 server/server.py`，或按 `docs/deploy.md` 部署。
 

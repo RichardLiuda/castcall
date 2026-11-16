@@ -462,6 +462,22 @@ class FirstRun(unittest.TestCase):
       s.assertEqual(s.calls,['art',('poster',False)])
     finally:server.SETUP.update(token=None,instance=None)
 
+  def test_wizard_table_source_keeps_the_roster(s):
+    import server,firstrun
+    # 向导的表格编辑器提交 source=table。服务端以前只认 paste，于是整份名单被丢掉、
+    # 建成「第一个角色」的默认空名册——页面上看着成功，名册却是空的。
+    config.use(s.d);server.HITS.clear();server.SESS.clear();s.assertFalse(server.preflight())
+    c=Client();b={'token':server.SETUP['token'],'mode':'single','title':'Kanon','source':'table',
+      'names':'## Kanon\n> 外景\n古河渚 云果\n藤林杏','password':'pw-12345678'}
+    try:
+      s.assertEqual(c.post('/api/setup',b).status,200);firstrun.STATE['thread'].join(10)
+      with open(config.C.ROSTER,encoding='utf-8') as f:d=json.load(f)
+      g=d['groups'][0]
+      s.assertEqual(g['name'],'Kanon');s.assertEqual(g['note'],'外景')
+      s.assertEqual([(m['character'],m['member']) for m in g['members']],[('古河渚','云果'),('藤林杏','')])
+      s.assertEqual(s.calls,['art',('poster',False)],'表格填的名单也要自动配图，不能因为 source 取值不同就跳过')
+    finally:server.SETUP.update(token=None,instance=None)
+
 class SignupFields(Base):
   """团长选的报名额外字段：身高 / 年龄 / 性别 / 样片 / 自定义题，可选填可必填。"""
   PNG=b'\x89PNG\r\n\x1a\n'+b'\x00'*64
@@ -587,6 +603,35 @@ class WizardPrefill(unittest.TestCase):
     p=s.write('')
     with contextlib.redirect_stderr(io.StringIO()) as err:rc=server.main(['--prefill',p])
     s.assertEqual(rc,1);s.assertIn('名单读不了',err.getvalue())
+  def test_setup_code_is_six_digits(s):
+    import server
+    # 团长要照着终端抄六位数字，格式得稳定；口令写在 .setup-token 里，重启后不变
+    s.assertRegex(server.SETUP['token'],r'^\d{6}$')
+    with open(os.path.join(s.d,'.setup-token'),encoding='utf-8') as f:
+      s.assertEqual(f.read().strip(),server.SETUP['token'])
+  def test_old_long_token_is_still_honoured(s):
+    import server
+    # 0.1.0-beta 之前建的实例里存的是长串口令；升级后不能把人卡在向导外面
+    with open(os.path.join(s.d,'.setup-token'),'w',encoding='utf-8') as f:f.write('AbCdEfGhIjKlMnOp')
+    s.assertEqual(server.setup_token(config.use(s.d)),'AbCdEfGhIjKlMnOp')
+  def test_preview_returns_editable_rows(s):
+    import server
+    # 向导的表格编辑器要把粘贴的名单摊成「团 / 角色 / CN」，一个格子一个输入框
+    r=s.c.post('/api/setup/preview',{'token':server.SETUP['token'],'source':'paste',
+      'names':'## Kanon\n> 光坂外景\n月宫亚由 云果\n川澄舞\n## 摄影 / 后勤\n摄影 阿光','title':'Kanon'})
+    s.assertEqual(r.status,200,r.text)
+    rows=r.json()['rows']
+    s.assertEqual([g['name'] for g in rows],['Kanon','摄影 / 后勤'])
+    s.assertEqual(rows[0]['note'],'光坂外景')
+    s.assertEqual([(m['character'],m['member']) for m in rows[0]['members']],[('月宫亚由','云果'),('川澄舞','')])
+    s.assertEqual(rows[1]['kind'],'crew','工作组要带 kind，表格里能标出来不配立绘')
+  def test_wrong_setup_code_is_rate_limited(s):
+    import server
+    bad='000000' if server.SETUP['token']!='000000' else '111111'
+    cap=int(config.C.site['limits'].get('setup') or 8)
+    for _ in range(cap):s.assertEqual(s.c.get('/api/setup/prefill?t='+bad).status,403)
+    # 六位数只有一百万种，不限次数就能枚举出预填的名单
+    s.assertEqual(s.c.get('/api/setup/prefill?t='+bad).status,429)
   def test_firstrun_progress_needs_login(s):
     import server,helpers
     s.assertEqual(s.c.get('/api/admin/firstrun').status,302,'still in wizard mode')

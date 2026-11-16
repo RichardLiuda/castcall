@@ -431,7 +431,7 @@ def cmd_smoke(a):
       tok=''
       try:tok=open(os.path.join(repo,'instance','.setup-token'),encoding='utf-8').read().strip()
       except OSError:pass
-      rep.step('向导口令写出来了',bool(tok),tok[:8]+'…' if tok else '没有 .setup-token')
+      rep.step('向导验证码写出来了',bool(tok),(tok if len(tok)<=8 else tok[:8]+'…') if tok else '没有 .setup-token')
       c=Http(base)
       st,txt=c('/api/setup/preview',method='POST',body={'token':tok,'source':'paste','names':names,'title':'Kanon 团片 2026'})
       rep.step('向导能预览名单',st==200,f'HTTP {st} {txt[:120]}')

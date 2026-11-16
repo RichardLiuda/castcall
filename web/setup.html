@@ -20,7 +20,25 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
 .f input:focus,.f select:focus,.f textarea:focus{box-shadow:3px 3px 0 var(--gold-2)}
 .f textarea{min-height:190px;resize:vertical;font-size:14px;line-height:1.6}
 .ct{display:grid;grid-template-columns:110px 1fr;gap:8px}
-.src{margin:0 0 12px}.src label{padding-top:12px;padding-bottom:12px}
+.src{grid-template-columns:repeat(3,1fr);margin:0 0 12px}.src label{padding:12px 12px 12px 40px}.src b{font-size:14.5px}.src span{font-size:12px}
+/* 名单表格：一个团一张卡，一行一个角色。不用记「##」和空格分隔，格子填完就行 */
+#tbl .g{border:2px solid var(--ink);border-radius:14px;padding:12px;margin:0 0 12px;background:color-mix(in srgb,var(--gold-2) 9%,var(--paper))}
+#tbl .gh{display:grid;grid-template-columns:1.1fr 1.3fr auto;gap:8px;align-items:end}
+#tbl .mh{display:grid;grid-template-columns:1.1fr 1.3fr auto;gap:8px;align-items:center;font-size:12px;font-weight:800;color:var(--gold);margin:12px 0 0}
+#tbl .mh i{font-style:normal;color:var(--ink-soft);font-weight:600}
+#tbl .mr{display:grid;grid-template-columns:1.1fr 1.3fr auto;gap:8px;align-items:center;margin:6px 0 0}
+#tbl input{width:100%;border:2px solid var(--ink);border-radius:12px;padding:10px 12px;font:inherit;font-size:15px;background:var(--paper);color:var(--ink);outline:none}
+#tbl input:focus{box-shadow:3px 3px 0 var(--gold-2)}
+#tbl .f{margin:0}
+#tbl .del{align-self:end;font-size:12px;padding:9px 11px;white-space:nowrap}
+#tbl .mr .del{align-self:center}
+#tbl .addrow{margin-top:10px;font-size:13px;padding:6px 12px}
+#tbl .wk{font-size:12px;color:var(--ink-soft);margin:0 0 8px}
+.addg{margin:0 0 10px}
+.hint{font-size:12.5px;color:var(--ink-soft);margin:10px 0 0;line-height:1.65}.hint b{color:var(--ink)}
+/* 六位验证码：一眼能数清几位 */
+.code input{width:100%;text-align:center;font:inherit;font-size:32px;font-weight:900;letter-spacing:.4em;padding:14px 6px 14px 18px;border:2.5px solid var(--ink);border-radius:14px;background:var(--paper);color:var(--ink);font-variant-numeric:tabular-nums;outline:none}
+.code input:focus{box-shadow:4px 4px 0 var(--gold-2)}
 .pv{margin:6px 0 0;font-size:13px;color:var(--ink-soft);min-height:1.4em}.pv b{color:var(--ink)}.pv.bad{color:var(--err)}
 .pv ul{margin:6px 0 0;padding-left:18px}.pv li{margin:2px 0}
 /* 名单预检：每个名字配不配得上图（✓ 能配 / ⚠ 像写错了 / ✗ 作品里没这个名） */
@@ -52,7 +70,7 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
 </style>
 <body><main class=wz>
 <header><h1>castcall<span>开团向导</span></h1><p>三分钟把招募页搭起来，之后在后台随时都能改。</p></header>
-<section class="st hide" id=tokbox><h2><b>!</b>口令</h2><p style="margin:0 0 10px;font-size:14px;line-height:1.6">请用<b>服务器启动时终端里打印的那个链接</b>打开这个页面（链接末尾带着口令）。也可以把口令粘贴到这里：</p><div class=tk><input id=tok placeholder="终端里 ?t= 后面那一串" autocomplete=off></div></section>
+<section class="st hide" id=tokbox><h2><b>!</b>验证码</h2><p style="margin:0 0 12px;font-size:14px;line-height:1.65">输入服务器终端里显示的 <b>6 位数字</b>。也可以直接用终端打印的那个链接打开本页，末尾就带着它。</p><div class=code><input id=tok inputmode=numeric autocomplete=one-time-code maxlength=6 placeholder="••••••" aria-label="六位验证码"></div><p class=err id=tokerr role=alert></p></section>
 <form id=wz novalidate>
 <section class=st><h2><b>1</b>招募什么</h2>
  <div class=pick>
@@ -69,12 +87,18 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
 <section class=st><h2><b>3</b>角色名单 <small>以后在后台增删改都行</small></h2>
  <p class="pv hide" id=pfnote></p>
  <div class="pick src">
-  <label><input type=radio name=source value=paste checked><b>粘贴名单</b><span>从群公告、表格里复制过来</span></label>
+  <label><input type=radio name=source value=table checked><b>逐行填写</b><span>加团、加角色，一格一格填</span></label>
+  <label><input type=radio name=source value=paste><b>粘贴名单</b><span>从群公告、表格复制</span></label>
   <label><input type=radio name=source value=blank><b>先空着</b><span>进后台再一个个加</span></label>
  </div>
- <label class=f id=pastebox><span>每行一个角色，后面跟 CN；没有 CN 就是空缺，可以报名</span><textarea name=names spellcheck=false></textarea></label>
  <div class=pv id=pv></div>
- <div id=chkbox style="margin:8px 0 0"><button type=button class=btn id=chk>检查这些名字配不配得上图</button> <span style="font-size:12.5px;color:var(--ink-soft)">去 Bangumi 逐个核对，十来个角色十几秒</span></div>
+ <div id=tablebox>
+  <div id=tbl></div>
+  <button type=button class="btn addg" id=addg>＋ 加一个团</button>
+  <p class=hint>没有 CN 的角色就是<b>空缺</b>，页面上能直接点「报名」。团名写「摄影 / 后勤 / 妆娘 / staff」会当工作组，不配立绘。</p>
+ </div>
+ <label class="f hide" id=pastebox><span>每行一个角色，后面跟 CN；没有 CN 就是空缺。「## 团名」分团，「&gt;」写团说明</span><textarea name=names spellcheck=false></textarea></label>
+ <div id=chkbox style="margin:10px 0 0"><button type=button class=btn id=chk>检查这些名字配不配得上图</button> <span style="font-size:12.5px;color:var(--ink-soft)">去 Bangumi 逐个核对，十来个角色十几秒</span></div>
  <div class="nc hide" id=nc></div>
  <details style="margin-top:8px;font-size:13px"><summary style="cursor:pointer;color:var(--ink-soft)">只是想先看看效果？用示例数据</summary>
   <div style="margin-top:8px;display:flex;gap:8px;align-items:center"><select id=ex style="flex:1;border:2px solid var(--ink);border-radius:10px;padding:8px;font:inherit;background:var(--paper);color:var(--ink)"></select><button type=button class=btn id=useex>用这个</button></div></details>
@@ -93,19 +117,82 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
  <a href=/>打开招募页 →</a></section>
 </main>
 <script>
-const $=s=>document.querySelector(s),F=$('#wz'),T=new URLSearchParams(location.search).get('t')||'';
+const $=s=>document.querySelector(s),F=$('#wz');
+let T=new URLSearchParams(location.search).get('t')||'';
 if(!T)$('#tokbox').classList.remove('hide');
 const token=()=>T||($('#tok').value||'').trim();
 const SAMPLE={single:'## CLANNAD\n> 光坂高中外景 + 棚拍，妆造自理\n古河渚 云果\n冈崎朋也 白花枝\n藤林杏\n春原阳平\n一之濑琴美 糖糖',
  multi:'## CLANNAD\n古河渚 云果\n冈崎朋也\n\n## Kanon\n月宫亚由 大圆\n水濑名雪\n\n## 摄影 / 后勤\n摄影 阿光\n后勤'};
 const ta=F.names;let touched=false;ta.addEventListener('input',()=>touched=true);
 const syncSample=()=>{if(!touched){ta.value='';ta.placeholder=SAMPLE[F.mode.value]+'\n\n（上面是格式示例。多个团就用「## 团名」分开）'}};
-F.addEventListener('change',e=>{if(e.target.name==='mode')syncSample();if(e.target.name==='source'){for(const id of ['#pastebox','#pv','#chkbox'])$(id).classList.toggle('hide',F.source.value!=='paste');if(F.source.value!=='paste')$('#nc').classList.add('hide')}});
+F.addEventListener('change',e=>{if(e.target.name==='mode')syncSample();if(e.target.name==='source')applySource()});
 syncSample();
 const post=(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(Object.assign({token:token()},b))}).then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j});
-let pt=0;ta.addEventListener('input',()=>{clearTimeout(pt);pt=setTimeout(preview,350)});
-async function preview(){const pv=$('#pv');if(!ta.value.trim()){pv.textContent='';return}
- try{const j=await post('/api/setup/preview',{source:'paste',names:ta.value,title:F.title.value});pv.className='pv';
+/* ── 角色名单：表格是源，提交时才拼成「## 团名 / 角色 CN」的文本（服务端只认这一种格式） ──
+   以前只能整段粘贴，团长得记住「##」、空格分隔这些规矩；现在加团、加行、删行都是点一下。 */
+const blankRow=()=>({ch:'',cn:''});
+let rows=[{name:'',note:'',members:[blankRow(),blankRow(),blankRow()]}];
+const tbl=$('#tbl');
+function renderRows(){
+ tbl.innerHTML=rows.map((g,i)=>`<div class=g>
+  <div class=gh>
+   <label class=f><span>团名</span><input data-g=${i} data-f=name value="${esc(g.name)}" placeholder="例：Kanon" autocomplete=off></label>
+   <label class=f><span>团说明 <i>可不填</i></span><input data-g=${i} data-f=note value="${esc(g.note)}" placeholder="例：光坂外景，妆造自理" autocomplete=off></label>
+   <button type=button class="btn del" data-delg=${i}${rows.length<2?' disabled':''}>删掉</button>
+  </div>
+  <div class=mh><span>角色</span><span>CN <i>留空 = 空缺，可以报名</i></span><span></span></div>
+  ${g.members.map((m,j)=>`<div class=mr>
+   <input data-g=${i} data-r=${j} data-f=ch value="${esc(m.ch)}" placeholder="角色名" autocomplete=off aria-label="角色">
+   <input data-g=${i} data-r=${j} data-f=cn value="${esc(m.cn)}" placeholder="谁来出" autocomplete=off aria-label="CN">
+   <button type=button class="btn del" data-delr="${i},${j}"${g.members.length<2?' disabled':''} title="删掉这一行">×</button>
+  </div>`).join('')}
+  <button type=button class="btn addrow" data-addr=${i}>＋ 加一个角色</button></div>`).join('');
+}
+tbl.addEventListener('input',e=>{const d=e.target.dataset;if(!d.f)return;const i=+d.g;
+ if(d.r===undefined)rows[i][d.f]=e.target.value;else rows[i].members[+d.r][d.f]=e.target.value;
+ touched=true;schedulePreview()});
+tbl.addEventListener('click',e=>{const d=e.target.dataset;
+ if(d.delg!==undefined){if(rows.length<2)return;rows.splice(+d.delg,1);renderRows();schedulePreview();return}
+ if(d.delr){const [i,j]=d.delr.split(',').map(Number);if(rows[i].members.length<2)return;rows[i].members.splice(j,1);renderRows();schedulePreview();return}
+ if(d.addr!==undefined){rows[+d.addr].members.push(blankRow());renderRows();
+  const gs=tbl.querySelectorAll('.g')[+d.addr],ms=gs.querySelectorAll('.mr');ms[ms.length-1].querySelector('input').focus()}});
+$('#addg').onclick=()=>{rows.push({name:'',note:'',members:[blankRow(),blankRow()]});renderRows();
+ const gs=tbl.querySelectorAll('.g');gs[gs.length-1].querySelector('input').focus()};
+function tableText(){
+ const title=F.title.value.trim();
+ return rows.map(g=>{
+  const ms=g.members.filter(m=>m.ch.trim()),name=g.name.trim()||title;
+  if(!name&&!ms.length&&!g.note.trim())return '';
+  return ['## '+name,g.note.trim()?'> '+g.note.trim():'',...ms.map(m=>m.ch.trim()+(m.cn.trim()?' '+m.cn.trim():''))].filter(Boolean).join('\n');
+ }).filter(Boolean).join('\n\n');
+}
+const namesText=()=>F.source.value==='table'?tableText():ta.value;
+function applySource(){
+ const s=F.source.value;
+ $('#tablebox').classList.toggle('hide',s!=='table');
+ $('#pastebox').classList.toggle('hide',s!=='paste');
+ $('#pv').classList.toggle('hide',s==='blank');
+ $('#chkbox').classList.toggle('hide',s==='blank');
+ if(s==='blank'){ncHide();$('#pv').textContent='';return}
+ if(s==='paste'&&!ta.value.trim()&&tableText().trim())ta.value=tableText();
+ if(s==='table'&&ta.value.trim()&&ta.value.trim()!==tableText().trim())importText(ta.value);
+ preview();
+}
+async function importText(text){
+ try{
+  const j=await post('/api/setup/preview',{source:'paste',names:text,title:F.title.value||'我们的团'});
+  if(!j.rows||!j.rows.length)return;
+  rows=j.rows.map(g=>({name:g.name||'',note:g.note||'',
+   members:(g.members||[]).map(m=>({ch:m.character||'',cn:m.member||''}))}));
+  for(const g of rows)if(!g.members.length)g.members.push(blankRow());
+  renderRows();preview();
+ }catch(e){ncShow('<b>这段名单读不出来：</b>'+esc(e.message)+'<div class=w style="margin-top:4px">改好再切回表格，或者直接选「先空着」。</div>')}
+}
+let pt=0;function schedulePreview(){clearTimeout(pt);pt=setTimeout(preview,350)}
+ta.addEventListener('input',schedulePreview);
+async function preview(){const pv=$('#pv');if(F.source.value==='blank'){pv.textContent='';return}
+ const text=namesText();if(!text.trim()){pv.textContent='';return}
+ try{const j=await post('/api/setup/preview',{source:'paste',names:text,title:F.title.value});pv.className='pv';
   pv.innerHTML='读到 <b>'+j.summary+'</b>'+(j.groups.length>1||F.mode.value==='multi'?'<ul>'+j.groups.map(g=>`<li>${esc(g.name)}：${g.n} 个角色${g.open?`，${g.open} 个空缺`:''}</li>`).join('')+'</ul>':'')}
  catch(e){pv.className='pv bad';pv.textContent=e.message}}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -141,15 +228,22 @@ function renderNames(j){
  ncEl.querySelectorAll('[data-adopt]').forEach(b=>b.onclick=()=>adopt(b.dataset.adopt,b.dataset.good));
 }
 async function checkNames(){
- if(!ta.value.trim()){ncHide();return}
+ const text=namesText();
+ if(!text.trim()){ncHide();return}
  const btn=$('#chk'),old=btn.textContent;btn.disabled=true;btn.textContent='核对中…';
  ncShow('<b>正在核对…</b>每个角色要去 Bangumi 问一次，十来个角色大约十几秒。');
- try{renderNames(await post('/api/setup/names',{names:ta.value,title:F.title.value||'我们的团'}))}
+ try{renderNames(await post('/api/setup/names',{names:text,title:F.title.value||'我们的团'}))}
  catch(e){ncShow('<b>没核对成：</b>'+esc(e.message)+'<div class=w style="margin-top:4px">不影响建站，进后台「找立绘」可以手选。</div>')}
  finally{btn.disabled=false;btn.textContent=old}
 }
 function adopt(ch,good){
  if(!good)return;
+ if(F.source.value==='table'){
+  let hit=false;
+  for(const g of rows){for(const m of g.members){if(m.ch.trim()===ch){m.ch=good;hit=true;break}}if(hit)break}
+  if(!hit){ncShow(ncEl.innerHTML+`<div class=w style="margin-top:6px"><b>表格里没找到「${esc(ch)}」这一行，手动改一下。</b></div>`);return}
+  renderRows();touched=true;preview();checkNames();return;
+ }
  const lines=ta.value.split('\n');let done=false;
  for(let i=0;i<lines.length;i++){
   const t=lines[i];if(!t.trim()||/^\s*[#>]/.test(t))continue;
@@ -161,16 +255,45 @@ function adopt(ch,good){
 }
 $('#chk').onclick=checkNames;
 fetch('/api/setup/examples').then(r=>r.json()).then(j=>{$('#ex').innerHTML=j.items.map(x=>`<option value="${esc(x.name)}">${esc(x.name)}（${x.groups} 个团、${x.seats} 个席位）</option>`).join('')}).catch(()=>{});
-/* server.py --prefill 名单.txt：名单（和活动名）已经准备好了，这里预填，团长核对就行 */
-if(T)fetch('/api/setup/prefill?t='+encodeURIComponent(T)).then(r=>r.ok?r.json():{}).then(p=>{if(!p.names)return;
- ta.value=p.names;touched=true;if(p.title&&!F.title.value)F.title.value=p.title;if(p.mode)F.mode.value=p.mode;
- const n=$('#pfnote');n.classList.remove('hide');n.innerHTML='名单已经准备好了（'+esc(p.file||'')+'，'+esc(p.summary)+'）。核对一下，要改直接在下面改。';preview();setTimeout(checkNames,200)}).catch(()=>{});
+/* 验证码：链接里带 ?t= 就直接用；没带就显示六位输入框，输满六位自动验一次
+   （验错要记一次试错，所以等六位都输完再发，别每敲一位问一次） */
+async function useCode(code,quiet){
+ try{
+  const r=await fetch('/api/setup/prefill?t='+encodeURIComponent(code));
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
+  T=code;$('#tokbox').classList.add('hide');$('#tokerr').textContent='';
+  if(j.names){
+   ta.value=j.names;touched=true;
+   if(j.title&&!F.title.value)F.title.value=j.title;
+   if(j.mode)F.mode.value=j.mode;
+   const n=$('#pfnote');n.classList.remove('hide');
+   n.innerHTML='名单已经准备好了（'+esc(j.file||'')+'，'+esc(j.summary)+'）。核对一下，要改直接在下面改。';
+   if(F.source.value==='table')await importText(j.names);else preview();
+   setTimeout(checkNames,200);
+  }
+  return true;
+ }catch(e){
+  $('#tokbox').classList.remove('hide');
+  if(!quiet)$('#tok').value='';
+  $('#tokerr').textContent=e.message;
+  return false;
+ }
+}
+if(T)useCode(T,true);
+const tokEl=$('#tok');let tt=0;
+tokEl.addEventListener('input',()=>{
+ tokEl.value=tokEl.value.replace(/\D/g,'').slice(0,6);
+ clearTimeout(tt);
+ if(tokEl.value.length===6)tt=setTimeout(()=>useCode(tokEl.value,false),160);
+});
+tokEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(tokEl.value.length===6)useCode(tokEl.value,false)}});
 /* 建完：轮询首次收尾（配图 → 一图流），完成页上一步步亮起来 */
-async function progress(src){const li=s=>$('#fr [data-s='+s+']'),msg=$('#frmsg');if(src!=='paste')li('art').classList.add('skip');
+async function progress(src){const li=s=>$('#fr [data-s='+s+']'),msg=$('#frmsg'),hasArt=src==='paste'||src==='table';if(!hasArt)li('art').classList.add('skip');
  let grace=0;
  for(let i=0;i<300;i++){let j;try{j=await (await fetch('/api/admin/firstrun',{credentials:'same-origin'})).json()}catch(e){await new Promise(r=>setTimeout(r,2000));continue}
   const st=j.stage,pp=j.poster||{};
-  if(src==='paste'){li('art').classList.toggle('run',st==='art');li('art').classList.toggle('ok',st==='poster'||st==='done')}
+  if(hasArt){li('art').classList.toggle('run',st==='art');li('art').classList.toggle('ok',st==='poster'||st==='done')}
   const pRun=st==='poster'||pp.running,pOk=pp.ready&&!pp.running&&st==='done';
   /* stage=done 会早于后台海报落盘：此刻 ready 还是 false。以前一看到 done 就 return，
      页面把「其实生成成功了」画成跳过，并且不再轮询，团长再等也不会变绿。
@@ -190,17 +313,19 @@ let fp=null;fetch('/api/setup/fields').then(r=>r.json()).then(j=>{fp=fieldPicker
 let example='';$('#useex').onclick=()=>{example=$('#ex').value;F.requestSubmit()};
 function startISO(){const d=F.date.value,t=F.time.value;if(!d||!t)return '';const o=-new Date(`${d}T${t}`).getTimezoneOffset(),p=n=>String(Math.floor(Math.abs(n))).padStart(2,'0');return `${d}T${t}:00${o>=0?'+':'-'}${p(o/60)}:${p(o%60)}`}
 F.onsubmit=async e=>{e.preventDefault();const err=$('#err'),btn=F.querySelector('.go');err.textContent='';
- if(!token()){err.textContent='缺少口令：用终端里打印的链接打开这个页面';return}
+ if(!token()){err.textContent='缺少验证码：输入服务器终端里那六位数字';$('#tokbox').classList.remove('hide');$('#tok').focus();return}
  if(!F.title.value.trim()&&!example){err.textContent='请填写活动名称';F.title.focus();return}
  if(F.password.value.length<8){err.textContent='管理密码至少 8 位';F.password.focus();return}
  if(F.password.value!==F.password2.value){err.textContent='两次输入的密码不一样';F.password2.focus();return}
  const src=example?'example':F.source.value;
  if(src==='paste'&&!ta.value.trim()){err.textContent='名单是空的：粘贴名单，或者选「先空着」';ta.focus();return}
+ if(src==='table'&&!tableText().trim()){err.textContent='名单还是空的：填几个角色，或者选「先空着」';return}
  const cv=F.cvalue.value.trim();
  btn.disabled=true;btn.textContent='正在建…';
  try{await post('/api/setup',{mode:F.mode.value,title:F.title.value.trim()||'示例活动',date:F.date.value,start:startISO(),location:F.location.value.trim(),
-   contact:cv?((F.clabel.value?F.clabel.value+' ':'')+cv):'',contactLabel:F.contactLabel.value,source:src,names:ta.value,example,password:F.password.value,fields:fp?fp.value():[]});
+   contact:cv?((F.clabel.value?F.clabel.value+' ':'')+cv):'',contactLabel:F.contactLabel.value,source:src,names:src==='blank'?'':namesText(),example,password:F.password.value,fields:fp?fp.value():[]});
   F.classList.add('hide');$('#tokbox').classList.add('hide');$('#done').classList.remove('hide');sessionStorage.setItem('kr_edit','1');scrollTo({top:0});progress(src)}
  catch(ex){err.textContent=ex.message;btn.disabled=false;btn.textContent='建好它 →';example=''}};
+renderRows();applySource();
 </script>
 </body></html>

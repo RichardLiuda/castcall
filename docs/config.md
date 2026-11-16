@@ -146,7 +146,7 @@ logo、favicon、海报大图在后台工具条「站点素材」里上传 / 更
 
 ### limits：频率限制
 
-每个 IP 在 `windowSec` 秒内最多：`login` 次密码错误、`signup` 次报名、`guestbook` 次留言、`photo` 张本人照片、`sample` 张报名样片。默认 600 秒内 5 / 8 / 8 / 6 / 10。
+每个 IP 在 `windowSec` 秒内最多：`login` 次密码错误、`setup` 次建站验证码试错、`signup` 次报名、`guestbook` 次留言、`photo` 张本人照片、`sample` 张报名样片。默认 600 秒内 5 / 12 / 8 / 8 / 6 / 10。
 
 ### notion
 

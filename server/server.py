@@ -415,7 +415,11 @@ class H(SimpleHTTPRequestHandler):
     if p=='/api/setup/examples':s.js(200,{'items':setup.examples()});return True
     if p=='/api/setup/prefill':
       t=(urllib.parse.parse_qs(urllib.parse.urlparse(s.path).query).get('t') or [''])[0]
-      if not SETUP['token'] or not hmac.compare_digest(t,SETUP['token']):s.js(403,{'error':'口令不对'});return True
+      if not SETUP['token'] or not hmac.compare_digest(t,SETUP['token']):
+        # 六位数字只有一百万种，验证码页每输错一次都记一笔：不然可以直接枚举出预填的名单。
+        hits,cap,now=s.limited('setup')
+        if len(hits)>=cap:s.js(429,{'error':'试错太多次了，等 10 分钟再试（或重启服务器换一个验证码）'});return True
+        hits.append(now);s.js(403,{'error':'验证码不对：看服务器终端里那六位数字'});return True
       s.js(200,SETUP['prefill'] or {});return True
     if p=='/api/setup/fields':s.js(200,{'presets':[dict(v,key=k) for k,v in fields.PRESETS.items()]});return True
     if p=='/api/health':s.js(200,health_payload(True));return True
@@ -424,21 +428,28 @@ class H(SimpleHTTPRequestHandler):
     return False
   def setup_post(s,p):
     if p not in ('/api/setup','/api/setup/preview','/api/setup/names'):s.close_connection=True;return s.js(409,{'error':'还没初始化，先打开 /setup'})   # 没读请求体：不能复用连接，否则剩下的 body 会被当成下一个请求
-    hits,cap,now=s.limited('login')
-    if len(hits)>=cap:return s.js(429,{'error':'尝试次数过多，请 10 分钟后再试'})
+    hits,cap,now=s.limited('setup')
+    if len(hits)>=cap:return s.js(429,{'error':'试错太多次了，等 10 分钟再试（或重启服务器换一个验证码）'})
     try:b=s.body(400_000)
     except Exception:return s.js(400,{'error':'提交格式不对'})
     if not isinstance(b,dict) or not hmac.compare_digest(str(b.get('token') or ''),SETUP['token']):
-      hits.append(now);return s.js(403,{'error':'口令不对：用服务器启动时终端里打印的那个链接打开'})
+      hits.append(now);return s.js(403,{'error':'验证码不对：看服务器终端里那六位数字'})
     import importer
     # 给了名单却没说是哪来的，按「粘贴」算：向导的「核对名字」只发 names + title，
     # 少一个 source 就被当成「先空着」，于是每次都回「名单是空的」——按钮一直是废的。
-    text=str(b.get('names') or '');src=b.get('source') or ('paste' if text.strip() else 'blank')
+    text=str(b.get('names') or '');src=str(b.get('source') or ('paste' if text.strip() else 'blank'))
+    # 向导的表格编辑器把「团 / 角色 / CN」拼成同一份名单文本再提交（source=table）：
+    # 对服务端来说它和粘贴进来的一模一样，别因为多了个取值就把整份名单丢掉、建成默认的空名册。
+    parse_src='paste' if src in ('paste','table') else src
     try:
-      parsed=importer.parse(text,str(b.get('title') or '我们的团').strip()[:59] or '我们的团') if src=='paste' else None
+      parsed=importer.parse(text,str(b.get('title') or '我们的团').strip()[:59] or '我们的团') if parse_src=='paste' else None
     except ValueError as e:return s.js(400,{'error':str(e)})
     if p=='/api/setup/preview':
-      return s.js(200,{'summary':importer.summary(parsed),'groups':[{'name':g['name'],'n':len(g['members']),'open':sum(1 for m in g['members'] if not m['member'])} for g in parsed['groups']]} if parsed else {'summary':''})
+      # rows 给向导的表格编辑器用：把粘贴的名单原样摊成「团 / 角色 / CN」，团长可以接着一格一格改。
+      return s.js(200,{'summary':importer.summary(parsed),
+        'groups':[{'name':g['name'],'n':len(g['members']),'open':sum(1 for m in g['members'] if not m['member'])} for g in parsed['groups']],
+        'rows':[{'name':g['name'],'note':g.get('note') or '','kind':g.get('kind') or 'cast',
+                 'members':[{'character':m['character'],'member':m['member'] or ''} for m in g['members']]} for g in parsed['groups']]} if parsed else {'summary':''})
     if p=='/api/setup/names':
       # 名单预检：每个名字能不能配上图。结果落在 uploads/art_bind.json，建站后的自动配图直接按它取图。
       if not parsed:return s.js(400,{'error':'名单是空的'})
@@ -462,7 +473,7 @@ class H(SimpleHTTPRequestHandler):
         try:os.remove(os.path.join(config.C.INSTANCE,'.setup-token'))
         except OSError:pass
       # 首次收尾：粘贴的名单先自动配图，再生成一图流（样例 / 空名册没什么可配的，只生成一图流）
-      import firstrun;firstrun.run_bg(LOCK,do_art=src=='paste')
+      import firstrun;firstrun.run_bg(LOCK,do_art=parse_src=='paste')
     except ValueError as e:return s.js(400,{'error':str(e)})
     except Exception as e:log('setup err',repr(e));return s.js(500,{'error':'初始化失败：'+str(e)[:120]})
     log('setup done',config.C.INSTANCE)
@@ -716,14 +727,14 @@ def preflight():
   roster.validate(roster.load());config.C.site;store.db().close()
   return True
 def setup_token(C):
-  """向导口令存在实例目录里（.setup-token，只有本机用户能读）：服务器中途被杀、重启后链接不变，已经打开的向导页还能接着提交。
-  建站成功后删掉。"""
+  """向导口令：6 位数字验证码，存在实例目录里（.setup-token，只有本机用户能读）：服务器中途被杀、重启后验证码不变，已经打开的向导页还能接着提交。
+  老实例里可能还留着 0.1.0-beta 之前的长串口令，继续认——否则正填到一半的人会被踢出去。建站成功后删掉。"""
   p=os.path.join(C.INSTANCE,'.setup-token')
   try:
     with open(p,encoding='utf-8') as f:t=f.read().strip()
-    if re.fullmatch(r'[\w-]{12,64}',t):return t
+    if re.fullmatch(r'\d{6}',t) or re.fullmatch(r'[\w-]{12,64}',t):return t
   except OSError:pass
-  t=secrets.token_urlsafe(9);os.makedirs(C.INSTANCE,exist_ok=True)
+  t=f'{secrets.randbelow(1000000):06d}';os.makedirs(C.INSTANCE,exist_ok=True)
   with open(p,'w',encoding='utf-8') as f:f.write(t)
   try:os.chmod(p,0o600)
   except OSError:pass
@@ -774,7 +785,13 @@ def main(argv=None):
   if ready:print(f'castcall: http://{shown}:{port}/  （实例目录 {config.C.INSTANCE}，Notion {"已启用" if config.C.notion_on() else "未启用"}）',flush=True)
   else:
     pf=SETUP['prefill'];pre=f'名单已预填：{pf["file"]}（{pf["summary"]}）\n' if pf else ''
-    print(f'castcall 还没初始化。{pre}在浏览器里打开下面这个链接完成设置（链接里的口令只在这里出现，别发给别人）：\n\n  http://{shown}:{port}/setup?t={SETUP["token"]}\n\n（也可以停掉服务器，用 python3 init.py 在命令行里初始化）',flush=True)
+    tok=SETUP['token'];code=bool(re.fullmatch(r'\d{6}',tok or ''))
+    head=f'  验证码  {tok}' if code else f'  口令  {tok}'
+    hint='页面会要你输这 6 位数字；直接打开上面的链接就不用输。' if code else '打开上面的链接（末尾带着口令）。'
+    print(f'castcall 还没初始化。{pre}\n{head}\n\n  打开  http://{shown}:{port}/setup?t={tok}\n\n'
+          '（验证码只在这里出现一次，别发给别人。\n'
+          f'  {hint}\n'
+          '  也可以停掉服务器，用 python3 init.py 在命令行里初始化）',flush=True)
   try:srv.serve_forever()
   except KeyboardInterrupt:pass
   if a.exit_after_setup and firstrun.STATE.get('finished'):
