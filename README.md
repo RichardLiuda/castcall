@@ -2,7 +2,7 @@
 
 **cos 团建 / 团片招募用的名册站。** 一个页面看清「哪个团、哪个角色、谁来出」，空着的角色可以在线报名，团长在后台审核通过后才落座。
 
-> **0.1.0-beta** · 第一个公开版本。功能是完整的，但 0.1 阶段接口和数据结构仍可能调整——升级前备份 `instance/`，你的名册、报名、图片全在里面。
+> **0.2.0-beta** · 新增「例图」：团长放想拍的参考图，成员也能传自己想拍的。0.x 阶段接口和数据结构仍可能调整——升级前备份 `instance/`，你的名册、报名、图片全在里面。变更见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 最快：一句话让 AI 帮你部署
 
@@ -36,6 +36,7 @@
 - **只用 Python 标准库**：`python3 server/server.py` 就能跑，前端没有构建步骤，也不用装数据库。
 - **单团 / 多团自动切换**：一部作品就是一整页阵容；好几部作品自动变成封面卡墙。
 - **数据全在你自己手里**：名册是 `instance/roster.json`，报名在 `instance/castcall.db`（sqlite），没有第三方账号。
+- **例图**：团长把想拍的参考图（多人照、机位、氛围）放在页面上，报名的人一眼看到要什么感觉；多团时按团分开、可标给具体角色，成员也能在个人页传自己想拍的，团长审核后显示。
 - **一图流海报**：建站时自动把名册排成一张长图，网页版能看、能导出 JPG（可选依赖，不装也不影响建站）。
 
 ![建好后的招募页：封面大图 + 招募中的角色 + 已定阵容](docs/images/05-home.png)
@@ -101,7 +102,7 @@ python3 server/server.py
 |---|---|
 | [docs/walkthrough.md](docs/walkthrough.md) | **图文手册**：从装环境到上线，每一步带真实截图 |
 | [docs/quickstart.md](docs/quickstart.md) | 同一套流程的命令版，参数更全 |
-| [docs/admin.md](docs/admin.md) | 建好之后日常改东西：名单、图片、审核、报名字段、招募须知 |
+| [docs/admin.md](docs/admin.md) | 建好之后日常改东西：名单、图片、审核、报名字段、招募须知、例图 |
 | [docs/config.md](docs/config.md) | `site.json` 每个字段、名单格式、单团 / 多团怎么切 |
 | [docs/poster.md](docs/poster.md) | 一图流版式、字体、可选依赖 |
 | [docs/data.md](docs/data.md) | 数据在哪、备份、换机器、线上和本地两份数据 |
@@ -109,6 +110,7 @@ python3 server/server.py
 | [docs/deploy.md](docs/deploy.md) | 自己的服务器：systemd + 反向代理 |
 | [docs/notion.md](docs/notion.md) | 接 Notion 同步报名和名册 |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | 卡住了怎么办 |
+| [CHANGELOG.md](CHANGELOG.md) | 每个版本改了什么、怎么升级 |
 | [TODO.md](TODO.md) | 想清楚了还没做的，以及明确不做的事（附理由） |
 | [docs/optimization-log.md](docs/optimization-log.md) | 为什么这么改：每轮优化的判断、坑和验证结果 |
 | [AGENTS.md](AGENTS.md) / [skills/](skills/) | 给 AI 助手看的操作手册（标准流程 + 禁区）和两个可安装技能 |

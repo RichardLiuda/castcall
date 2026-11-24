@@ -69,7 +69,7 @@ python3 tools/bundle.py --out ../castcall-publish     # 打包
 | 语言 / 运行时 | Python 3.9+ |
 | 安装命令 | 留空 |
 | 启动命令 | `python3 server/server.py` |
-| 健康检查 | `GET /api/health` → `{"ok": true, "version": "0.1.0-beta"}` |
+| 健康检查 | `GET /api/health` → `{"ok": true, "version": "0.2.0-beta"}` |
 
 发布是对外的动作：只在用户明确说要发布 / 上线时才做。平台不支持这种应用（比如只能发静态页）时就停下来，**不要**把它改成静态托管：`/data.js`、`/site.js`、`/chars.js` 是运行时生成的，静态托管出来是一个空页面。
 

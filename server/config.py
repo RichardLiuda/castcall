@@ -16,7 +16,7 @@ ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB=os.path.join(ROOT,'web')
 # 对外版本号，发版时改这一处（同时记进 CHANGELOG.md、打同名 tag）。
 # /api/health 会带出去，线上出问题时先问这一行，能确认跑的是哪版。
-VERSION='0.1.0-beta'
+VERSION='0.2.0-beta'
 DEFAULTS={
   'mode':'auto',            # auto: 1 个团按单团显示，多于 1 个按多团；single / multi 强制
   'event':{

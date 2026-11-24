@@ -111,6 +111,7 @@ class SingleLineup(unittest.TestCase):
       s.assertTrue(last>=c-1 or n<=c,(n,c))
     s.assertEqual(Build.lu_cols(9,5),5)
     s.assertEqual(Build.lu_cols(1,5),1)
+@unittest.skipUnless(HAS_PIL,'一图流要 Pillow；没装就跳过（它是可选依赖）')
 class StaleWide(unittest.TestCase):
   """团数从多个掉到单个之后，上一轮的 wide.html 还躺在 instance/poster/ 里，
   /poster/ 的挑选脚本看见它就用它——桌面上打开还是旧的多团图，改了像没改。"""
