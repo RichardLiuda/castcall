@@ -435,3 +435,29 @@ body.qfocus #res{position:relative;z-index:19;background:var(--page);border-radi
 #signup .signup-seg input:checked+span{background:var(--c,var(--ink));color:#fff;border-color:var(--ink)}
 #signup .signup-seg input:focus-visible+span{outline:2px solid var(--gold);outline-offset:2px}
 #signup .signup-hint{font-weight:500;letter-spacing:0;color:var(--ink-soft);font-size:11.5px}
+
+/* 例图：名册和留言区之间的一栏，缺人看板和搜索时让开 */
+#shots{max-width:1100px;margin:0 auto;padding:8px 16px 40px;color:var(--ink)}
+#shots[hidden]{display:none}
+body.casting #shots,#m.searching~#shots{display:none}
+.shots-mast{margin:0 0 14px}
+#shots h2{margin:8px 0 0;font-family:"Didot","Bodoni 72","Bodoni Moda","Playfair Display","Noto Serif","Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,serif;font-weight:700;font-size:clamp(28px,5vw,40px);line-height:1;letter-spacing:-.03em}
+.shots-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:720px){.shots-grid{grid-template-columns:repeat(4,1fr);gap:12px}}
+.shot{margin:0;border:2px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--paper);box-shadow:3px 3px 0 var(--ink)}
+.shot-b{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in;aspect-ratio:3/4;overflow:hidden}
+.shots-in{margin:6px 0 14px}.shots-k{margin:0 0 8px;font:800 11px/1 system-ui,sans-serif;letter-spacing:.14em;color:var(--gold)}
+.shots-in .shots-grid{grid-template-columns:repeat(3,1fr)}@media(min-width:720px){.shots-in .shots-grid{grid-template-columns:repeat(5,1fr)}}
+.shots-seat{margin:14px 0 0}.shots-strip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px}
+.shots-strip .shot-b{flex:none;width:78px;border:2px solid var(--ink);border-radius:10px}.shots-strip .shot-b.mine{border-style:dashed}
+.shot-b img{width:100%;height:100%;object-fit:cover;display:block}
+.shot-b:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+.shot figcaption{padding:6px 9px 8px;font-size:12.5px;line-height:1.4;overflow-wrap:anywhere}
+.shot figcaption b{display:block;color:var(--gold);font-size:11px;letter-spacing:.06em}
+#shot-lb{position:fixed;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(10,8,6,.88);padding:16px}
+#shot-lb.open{display:flex}
+#shot-lb img{max-width:100%;max-height:calc(100dvh - 90px);object-fit:contain;border-radius:8px}
+#shot-lb p{margin:0;color:#fff;font-size:14px;text-align:center;max-width:36em}
+.shot-x,.shot-n{position:absolute;width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:28px;line-height:1;cursor:pointer}
+.shot-x{top:12px;right:12px}.shot-n{top:50%;transform:translateY(-50%)}.shot-n.prev{left:10px}.shot-n.next{right:10px}
+body.shot-lock{overflow:hidden}

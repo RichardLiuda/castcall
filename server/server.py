@@ -10,7 +10,7 @@ import hashlib,hmac,html,json,os,re,secrets,subprocess,sys,threading,time,urllib
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
 from http.cookies import SimpleCookie
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-import config,fields,notice,roster,review,setup,store
+import config,fields,notice,roster,review,setup,shots,store
 from config import ROOT,WEB,VERSION
 LOCK=threading.Lock();SESS={};HITS={}
 SETUP={'token':None,'instance':None,'prefill':None}   # set while the instance is not initialized: the first-run wizard needs this token
@@ -33,7 +33,7 @@ def check_pw(p):
 from setup import set_password   # re-exported: tests and older scripts call server.set_password
 
 # ── uploads (covers, portraits, logo) ─────────────────────────────────────
-UP_DIRS=('covers','portraits','brand','photos')
+UP_DIRS=('covers','portraits','brand','photos','shots','mshots')
 def jload(p,d):
   try:
     with open(p,encoding='utf-8') as f:return json.load(f)
@@ -53,7 +53,7 @@ def imgv():
 def charsjs():
   m=jload(config.C.MAP,{});I=imgv()
   m2={k:v+'?v='+str(I[v][0]) if v in I else v for k,v in m.items()}
-  return 'window.CHARS='+json.dumps(m2,ensure_ascii=False)+';window.CHARPOS={};window.IMGV='+json.dumps(I,ensure_ascii=False,separators=(',',':'))+';window.PHOTOS='+json.dumps(photos_shown(I),ensure_ascii=False)+';'
+  return 'window.CHARS='+json.dumps(m2,ensure_ascii=False)+';window.CHARPOS={};window.IMGV='+json.dumps(I,ensure_ascii=False,separators=(',',':'))+';window.PHOTOS='+json.dumps(photos_shown(I),ensure_ascii=False)+';window.MSHOTS='+json.dumps(mshots_shown(I),ensure_ascii=False)+';'
 def photos_shown(I=None):
   """{seat id: 'photos/x.jpg?v=..'}：开关开着、照片已通过、而且席位上还是上传的那个人（换人后旧照片不挂到新人头上）。"""
   if not config.C.site['photos']['enabled']:return {}
@@ -62,6 +62,16 @@ def photos_shown(I=None):
   for seat,(member,f) in store.shown_photos().items():
     p='photos/'+f
     if cur.get(seat)==member and p in I:out[seat]=p+'?v='+str(I[p][0])
+  return out
+def mshots_shown(I=None):
+  """{seat id: [{'f':'mshots/x.jpg?v=..','c':图注}]}：跟本人照片同一个开关；只给席位上还是上传者本人的（换人后不挂到新人头上）。"""
+  if not config.C.site['photos']['enabled']:return {}
+  I=I or imgv();cur={m.get('id'):(m.get('member') or '').strip() for g in roster.load()['groups'] for m in g['members']}
+  out={}
+  for seat,lst in store.shown_mshots().items():
+    for member,f,cap in lst:
+      p='mshots/'+f
+      if cur.get(seat)==member and p in I:out.setdefault(seat,[]).append({'f':p+'?v='+str(I[p][0]),'c':cap})
   return out
 def sniff(b):
   if b[:3]==b'\xff\xd8\xff':return 'jpg'
@@ -196,13 +206,25 @@ def poster_stale():
   if not os.path.isfile(f):return False
   t=os.path.getmtime(f)
   return any(os.path.isfile(p) and os.path.getmtime(p)>t for p in poster_sources())
+def poster_reason(tail):
+  """poster.log 的结尾 → 团长看得懂的一句话（原因 + 怎么办）。认不出来就给最后一行报错原文。"""
+  if not tail:return ''
+  if "Executable doesn't exist" in tail or 'playwright install' in tail:
+    return '服务器上缺一图流用的浏览器（Playwright 升级后要重新下载）。在服务器上运行：.venv-poster/bin/playwright install chromium（国内下不动就在前面加 PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright ），装好后再点一次。'
+  if 'No module named' in tail:
+    m=re.search(r"No module named '([\w.]+)'",tail)
+    return f'服务器上缺 Python 依赖{(" "+m.group(1)) if m else ""}：运行 pip install -r requirements-poster.txt 后再点一次。'
+  if 'Timeout' in tail or 'timed out' in tail:return '生成超时了，多半是图片太多或机器太慢。稍后再点一次试试。'
+  if 'No space left' in tail:return '服务器磁盘满了，清理一下再试。'
+  ln=[x.strip() for x in tail.strip().splitlines() if x.strip() and not x.strip().startswith(('File ','^','╔','║','╚'))]
+  return ('出错了：'+ln[-1][:160]) if ln else ''
 def poster_status():
   p=POSTER['proc'];run=bool(p and p.poll() is None)
   if p and not run:POSTER['rc']=p.returncode
   try:tail=readf(os.path.join(config.C.LOGS,'poster.log'))[-1500:]
   except OSError:tail=''
   return {'available':poster_available(),'running':run,'rc':POSTER['rc'],'startedAt':POSTER['at'],'ready':poster_ready(),
-          'stale':poster_stale(),'log':tail}
+          'stale':poster_stale(),'log':tail,'reason':poster_reason(tail) if POSTER['rc'] not in (None,0) else ''}
 POSTER_BACK=(
 '<div class="kr-poster-chrome" role="navigation" aria-label="海报工具">'
 '<a class="kr-poster-back" href="/">返回名单</a>'
@@ -311,11 +333,12 @@ class H(SimpleHTTPRequestHandler):
     """/covers/ /portraits/ /brand/ come from instance/uploads, /poster/ from instance/poster, the rest from web/."""
     p=urllib.parse.unquote(path.split('?',1)[0].split('#',1)[0])
     for pre,base in (('/covers/',os.path.join(config.C.UPLOADS,'covers')),('/portraits/',os.path.join(config.C.UPLOADS,'portraits')),
-                     ('/brand/',os.path.join(config.C.UPLOADS,'brand')),('/photos/',os.path.join(config.C.UPLOADS,'photos')),('/samples/',os.path.join(config.C.UPLOADS,'samples')),('/poster/',config.C.POSTER)):
+                     ('/brand/',os.path.join(config.C.UPLOADS,'brand')),('/photos/',os.path.join(config.C.UPLOADS,'photos')),('/samples/',os.path.join(config.C.UPLOADS,'samples')),('/shots/',os.path.join(config.C.UPLOADS,'shots')),('/mshots/',os.path.join(config.C.UPLOADS,'mshots')),('/poster/',config.C.POSTER)):
       if p.startswith(pre):
         # 成员照片只公开正在显示的那张；待审 / 被拒的只有登录后（审核时）能看
         if pre=='/samples/' and not s.tok():return os.path.join(base,'__nope__')   # 报名样片：只给后台看
         if pre=='/photos/' and not s.tok() and 'photos/'+p[len(pre):] not in {v.split('?')[0] for v in photos_shown().values()}:return os.path.join(base,'__nope__')
+        if pre=='/mshots/' and not s.tok() and 'mshots/'+p[len(pre):] not in {x['f'].split('?')[0] for v in mshots_shown().values() for x in v}:return os.path.join(base,'__nope__')
         rel=os.path.normpath(p[len(pre):]).lstrip(os.sep)
         if rel.startswith('..'):return os.path.join(base,'__nope__')
         return os.path.join(base,rel)
@@ -484,6 +507,8 @@ class H(SimpleHTTPRequestHandler):
     if p=='/api/admin/signups':return s.js(200,{'items':store.signups(),'state':review.window_state(),'fields':fields.normalize(config.C.site['signup'].get('fields'))})
     if p=='/api/admin/signup-fields':return s.js(200,{'fields':fields.normalize(config.C.site['signup'].get('fields')),'presets':[dict(v,key=k) for k,v in fields.PRESETS.items()]})
     if p=='/api/admin/notice':return s.js(200,{'notice':config.C.site['notice']})
+    if p=='/api/admin/shots':return s.js(200,{'shots':{**config.C.site['shots'],'items':shots.normalize(config.C.site['shots'].get('items'),config.C.UPLOADS)},'groups':[{'name':g['name'],'crew':(g.get('kind') or 'cast')=='crew','members':[{'id':m.get('id'),'character':m.get('character',''),'member':m.get('member','')} for m in g['members']]} for g in roster.load()['groups']]})
+    if p=='/api/admin/mshots':return s.js(200,{'items':store.mshots(),'config':config.C.site['photos']})
     if p=='/api/admin/guestbook':return s.js(200,{'items':store.notes(limit=1000)})
     if p=='/api/admin/counts':return s.js(200,store.counts())
     if p=='/api/admin/poster':return s.js(200,poster_status())
@@ -546,6 +571,7 @@ class H(SimpleHTTPRequestHandler):
       SESS.pop(s.tok(),None);return s.js(200,{'ok':True},'cc_s=; Path=/; Max-Age=0')
     if p=='/api/cast-signup':return s.cast_signup()
     if p=='/api/photo':return s.photo_post()
+    if p=='/api/member-shot':return s.mshot_post()
     if p=='/api/signup-sample':return s.sample_post()
     if p=='/api/guestbook':return s.guestbook_post()
     if p.startswith('/api/admin/'):
@@ -588,6 +614,28 @@ class H(SimpleHTTPRequestHandler):
     r=store.add_photo(seat,g['name'],m.get('character') or '',member,f,st)
     log('photo',r['id'],st,g['name'],seat)
     return s.js(200,{'ok':True,'pending':st=='pending'})
+  def mshot_post(s):
+    """Public: a seated member uploads a shot they want to take. ?seat=<id>&name=<CN on that seat>&caption=, body = the image.
+    Same switch / moderation / rate limit as the member photo; at most shots.MEMBER_MAX per person."""
+    P=config.C.site['photos'];n=int(s.headers.get('Content-Length',0) or 0)
+    if not P['enabled']:s.close_connection=True;return s.js(404,{'error':'例图上传没开'})
+    hits,cap,now=s.limited('photo')
+    if len(hits)>=cap:s.close_connection=True;return s.js(429,{'error':'上传太频繁，请稍后再试'})
+    if n<16 or n>6_000_000:s.close_connection=True;return s.js(400,{'error':'图片要小于 6 MB'})
+    q=urllib.parse.parse_qs(urllib.parse.urlparse(s.path).query);Q=lambda k:(q.get(k) or [''])[0]
+    seat,name,caption=Q('seat'),Q('name').strip(),Q('caption').strip()[:shots.MEMBER_CAPTION_LEN]
+    g,m=roster.seat(roster.load(),seat)
+    member=(m or {}).get('member','').strip()
+    if not m or not member:s.close_connection=True;return s.js(400,{'error':'这个席位还没人，不能传例图'})
+    if name!=member:s.close_connection=True;return s.js(403,{'error':'CN 和这个席位上的不一样'})
+    hits.append(now)
+    try:f=save_upload('mshots',s.rfile.read(n))
+    except ValueError as e:return s.js(400,{'error':str(e)})
+    st='approved' if P.get('moderation')=='post' else 'pending'
+    r=store.add_mshot(seat,g['name'],m.get('character') or '',member,f,caption,st,shots.MEMBER_MAX)
+    if not r:return s.js(409,{'error':f'每人最多 {shots.MEMBER_MAX} 张，先让团长撤下几张旧的'})
+    log('mshot',r['id'],r['status'],g['name'],seat)
+    return s.js(200,{'ok':True,'pending':r['status']=='pending'})
   def sample_post(s):
     """Public: 报名表里的样片，先单独传，拿到文件名再随报名提交。只有登录后台才看得到（/samples/）。"""
     n=int(s.headers.get('Content-Length',0) or 0)
@@ -660,6 +708,15 @@ class H(SimpleHTTPRequestHandler):
       r=store.set_photo(int(m.group(1)),st)
       if not r:return s.js(404,{'error':'没有这张照片'})
       return s.js(200,{'ok':True,'item':r})
+    m=re.fullmatch(r'/api/admin/mshots/(\d+)',p)
+    if m:
+      try:act=str(s.body(4096).get('action',''))
+      except Exception:return s.js(400,{'error':'bad request'})
+      st={'approve':'approved','reject':'rejected','reopen':'pending'}.get(act)
+      if not st:return s.js(400,{'error':'action 只能是 approve / reject / reopen'})
+      r=store.set_mshot(int(m.group(1)),st)
+      if not r:return s.js(404,{'error':'没有这张例图'})
+      return s.js(200,{'ok':True,'item':r})
     if p=='/api/admin/signup-fields':
       try:b=s.body(16384);fs=fields.compact(b.get('fields'))
       except Exception:return s.js(400,{'error':'提交格式不对'})
@@ -672,6 +729,19 @@ class H(SimpleHTTPRequestHandler):
       with LOCK:
         site_set('notice','enabled',nt['enabled']);site_set('notice','lead',nt['lead']);site_set('notice','items',nt['items'])
       log('notice updated');return s.js(200,{'ok':True,'notice':nt})
+    if p=='/api/admin/shots/upload':
+      n=int(s.headers.get('Content-Length',0) or 0)
+      if n<16 or n>8_000_000:s.close_connection=True;return s.js(400,{'error':'图片要小于 8 MB'})
+      try:name=save_upload('shots',s.rfile.read(n))
+      except ValueError as e:return s.js(400,{'error':str(e)})
+      log('upload shot',name);return s.js(200,{'ok':True,'file':name})
+    if p=='/api/admin/shots':
+      try:b=s.body(65536);sh=shots.compact(b,config.C.UPLOADS,{m.get('id') for g in roster.load()['groups'] for m in g['members']})
+      except ValueError as e:return s.js(400,{'error':str(e)})
+      except Exception:return s.js(400,{'error':'提交格式不对'})
+      with LOCK:
+        for k in ('title','lead','items'):site_set('shots',k,sh[k])
+      log('shots updated',len(sh['items']));return s.js(200,{'ok':True,'shots':sh})
     if p=='/api/admin/photos/config':
       try:b=s.body(4096)
       except Exception:return s.js(400,{'error':'bad request'})

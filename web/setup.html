@@ -67,6 +67,8 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
 .done a{display:inline-block;margin-top:10px;padding:12px 22px;border:2.5px solid var(--ink);border-radius:14px;background:var(--gold-2);color:#2a2114;font-weight:900;text-decoration:none;box-shadow:4px 4px 0 var(--ink)}
 .tk{display:flex;gap:8px}.tk input{flex:1}
 @media(max-width:560px){.pick,.row{grid-template-columns:1fr}#tbl .gh{grid-template-columns:1fr}#tbl .gh .del{justify-self:end}#tbl .mh span:last-child{display:none}}
+.shl{display:grid;gap:8px;margin:0 0 10px}.shl:empty{display:none}.shr{display:flex;gap:10px;align-items:center;border:2px solid var(--ink);border-radius:12px;padding:6px}
+.shr img{width:56px;height:72px;object-fit:cover;border-radius:8px;flex:none}.shr input{flex:1;min-width:0;font:inherit;border:2px solid var(--ink);border-radius:8px;padding:6px 8px;background:var(--paper);color:var(--ink)}
 </style>
 <body><main class=wz>
 <header><h1>castcall<span>开团向导</span></h1><p>三分钟把招募页搭起来，之后在后台随时都能改。</p></header>
@@ -106,7 +108,12 @@ body{min-height:100vh;background:repeating-linear-gradient(45deg,var(--tape-a) 0
 <section class=st><h2><b>4</b>报名要填什么 <small>可设选填，建好后也能改</small></h2>
  <div id=fpick><p style="margin:0;font-size:13px;color:var(--ink-soft)">加载中…</p></div>
 </section>
-<section class=st><h2><b>5</b>管理密码</h2>
+<section class=st><h2><b>5</b>想拍的例图 <small>可跳过，建好后也能在后台加、标角色</small></h2>
+ <p class=hint style="margin:0 0 10px">团长想拍的多人照、机位、氛围参考图，会显示在页面上给报名的人看。</p>
+ <div id=shlist class=shl></div>
+ <button type=button class=btn id=shadd>+ 选图（可多选）</button><input type=file id=shfile accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+</section>
+<section class=st><h2><b>6</b>管理密码</h2>
  <div class=row><label class=f><span>密码 <i>至少 8 位</i></span><input name=password type=password minlength=8 autocomplete=new-password></label><label class=f><span>再输一遍</span><input name=password2 type=password autocomplete=new-password></label></div>
  <p style="margin:0;font-size:12.5px;color:var(--ink-soft)">网页右下角的锁是后台入口，用这个密码登录。忘了可以在服务器上运行 <code>python3 init.py --force</code> 重设。</p>
 </section>
@@ -310,6 +317,17 @@ async function progress(src){const li=s=>$('#fr [data-s='+s+']'),msg=$('#frmsg')
   if(st==='done'&&!pp.running&&!pWait){if(pp.rc&&!pp.ready)msg.textContent+='\n一图流没生成出来，稍后在后台点「生成一图流」重试。';return}
   await new Promise(r=>setTimeout(r,2000))}}
 let fp=null;fetch('/api/setup/fields').then(r=>r.json()).then(j=>{fp=fieldPicker($('#fpick'),j.presets,[])}).catch(()=>{$('#fpick').textContent='读不到字段列表，先跳过，建好后在后台「报名表」里设'});
+/* 例图：先在浏览器里攒着，建好站（拿到登录 cookie）以后再上传，不占向导的验证码流程 */
+const SHOTS=[];
+function drawShots(){const box=$('#shlist');box.innerHTML='';SHOTS.forEach((s,i)=>{const r=document.createElement('div');r.className='shr';const im=document.createElement('img');im.src=s.url;im.alt='';
+ const c=document.createElement('input');c.maxLength=60;c.placeholder='图注（机位 / 氛围 / 动作…，可留空）';c.value=s.caption;c.oninput=()=>s.caption=c.value;
+ const x=document.createElement('button');x.type='button';x.className='btn';x.textContent='删除';x.onclick=()=>{URL.revokeObjectURL(s.url);SHOTS.splice(i,1);drawShots()};r.append(im,c,x);box.append(r)})}
+$('#shadd').onclick=()=>$('#shfile').click();
+$('#shfile').onchange=e=>{for(const f of e.target.files){if(SHOTS.length>=30||f.size>8e6)continue;SHOTS.push({file:f,url:URL.createObjectURL(f),caption:''})}e.target.value='';drawShots()};
+async function uploadShots(){if(!SHOTS.length)return '';const items=[];let bad=0;
+ for(const s of SHOTS){try{const r=await fetch('/api/admin/shots/upload',{method:'POST',credentials:'same-origin',body:s.file});const j=await r.json();if(!r.ok)throw 0;items.push({file:j.file,caption:s.caption.trim(),group:'',seats:[]})}catch(e){bad++}}
+ try{if(items.length)await fetch('/api/admin/shots',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})})}catch(e){bad=SHOTS.length}
+ return bad?`有 ${bad} 张例图没传上，建好后在后台「例图」里再加。`:`例图已上传 ${items.length} 张。`}
 let example='';$('#useex').onclick=()=>{example=$('#ex').value;F.requestSubmit()};
 function startISO(){const d=F.date.value,t=F.time.value;if(!d||!t)return '';const o=-new Date(`${d}T${t}`).getTimezoneOffset(),p=n=>String(Math.floor(Math.abs(n))).padStart(2,'0');return `${d}T${t}:00${o>=0?'+':'-'}${p(o/60)}:${p(o%60)}`}
 F.onsubmit=async e=>{e.preventDefault();const err=$('#err'),btn=F.querySelector('.go');err.textContent='';
@@ -324,7 +342,7 @@ F.onsubmit=async e=>{e.preventDefault();const err=$('#err'),btn=F.querySelector(
  btn.disabled=true;btn.textContent='正在建…';
  try{await post('/api/setup',{mode:F.mode.value,title:F.title.value.trim()||'示例活动',date:F.date.value,start:startISO(),location:F.location.value.trim(),
    contact:cv?((F.clabel.value?F.clabel.value+' ':'')+cv):'',contactLabel:F.contactLabel.value,source:src,names:src==='blank'?'':namesText(),example,password:F.password.value,fields:fp?fp.value():[]});
-  F.classList.add('hide');$('#tokbox').classList.add('hide');$('#done').classList.remove('hide');sessionStorage.setItem('kr_edit','1');scrollTo({top:0});progress(src)}
+  F.classList.add('hide');$('#tokbox').classList.add('hide');$('#done').classList.remove('hide');sessionStorage.setItem('kr_edit','1');scrollTo({top:0});uploadShots().then(m=>{$('#done').insertAdjacentHTML('beforeend',m?`<p class=hint>${m}</p>`:'')});progress(src)}
  catch(ex){err.textContent=ex.message;btn.disabled=false;btn.textContent='建好它 →';example=''}};
 renderRows();applySource();
 </script>

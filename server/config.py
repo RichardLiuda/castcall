@@ -43,6 +43,11 @@ DEFAULTS={
     'lead':'',             # 一句话定调
     'items':[],            # [{"kind":"must"/"deny"/"warn"/"info","text":"..."}]
   },
+  'shots':{                # 例图：团长想拍的参考图，放在名册下面，见 server/shots.py 和 docs/config.md
+    'title':'',            # 留空 = 「想拍的例图」
+    'lead':'',             # 一句话说明，可留空
+    'items':[],            # [{"file":"uploads/shots/ 下的文件名","caption":"图注","group":"团名，可留空"}]
+  },
   'guestbook':{
     'enabled':True,
     'moderation':'post',    # post：先显示，后台可隐藏；pre：后台通过后才显示
@@ -123,6 +128,7 @@ class Config:
     t=s.site;return {'mode':t['mode'],'event':t['event'],'brand':t['brand'],
       'signup':{**{k:t['signup'][k] for k in ('enabled','opensAt','closesAt','contactLabel','contactPattern','note')},'fields':__import__('fields').normalize(t['signup'].get('fields'))},
       'notice':{'enabled':bool(t['notice']['enabled']),'lead':t['notice']['lead'],'items':__import__('notice').normalize(t['notice'].get('items'))},
+      'shots':{'title':t['shots']['title'],'lead':t['shots']['lead'],'items':__import__('shots').normalize(t['shots'].get('items'),s.UPLOADS)},
       'guestbook':{'enabled':t['guestbook']['enabled'],'moderation':t['guestbook']['moderation']},
       'poster':{'enabled':t['poster']['enabled'],'slug':t['poster']['slug']},
       'photos':{'enabled':bool(t['photos']['enabled']),'moderation':t['photos']['moderation']}}

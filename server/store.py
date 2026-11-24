@@ -6,6 +6,7 @@ Tables
   outbox     名册变更队列：网页保存和报名落座各记一条，推 Notion 用 acked 标记
   notion     本地记录 → Notion page id（名册行、报名、留言共用，按 kind 区分）
   photos     成员上传的本人照片：pending → approved / rejected；同一席位新照片通过后旧的变 replaced
+  mshots     成员自己想拍的例图：pending → approved / rejected，一个席位可以有好几张（上限见 shots.MEMBER_MAX）
 
 A fresh connection per call with a busy timeout: the server is threaded and sqlite serialises writers itself,
 so no file lock (the keyroster version used fcntl and did not run on Windows)."""
@@ -31,6 +32,11 @@ create table if not exists photos(
   seat text not null, grp text not null, character text not null default '', member text not null,
   file text not null, status text not null default 'pending', created text not null, decided text not null default '');
 create index if not exists photos_seat on photos(seat,status);
+create table if not exists mshots(
+  id integer primary key autoincrement,
+  seat text not null, grp text not null, character text not null default '', member text not null,
+  file text not null, caption text not null default '', status text not null default 'pending', created text not null, decided text not null default '');
+create index if not exists mshots_seat on mshots(seat,status);
 create table if not exists notion(
   kind text not null, local text not null, page text not null, primary key(kind,local));
 '''
@@ -85,7 +91,8 @@ def counts():
     s={r['status']:r['n'] for r in c.execute('select status,count(*) n from signups group by status')}
     g={r['status']:r['n'] for r in c.execute('select status,count(*) n from guestbook group by status')}
     p={r['status']:r['n'] for r in c.execute('select status,count(*) n from photos group by status')}
-    return {'signups':s,'guestbook':g,'photos':p}
+    ms={r['status']:r['n'] for r in c.execute('select status,count(*) n from mshots group by status')}
+    return {'signups':s,'guestbook':g,'photos':p,'mshots':ms}
   finally:c.close()
 
 # ── guestbook ──────────────────────────────────────────────────────────────
@@ -142,6 +149,42 @@ def shown_photos():
   """{seat: (member, file)}：每个席位当前显示的那张。"""
   c=db()
   try:return {r['seat']:(r['member'],r['file']) for r in c.execute("select * from photos where status='approved' order by id")}
+  finally:c.close()
+
+# ── member shots（成员想拍的例图）────────────────────────────────────────────
+def add_mshot(seat,grp,character,member,file,caption,status,cap):
+  """→ row，或者 None（这个人在这个席位上待审 + 已通过的已经有 cap 张）。同一张图重复传返回原来那条。"""
+  c=db()
+  try:
+    c.execute('begin immediate')
+    old=c.execute("select * from mshots where seat=? and member=? and file=? and status in ('pending','approved')",(seat,member,file)).fetchone()
+    if old:c.execute('commit');return dict(old)
+    n=c.execute("select count(*) n from mshots where seat=? and member=? and status in ('pending','approved')",(seat,member)).fetchone()['n']
+    if n>=cap:c.execute('commit');return None
+    cur=c.execute('insert into mshots(seat,grp,character,member,file,caption,status,created) values(?,?,?,?,?,?,?,?)',(seat,grp,character,member,file,caption,status,now()))
+    r=dict(c.execute('select * from mshots where id=?',(cur.lastrowid,)).fetchone());c.execute('commit');return r
+  except Exception:
+    try:c.execute('rollback')
+    except Exception:pass
+    raise
+  finally:c.close()
+def mshots(limit=1000):
+  c=db()
+  try:return rows(c,'select * from mshots order by id desc limit ?',limit)
+  finally:c.close()
+def set_mshot(i,status):
+  c=db()
+  try:
+    if not c.execute('select 1 from mshots where id=?',(int(i),)).fetchone():return None
+    c.execute('update mshots set status=?,decided=? where id=?',(status,now(),int(i)))
+    return dict(c.execute('select * from mshots where id=?',(int(i),)).fetchone())
+  finally:c.close()
+def shown_mshots():
+  """{seat: [(member, file, caption)]}：已通过的，按上传顺序。"""
+  c=db();out={}
+  try:
+    for r in c.execute("select * from mshots where status='approved' order by id"):out.setdefault(r['seat'],[]).append((r['member'],r['file'],r['caption']))
+    return out
   finally:c.close()
 
 # ── roster outbox ──────────────────────────────────────────────────────────

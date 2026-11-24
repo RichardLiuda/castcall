@@ -34,6 +34,39 @@ function noticeHTML(where){const nt=SITE.notice||{},items=nt.items||[];
   const parts=musts.slice(0,2).map(it=>esc(it.text)).concat(denies.slice(0,2).map(it=>'✕ '+esc(it.text)));
   return `<p class="notice-board">${parts.join(' · ')}${musts.length+denies.length>shown.length?'…':''}</p>`}
  return ''}
+/* 例图（site.json shots + 成员自己传的 window.MSHOTS）。三处显示：
+   总例图区（没标团的；单团时全部）· 多团时各团卡片里（标了团的）· 个人页（标了这个席位的 + 成员自己想拍的）。
+   点一张放大，左右键 / 按钮切换，只在当前这一组里切。 */
+const shotItems=()=>((SITE.shots||{}).items||[]);
+const shotGeneral=()=>shotItems().filter(it=>SITE.mode==='single'||!it.group);
+const shotGroup=name=>SITE.mode==='single'?[]:shotItems().filter(it=>it.group===name);
+function shotList(key){const L=x=>({src:'/shots/'+x.file,cap:x.caption||''});
+ if(key==='all')return shotGeneral().map(L);
+ if(key.startsWith('g:')){const g=R.groups[+key.slice(2)];return g?shotGroup(g.name).map(L):[]}
+ if(key.startsWith('s:')){const id=key.slice(2);return shotItems().filter(it=>(it.seats||[]).includes(id)).map(L).concat(((window.MSHOTS||{})[id]||[]).map(x=>({src:'/'+x.f,cap:x.c||''})))}
+ return []}
+function shotFig(it,i,key,multi){return `<figure class="shot"><button type="button" class="shot-b" data-shots="${key}" data-shot="${i}" aria-label="放大第 ${i+1} 张例图${it.caption?'：'+esc(it.caption):''}"><img src="/shots/${esc(it.file)}" alt="${esc(it.caption||'例图')}" loading="lazy" decoding="async"></button>${it.caption||(multi&&it.group)?`<figcaption>${multi&&it.group?`<b>${esc(it.group)}</b>`:''}${esc(it.caption)}</figcaption>`:''}</figure>`}
+function renderShots(){const root=document.getElementById('shots');if(!root)return;const sh=SITE.shots||{},items=shotGeneral();
+ if(!items.length){root.hidden=true;root.innerHTML='';return}
+ root.hidden=false;root.innerHTML=`<div class="shots-mast"><p class="gb-kicker"><span>MOODBOARD</span></p><h2 id="shots-title">${esc(sh.title||'想拍的例图')}</h2>${sh.lead?`<p class="gb-lede">${esc(sh.lead)}</p>`:''}</div><div class="shots-grid">${items.map((it,i)=>shotFig(it,i,'all',false)).join('')}</div>`}
+/* 多团卡片里这个团的例图（卡片展开后在胶囊上方） */
+function groupShotsHTML(gi){const g=R.groups[gi],items=g?shotGroup(g.name):[];if(!items.length)return '';
+ return `<div class="shots-in"><p class="shots-k">想拍的例图</p><div class="shots-grid">${items.map((it,i)=>shotFig(it,i,'g:'+gi,false)).join('')}</div></div>`}
+/* 个人页：团长标给这个席位的 + 成员自己想拍的；有人就显示上传入口 */
+function seatShotsHTML(m){if(!m||!m.id)return '';const L=shotList('s:'+m.id),mine=(window.MSHOTS||{})[m.id]||[],nOrg=L.length-mine.length;
+ const up=SITE.photos&&SITE.photos.enabled&&hasCN(m)?`<button type="button" class="ph-up" data-mshot>${icon('camera',15)}加一张我想拍的</button>`:'';
+ if(!L.length&&!up)return '';
+ return `<div class="shots-seat"><p class="shots-k">想拍的例图</p>${L.length?`<div class="shots-strip">${L.map((x,i)=>`<button type="button" class="shot-b${i>=nOrg?' mine':''}" data-shots="s:${esc(m.id)}" data-shot="${i}" aria-label="放大${x.cap?'：'+esc(x.cap):''}${i>=nOrg?'（成员想拍）':'（团长想拍）'}"><img src="${esc(x.src)}" alt="${esc(x.cap)}" loading="lazy" decoding="async"></button>`).join('')}</div>`:''}${up}</div>`}
+let shotCur=[];
+function shotOpen(key,i){const L=key?shotList(key):shotCur;if(!L.length)return;shotCur=L;i=(i+L.length)%L.length;const it=L[i];
+ let lb=document.getElementById('shot-lb');if(!lb){lb=document.createElement('div');lb.id='shot-lb';lb.setAttribute('role','dialog');lb.setAttribute('aria-modal','true');document.body.append(lb)}
+ lb.dataset.i=i;lb.innerHTML=`<button type="button" class="shot-x" data-shot-x aria-label="关闭">×</button>${L.length>1?'<button type="button" class="shot-n prev" data-shot-d="-1" aria-label="上一张">‹</button><button type="button" class="shot-n next" data-shot-d="1" aria-label="下一张">›</button>':''}<img src="${esc(it.src)}" alt="${esc(it.cap||'例图')}">${it.cap?`<p>${esc(it.cap)}</p>`:''}`;lb.classList.add('open');document.body.classList.add('shot-lock')}
+function shotClose(){const lb=document.getElementById('shot-lb');if(lb)lb.classList.remove('open');document.body.classList.remove('shot-lock')}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-shot]');if(b)return shotOpen(b.dataset.shots,+b.dataset.shot);
+ const d=e.target.closest('[data-shot-d]');if(d){const lb=document.getElementById('shot-lb');return shotOpen('',+lb.dataset.i+ +d.dataset.shotD)}
+ if(e.target.closest('[data-shot-x]')||e.target.id==='shot-lb')shotClose()});
+document.addEventListener('keydown',e=>{const lb=document.getElementById('shot-lb');if(!lb||!lb.classList.contains('open'))return;
+ if(e.key==='Escape'){shotClose();e.stopPropagation()}else if(e.key==='ArrowLeft')shotOpen('',+lb.dataset.i-1);else if(e.key==='ArrowRight')shotOpen('',+lb.dataset.i+1)},true);
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 // img('covers/x.jpg') -> CSS image value: versioned url, as image-set(avif, jpeg) when a fresh .avif exists (window.IMGV from chars.js)
 const AV=!!(window.CSS&&CSS.supports('background-image',"image-set(url('x.avif') type('image/avif'))"));
@@ -120,7 +153,7 @@ function openSheet(gi,i,dir,from){const g=R.groups[gi],n=g.members.length;if(!n)
  const join=castKind(g.name,m)==='vacant'&&signupOn(g)?`<button type="button" class="cast-join" data-signup>${icon('users',16)}报名</button>`:'';
  const sw=ph&&ua?`<div class="ph-sw" role="group" aria-label="大图"><button type="button" class="on" data-ph="${esc(ph)}">本人</button><button type="button" data-ph="${esc(ua)}">角色</button></div>`:'';
  const up=SITE.photos&&SITE.photos.enabled&&hasCN(m)?`<button type="button" class="ph-up" data-photo>${icon('camera',15)}${ph?'换一张我的照片':'上传我的照片'}</button>`:'';
- card.innerHTML=`<div class="hero${dir?' sl':''}">${sw}</div><div class="in${dir?' sl':''}"><span class="tag">${esc(g.name)} · ${tag}</span><h2 id="sm" data-ph="（待定）">${esc(m.member)}</h2><p class="as">${crew(g)?'负责':'出演角色'}</p><h3 id="sc" data-ph="（无角色）">${esc(m.character)}</h3>${join}${up}<div class="nav"><button class="btn" data-d="-1">${icon('left',18)}上一位</button><button class="btn x" style="--c:#ffe08a;background:#ffe08a">关闭</button><button class="btn" data-d="1">下一位${icon('right',18)}</button></div></div>`;
+ card.innerHTML=`<div class="hero${dir?' sl':''}">${sw}</div><div class="in${dir?' sl':''}"><span class="tag">${esc(g.name)} · ${tag}</span><h2 id="sm" data-ph="（待定）">${esc(m.member)}</h2><p class="as">${crew(g)?'负责':'出演角色'}</p><h3 id="sc" data-ph="（无角色）">${esc(m.character)}</h3>${join}${up}${seatShotsHTML(m)}<div class="nav"><button class="btn" data-d="-1">${icon('left',18)}上一位</button><button class="btn x" style="--c:#ffe08a;background:#ffe08a">关闭</button><button class="btn" data-d="1">下一位${icon('right',18)}</button></div></div>`;
  // Morph offsets after final card layout (hero+body), not previous empty/old card
  if(from&&!sh.classList.contains('open')){const r=from.getBoundingClientRect();card.style.transition='none';sh.classList.remove('open');const c=card.getBoundingClientRect();card.style.setProperty('--fx',(r.left+r.width/2-(c.left+c.width/2))+'px');card.style.setProperty('--fy',(r.top+r.height/2-(c.top+c.height/2))+'px');card.offsetWidth;card.style.transition=''}
  sheetArt(card,gi,i,u,from);
@@ -132,6 +165,7 @@ document.addEventListener('click',e=>{const nt=e.target.closest('[data-notice-to
  const so=e.target.closest('.seat-open');if(so){const g=R.groups[+so.dataset.g];if(g&&signupOn(g)&&!document.body.classList.contains('editing'))return openSignup(+so.dataset.g,+so.dataset.i);return openSheet(+so.dataset.g,+so.dataset.i,0,so)}
  if(e.target.closest('#sheet [data-signup]')){if(cur)openSignup(cur[0],cur[1]);return}
  if(e.target.closest('#sheet [data-photo]')){if(cur)openPhoto(cur[0],cur[1]);return}
+ if(e.target.closest('#sheet [data-mshot]')){if(cur)openPhoto(cur[0],cur[1],'shot');return}
  const sw=e.target.closest('#sheet .ph-sw button');if(sw){if(sw.classList.contains('on')||!cur)return;sw.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===sw));sheetArt($('#sheet .card'),cur[0],cur[1],sw.dataset.ph);return}
  if(e.target.id=='sheet'||e.target.closest('#sheet .x'))return $('#sheet').classList.remove('open');
  const d=e.target.closest('#sheet [data-d]');if(d)openSheet(cur[0],cur[1]+ +d.dataset.d,+d.dataset.d)});
@@ -291,9 +325,9 @@ function signupShow(root,card){card.scrollTop=0;
  signupKick()}
 /* 本人照片：已定席位的成员自己传。借用报名表的弹层（手机键盘那套定位都现成）。
    CN 要和席位上的一致——不是身份验证，只防传错席位；真正的把关是后台审核（photos.moderation） */
-function openPhoto(gi,i){const g=R.groups[gi],m=g&&g.members[i];if(!m||!hasCN(m)||!(SITE.photos&&SITE.photos.enabled))return;const root=signupRoot();root.style.setProperty('--c',castHex(g.color));
+function openPhoto(gi,i,kind){const SH=kind==='shot';const g=R.groups[gi],m=g&&g.members[i];if(!m||!hasCN(m)||!(SITE.photos&&SITE.photos.enabled))return;const root=signupRoot();root.style.setProperty('--c',castHex(g.color));
  const card=root.querySelector('.signup-card'),pre=SITE.photos.moderation!=='post';
- card.innerHTML=`<form novalidate data-kind="photo"><div class="signup-ctx"><p class="signup-kicker">${icon('camera',14)}<span>本人照片</span></p><h2 id="signup-title">${esc((m.character||'').trim()||g.name)}</h2><p class="signup-work">${esc(g.name)}</p></div><label class="signup-fld signup-cn"><span>${icon('user',14)}你的 CN</span><input name="name" maxlength="40" autocomplete="name" enterkeyhint="done" required></label><label class="signup-fld signup-wx ph-pick"><span>${icon('camera',14)}照片</span><input name="file" type="file" accept="image/jpeg,image/png,image/webp" required><i class="ph-prev" hidden></i></label><div class="signup-foot"><p class="signup-err" role="alert"></p><div class="signup-actions"><button type="button" class="signup-btn" data-signup-close>取消</button><button type="submit" class="signup-btn go">${icon('arrow',16)}上传</button></div><p class="signup-fine">${pre?'提交后等审核，通过后显示在你的角色卡上。':'提交后直接显示在你的角色卡上；不合适的会被撤下。'}</p></div></form>`;
+ card.innerHTML=`<form novalidate data-kind="${SH?'mshot':'photo'}"><div class="signup-ctx"><p class="signup-kicker">${icon('camera',14)}<span>${SH?'我想拍的例图':'本人照片'}</span></p><h2 id="signup-title">${esc((m.character||'').trim()||g.name)}</h2><p class="signup-work">${esc(g.name)}</p></div><label class="signup-fld signup-cn"><span>${icon('user',14)}你的 CN</span><input name="name" maxlength="40" autocomplete="name" enterkeyhint="done" required></label><label class="signup-fld signup-wx ph-pick"><span>${icon('camera',14)}${SH?'例图':'照片'}</span><input name="file" type="file" accept="image/jpeg,image/png,image/webp" required><i class="ph-prev" hidden></i></label>${SH?`<label class="signup-fld signup-wx"><span>${icon('pencil',14)}图注<i class="signup-opt">选填</i></span><input name="caption" maxlength="40" placeholder="想要的机位 / 氛围 / 动作"></label>`:''}<div class="signup-foot"><p class="signup-err" role="alert"></p><div class="signup-actions"><button type="button" class="signup-btn" data-signup-close>取消</button><button type="submit" class="signup-btn go">${icon('arrow',16)}上传</button></div><p class="signup-fine">${SH?(pre?'提交后等审核，通过后显示在你的个人页里，每人最多 6 张。':'提交后直接显示在你的个人页里，每人最多 6 张；不合适的会被撤下。'):(pre?'提交后等审核，通过后显示在你的角色卡上。':'提交后直接显示在你的角色卡上；不合适的会被撤下。')}</p></div></form>`;
  card.dataset.id=m.id||'';const f=card.querySelector('[name=file]'),pv=card.querySelector('.ph-prev');
  f.addEventListener('change',()=>{const x=f.files[0];if(pv._u)URL.revokeObjectURL(pv._u);pv.hidden=!x;if(x){pv._u=URL.createObjectURL(x);pv.style.backgroundImage=`url(${pv._u})`}});
  signupShow(root,card)}
@@ -307,11 +341,12 @@ async function onPhotoSubmit(e){e.preventDefault();const form=e.target,card=form
  if(!file){err.textContent='先选一张照片';return}
  if(form.dataset.busy==='1')return;form.dataset.busy='1';btn.disabled=true;err.textContent='上传中…';
  try{const body=await shrinkPhoto(file);if(body.size>6e6)throw new Error('照片要小于 6 MB');
-  const r=await fetch('/api/photo?'+new URLSearchParams({seat:card.dataset.id,name}),{method:'POST',body});
+  const SH=form.dataset.kind==='mshot',qs={seat:card.dataset.id,name};if(SH)qs.caption=(form.querySelector('[name=caption]').value||'').trim();
+  const r=await fetch((SH?'/api/member-shot?':'/api/photo?')+new URLSearchParams(qs),{method:'POST',body});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'上传失败，请稍后再试');
-  closeSignup();if(j.pending)castToast('已提交，等审核');else{castToast('照片已换上');setTimeout(()=>location.reload(),900)}}
+  closeSignup();if(j.pending)castToast('已提交，等审核');else{castToast(SH?'例图已加上':'照片已换上');setTimeout(()=>location.reload(),900)}}
  catch(ex){err.textContent=ex.message||'上传失败，请稍后再试';form.dataset.busy='';btn.disabled=false}}
-async function onSignupSubmit(e){if(e.target.dataset.kind==='photo')return onPhotoSubmit(e);e.preventDefault();const form=e.target,card=form.closest('.signup-card'),err=form.querySelector('.signup-err'),btn=form.querySelector('[type=submit]');
+async function onSignupSubmit(e){if(e.target.dataset.kind==='photo'||e.target.dataset.kind==='mshot')return onPhotoSubmit(e);e.preventDefault();const form=e.target,card=form.closest('.signup-card'),err=form.querySelector('.signup-err'),btn=form.querySelector('[type=submit]');
  const nameEl=form.querySelector('[name=name]'),wxEl=form.querySelector('[name=contact]'),CL=SITE.signup.contactLabel||'联系方式';
  const name=(nameEl.value||'').trim(),contact=(wxEl.value||'').trim();
  if(!name){err.textContent='请填写CN';nameEl.focus();return}

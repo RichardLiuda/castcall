@@ -420,6 +420,72 @@ class Photos(Base):
     s.assertEqual(r.json()['config'],{'enabled':False,'moderation':'post'})
     s.assertIn('"photos": {"enabled": false',s.c.get('/site.js').text)
 
+class Shots(Base):
+  PNG=b'\x89PNG\r\n\x1a\n'+b'\x00'*32
+  def up(s,data=None):return s.c.req('POST','/api/admin/shots/upload',raw=data or s.PNG)
+  def test_shots_flow(s):
+    s.assertEqual(s.up().status,401)
+    s.assertEqual(s.c.post('/api/admin/shots',{'items':[]}).status,401)
+    s.assertEqual(json.loads(s.c.get('/site.js').text[len('window.SITE='):-1])['shots']['items'],[])   # 没图就是空，页面不画这一块
+    s.c.login()
+    s.assertEqual(s.up(b'not an image at all, really').status,400)
+    f=s.up().json()['file']
+    s.assertEqual(s.c.get('/shots/'+f).status,200)
+    body={'title':'想拍的','lead':'逆光','items':[{'file':f,'caption':'侧脸<b>'},{'file':'../../auth.json','caption':'x'},{'file':'0'*12+'.png','caption':'不存在'},{'file':f,'caption':'重复'}]}
+    r=s.c.post('/api/admin/shots',body);s.assertEqual(r.status,200)
+    s.assertEqual([i['file'] for i in r.json()['shots']['items']],[f])        # 路径穿越、不存在的文件、重复的都丢掉
+    pub=json.loads(s.c.get('/site.js').text[len('window.SITE='):-1])['shots']
+    s.assertEqual(pub['title'],'想拍的');s.assertEqual(pub['items'][0]['caption'],'侧脸<b>')
+    s.assertEqual(s.c.post('/api/admin/shots',{'items':[{'file':f}]*31}).status,400)   # 超过 30 条直接拒
+    s.assertEqual(s.c.post('/api/admin/shots',{'items':'x'}).status,400)
+    s.assertEqual(s.c.get('/api/admin/shots').json()['shots']['items'][0]['file'],f)
+    s.c.post('/api/admin/shots',{'items':[]})
+    s.assertEqual(json.loads(s.c.get('/site.js').text[len('window.SITE='):-1])['shots']['items'],[])
+  def seat(s,filled=True):
+    import roster
+    for g in roster.load()['groups']:
+      for m in g['members']:
+        if bool((m.get('member') or '').strip())==filled:return g,m
+  def test_seat_tags_keep_only_real_seats(s):
+    s.c.login();f=s.up().json()['file'];g,m=s.seat()
+    r=s.c.post('/api/admin/shots',{'items':[{'file':f,'caption':'对视','group':g['name'],'seats':[m['id'],'nope','../x',m['id']]}]})
+    it=r.json()['shots']['items'][0];s.assertEqual(it['seats'],[m['id']]);s.assertEqual(it['group'],g['name'])
+    s.assertEqual(json.loads(s.c.get('/site.js').text[len('window.SITE='):-1])['shots']['items'][0]['seats'],[m['id']])
+  def mup(s,m,name=None,caption='',data=None):
+    q=urllib.parse.urlencode({'seat':m['id'],'name':m['member'] if name is None else name,'caption':caption})
+    return s.c.req('POST','/api/member-shot?'+q,raw=data or s.PNG+os.urandom(8))
+  def test_member_shots_flow(s):
+    g,m=s.seat();_,v=s.seat(False);edit_site(lambda j:j.setdefault('limits',{}).update(photo=50))
+    s.assertEqual(s.mup(m).status,404)                                  # 开关没开
+    edit_site(lambda j:j.setdefault('photos',{}).update(enabled=True))
+    s.assertEqual(s.mup(m,name='别人').status,403)
+    s.assertEqual(s.mup(v,name='').status,400)                          # 空席位不能传
+    r=s.mup(m,caption='回眸');s.assertEqual(r.status,200);s.assertTrue(r.json()['pending'])
+    f=store.mshots()[0]['file']
+    s.assertEqual(s.c.get('/mshots/'+f).status,404)                      # 待审的不公开
+    s.assertNotIn(m['id'],s.c.get('/chars.js').text.split('window.MSHOTS=')[1])
+    s.c.login();s.assertEqual(s.c.get('/mshots/'+f).status,200)
+    i=store.mshots()[0]['id'];s.assertEqual(s.c.post(f'/api/admin/mshots/{i}',{'action':'approve'}).status,200)
+    s.assertEqual(s.c.get('/mshots/'+f).status,200)
+    s.assertIn(f'"{m["id"]}": [{{"f": "mshots/{f}?v=',s.c.get('/chars.js').text)
+    s.assertEqual(s.c.get('/api/admin/counts').json()['mshots'],{'approved':1})
+    for _ in range(5):s.assertEqual(s.mup(m).status,200)                # 一共 6 张
+    s.assertEqual(s.mup(m).status,409)                                  # 第 7 张被拒
+    s.assertEqual(s.c.post('/api/admin/mshots/99999',{'action':'approve'}).status,404)
+    s.assertEqual(s.c.post(f'/api/admin/mshots/{i}',{'action':'x'}).status,400)
+    # 换人后旧例图不挂到新人头上
+    import roster
+    d=roster.load();roster.seat(d,m['id'])[1]['member']='新来的'
+    with open(config.C.ROSTER,'w',encoding='utf-8') as fh:json.dump(d,fh,ensure_ascii=False)
+    s.assertNotIn(m['id'],s.c.get('/chars.js').text.split('window.MSHOTS=')[1])
+  def test_member_shots_post_moderation_shows_at_once(s):
+    g,m=s.seat();edit_site(lambda j:j.setdefault('photos',{}).update(enabled=True,moderation='post'))
+    s.assertFalse(s.mup(m).json()['pending']);s.assertIn(f'"{m["id"]}": [',s.c.get('/chars.js').text.split('window.MSHOTS=')[1])
+  def test_missing_file_is_dropped_from_the_public_view(s):
+    s.c.login();f=s.up().json()['file'];s.c.post('/api/admin/shots',{'items':[{'file':f}]})
+    os.remove(os.path.join(config.C.UPLOADS,'shots',f))
+    s.assertEqual(json.loads(s.c.get('/site.js').text[len('window.SITE='):-1])['shots']['items'],[])
+
 class FirstRun(unittest.TestCase):
   """建站后默认：导入的名单先自动配图，再生成一图流；样例 / 空名册只生成一图流。"""
   def setUp(s):
